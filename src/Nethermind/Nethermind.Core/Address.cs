@@ -191,8 +191,38 @@ namespace Nethermind.Core
 
             return a?.Equals(b) ?? false;
         }
-
+        
         public static bool operator !=(Address a, Address b)
+        {
+            return !(a == b);
+        }
+        
+        public static bool operator ==(object a, Address b)
+        {
+            if (ReferenceEquals(a, b))
+            {
+                return true;
+            }
+
+            return ((Address)a)?.Equals(b) ?? false;
+        }
+        
+        public static bool operator !=(object a, Address b)
+        {
+            return !(a == b);
+        }
+        
+        public static bool operator ==(Address a, object b)
+        {
+            if (ReferenceEquals(a, b))
+            {
+                return true;
+            }
+
+            return a?.Equals(b) ?? false;
+        }
+
+        public static bool operator !=(Address a, object b)
         {
             return !(a == b);
         }

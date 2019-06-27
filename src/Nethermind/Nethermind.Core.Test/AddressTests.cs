@@ -60,6 +60,7 @@ namespace Nethermind.Core.Test
 
         [TestCase("0x52908400098527886E0F7030069857D2E4169EE7", true, true)]
         [TestCase("52908400098527886E0F7030069857D2E4169EE7", true, true)]
+        [TestCase("52908400098527886E0F7030069857D2E4169EEZ", true, false)]
         [TestCase("0x52908400098527886E0F7030069857D2E4169EE7", false, false)]
         [TestCase("52908400098527886E0F7030069857D2E4169EE7", false, true)]
         [TestCase("FF52908400098527886E0F7030069857D2E4169EE7", false, false)]
@@ -80,6 +81,22 @@ namespace Nethermind.Core.Test
             Assert.True(Bytes.AreEqual(address.Bytes, bytes));
         }
 
+        [Test]
+        public void Equals_works_with_object()
+        {
+            Address addressA = new Address(Keccak.Compute("a"));
+
+            object addressAObject = addressA;
+            object addressA2Object = new Address(Keccak.Compute("a"));
+            object addressBObject = new Address(Keccak.Compute("b"));
+            
+            Assert.True(addressA.Equals(addressA2Object));
+            // ReSharper disable once EqualExpressionComparison
+            Assert.True(addressA.Equals(addressAObject));
+            Assert.False(addressA.Equals(addressBObject));
+            Assert.False(addressA.Equals((object)null));
+        }
+        
         [Test]
         public void Equals_works()
         {
@@ -109,7 +126,46 @@ namespace Nethermind.Core.Test
             Assert.False(null == addressA);
             Assert.True((Address) null == null);
         }
+        
+        [Test]
+        public void Equals_operator_works_when_using_object()
+        {
+            Address addressA = new Address(Keccak.Compute("a"));
+            object addressAObject = addressA;
+            object addressA2Object = new Address(Keccak.Compute("a"));
+            object addressBObject = new Address(Keccak.Compute("b"));
+            
+#pragma warning disable 252,253
+            Assert.True(addressAObject == addressA);
+            Assert.True(addressA2Object == addressA);
+            Assert.True(addressA == addressAObject);
+            Assert.True(addressA == addressA2Object);
+            Assert.False(addressA == addressBObject);
+            Assert.False(addressBObject == addressA);
+#pragma warning restore 252,253
+        }
 
+        [Test]
+        public void Not_equals_operator_works_with_object()
+        {
+            Address addressA = new Address(Keccak.Compute("a"));
+            object addressAObject = addressA;
+            object addressA2Object = new Address(Keccak.Compute("a"));
+            object addressBObject = new Address(Keccak.Compute("b"));
+            Assert.False(addressA != addressA2Object);
+            // ReSharper disable once EqualExpressionComparison
+#pragma warning disable CS1718
+            Assert.False(addressA != addressAObject);
+            Assert.False(addressA != addressA2Object);
+            Assert.False(addressAObject != addressA);
+            Assert.False(addressA2Object != addressA);
+#pragma warning restore CS1718
+            Assert.True(addressA != addressBObject);
+            Assert.True(addressA != null);
+            Assert.True(null != addressA);
+            Assert.False((Address) null != null);
+        }
+        
         [Test]
         public void Not_equals_operator_works()
         {
@@ -189,14 +245,6 @@ namespace Nethermind.Core.Test
             Assert.AreEqual(address, new Address(expectedAddress));
         }
 
-        [Test]
-        public void Equals_edge_cases_areFine()
-        {
-            Address address = Address.Zero;
-            Assert.False(address.Equals(null), "null");
-            Assert.True(address.Equals(address), "self");
-        }
-
         [TestCase("908400098527886E0F7030069857D2E4169EE7", typeof(ArgumentException))]
         [TestCase("AAAA908400098527886E0F7030069857D2E4169EE7", typeof(ArgumentException))]
         [TestCase(null, typeof(ArgumentNullException))]
@@ -211,6 +259,12 @@ namespace Nethermind.Core.Test
             string hexString = "0x52908400098527886E0F7030069857D2E4169EE7";
             Address address = new Address(Bytes.FromHexString(hexString));
             Assert.AreEqual(hexString.ToLowerInvariant(), address.ToString().ToLowerInvariant());
+        }
+        
+        [Test]
+        public void Get_hash_code_works()
+        {
+            int hashCode = Address.Zero.GetHashCode();
         }
     }
 }
