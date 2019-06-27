@@ -16,6 +16,7 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
+using System;
 using Nethermind.Core.Crypto;
 using Nethermind.Core.Extensions;
 using Nethermind.Core.Specs.Forks;
@@ -61,6 +62,10 @@ namespace Nethermind.Core.Test
         [TestCase("52908400098527886E0F7030069857D2E4169EE7", true, true)]
         [TestCase("0x52908400098527886E0F7030069857D2E4169EE7", false, false)]
         [TestCase("52908400098527886E0F7030069857D2E4169EE7", false, true)]
+        [TestCase("FF52908400098527886E0F7030069857D2E4169EE7", false, false)]
+        [TestCase("FF52908400098527886E0F7030069857D2E4169EE7", true, false)]
+        [TestCase("0052908400098527886E0F7030069857D2E4169EE7", true, false)]
+        [TestCase("xx52908400098527886E0F7030069857D2E4169EE7", true, false)]
         public void Can_check_if_address_is_valid(string addressHex, bool allowPrefix, bool expectedResult)
         {
             Assert.AreEqual(expectedResult, Address.IsValidAddress(addressHex, allowPrefix));
@@ -102,7 +107,7 @@ namespace Nethermind.Core.Test
             Assert.False(addressA == addressB);
             Assert.False(addressA == null);
             Assert.False(null == addressA);
-            Assert.True((Address)null == null);
+            Assert.True((Address) null == null);
         }
 
         [Test]
@@ -119,7 +124,7 @@ namespace Nethermind.Core.Test
             Assert.True(addressA != addressB);
             Assert.True(addressA != null);
             Assert.True(null != addressA);
-            Assert.False((Address)null != null);
+            Assert.False((Address) null != null);
         }
 
         [Test]
@@ -130,7 +135,7 @@ namespace Nethermind.Core.Test
             Address address = new Address(addressBytes);
             Assert.True(address.IsPrecompiled(Frontier.Instance));
         }
-        
+
         [Test]
         public void Is_precompiled_4_regression()
         {
@@ -139,7 +144,7 @@ namespace Nethermind.Core.Test
             Address address = new Address(addressBytes);
             Assert.True(address.IsPrecompiled(Frontier.Instance));
         }
-        
+
         [Test]
         public void Is_precompiled_5_frontier()
         {
@@ -148,7 +153,7 @@ namespace Nethermind.Core.Test
             Address address = new Address(addressBytes);
             Assert.False(address.IsPrecompiled(Frontier.Instance));
         }
-        
+
         [Test]
         public void Is_precompiled_5_byzantium()
         {
@@ -157,7 +162,7 @@ namespace Nethermind.Core.Test
             Address address = new Address(addressBytes);
             Assert.True(address.IsPrecompiled(Byzantium.Instance));
         }
-        
+
         [Test]
         public void Is_precompiled_9_byzantium()
         {
@@ -166,7 +171,7 @@ namespace Nethermind.Core.Test
             Address address = new Address(addressBytes);
             Assert.False(address.IsPrecompiled(Byzantium.Instance));
         }
-        
+
         [TestCase(0, false)]
         [TestCase(1, true)]
         [TestCase(1000, false)]
@@ -175,13 +180,37 @@ namespace Nethermind.Core.Test
             Address address = Address.FromNumber(number);
             Assert.AreEqual(isPrecompile, address.IsPrecompiled(Byzantium.Instance));
         }
-        
+
         [TestCase(0, "0x24cd2edba056b7c654a50e8201b619d4f624fdda")]
         [TestCase(1, "0xdc98b4d0af603b4fb5ccdd840406a0210e5deff8")]
         public void Of_contract(long nonce, string expectedAddress)
         {
-            Address address = Address.OfContract(TestItem.AddressA, (UInt256)nonce);
+            Address address = Address.OfContract(TestItem.AddressA, (UInt256) nonce);
             Assert.AreEqual(address, new Address(expectedAddress));
+        }
+
+        [Test]
+        public void Equals_edge_cases_areFine()
+        {
+            Address address = Address.Zero;
+            Assert.False(address.Equals(null), "null");
+            Assert.True(address.Equals(address), "self");
+        }
+
+        [TestCase("908400098527886E0F7030069857D2E4169EE7", typeof(ArgumentException))]
+        [TestCase("AAAA908400098527886E0F7030069857D2E4169EE7", typeof(ArgumentException))]
+        [TestCase(null, typeof(ArgumentNullException))]
+        public void Constructor_from_bytes(string hexString, Type expectedException)
+        {
+            Assert.Throws(expectedException, () => new Address(hexString == null ? null : Bytes.FromHexString(hexString)));
+        }
+
+        [Test]
+        public void Constructor_from_bytes_happy_path()
+        {
+            string hexString = "0x52908400098527886E0F7030069857D2E4169EE7";
+            Address address = new Address(Bytes.FromHexString(hexString));
+            Assert.AreEqual(hexString.ToLowerInvariant(), address.ToString().ToLowerInvariant());
         }
     }
 }
