@@ -42,10 +42,16 @@ namespace Nethermind.Store
             NodeType = nodeType;
         }
 
-        public TrieNode(NodeType nodeType, Keccak keccak)
+        public TrieNode(NodeType nodeType, ValueKeccak keccak)
         {
             NodeType = nodeType;
             Keccak = keccak;
+        }
+        
+        public TrieNode(NodeType nodeType, Keccak keccak)
+        {
+            NodeType = nodeType;
+            Keccak = ValueKeccak.From(keccak);
         }
 
         public TrieNode(NodeType nodeType, Rlp rlp)
@@ -92,7 +98,7 @@ namespace Nethermind.Store
             }
         }
 
-        public Keccak Keccak { get; set; }
+        public ValueKeccak? Keccak { get; set; }
         private Rlp.DecoderContext DecoderContext { get; set; }
         public Rlp FullRlp { get; private set; }
         public NodeType NodeType { get; set; }
@@ -185,7 +191,7 @@ namespace Nethermind.Store
                 {
                     if (FullRlp == null)
                     {
-                        FullRlp = tree.GetNode(Keccak, allowCaching);
+                        FullRlp = tree.GetNode(Nethermind.Core.Crypto.Keccak.From(Keccak.Value), allowCaching);
                         DecoderContext = FullRlp.Bytes.AsRlpContext();
                     }
                 }
@@ -227,7 +233,7 @@ namespace Nethermind.Store
             }
             catch (Exception e)
             {
-                throw new StateException($"Unable to resolve node {Keccak.ToString(true)}", e);
+                throw new StateException($"Unable to resolve node {Keccak?.ToString(true)}", e);
             }
         }
         
@@ -238,6 +244,7 @@ namespace Nethermind.Store
 
         public void ResolveKey(bool isRoot)
         {
+            // Keccak.Compute(FullRlp) => 31 MB of byte[]
             if (Keccak != null)
             {
                 return;
@@ -245,7 +252,7 @@ namespace Nethermind.Store
 
             if (FullRlp == null || IsDirty) // TODO: review
             {
-                FullRlp = RlpEncode();
+                FullRlp = RlpEncode();    // 157 MB
                 DecoderContext = FullRlp.Bytes.AsRlpContext();
                 BuildLookupTable();
             }
@@ -255,14 +262,16 @@ namespace Nethermind.Store
                 if (isRoot)
                 {
                     Metrics.TreeNodeHashCalculations++;
-                    Keccak = Keccak.Compute(FullRlp);
+                    Keccak = ValueKeccak.Compute(FullRlp.Bytes);
+                    //Keccak = Keccak.Compute(FullRlp);    
                 }
 
                 return;
             }
 
             Metrics.TreeNodeHashCalculations++;
-            Keccak = Keccak.Compute(FullRlp);
+            Keccak = ValueKeccak.Compute(FullRlp.Bytes);
+            //Keccak = Keccak.Compute(FullRlp);
         }
 
         private Rlp RlpEncodeBranch()
@@ -281,6 +290,7 @@ namespace Nethermind.Store
 
         internal Rlp RlpEncode()
         {
+            // Rlp.Encode - 29 MB in total
             Metrics.TreeNodeRlpEncodings++;
             if (IsLeaf)
             {
@@ -289,7 +299,7 @@ namespace Nethermind.Store
 
             if (IsBranch)
             {
-                return RlpEncodeBranch();
+                return RlpEncodeBranch();    // 128 MB
             }
 
             if (IsExtension)
@@ -308,7 +318,7 @@ namespace Nethermind.Store
             }
 
             nodeRef.ResolveKey(false);
-            return nodeRef.Keccak == null ? nodeRef.FullRlp : Rlp.Encode(nodeRef.Keccak);
+            return nodeRef.Keccak == null ? nodeRef.FullRlp : Rlp.Encode(Core.Crypto.Keccak.From(nodeRef.Keccak.Value));
         }
 
         private void InitData()
@@ -511,7 +521,7 @@ namespace Nethermind.Store
                         }
                         else
                         {
-                            position = Rlp.Encode(destination, position, childNode.Keccak.Bytes);
+                            position = Rlp.Encode(destination, position, childNode.Keccak.Value.BytesAsSpan);
                         }
                     }
                 }
@@ -542,7 +552,7 @@ namespace Nethermind.Store
             }
             catch (StateException)
             {
-                visitor.VisitMissingNode(Keccak, context);
+                visitor.VisitMissingNode(Keccak.Value, context);
                 return;
             }
 
@@ -552,7 +562,7 @@ namespace Nethermind.Store
                     throw new NotImplementedException();
                 case NodeType.Branch:
                 {
-                    visitor.VisitBranch(Keccak?.Bytes ?? FullRlp?.Bytes, context);
+                    visitor.VisitBranch(Keccak != null ? Keccak.Value.BytesAsSpan : FullRlp?.Bytes, context);
                     context.Level++;
                     for (int i = 0; i < 16; i++)
                     {
@@ -567,7 +577,7 @@ namespace Nethermind.Store
                 }
                 case NodeType.Extension:
                 {
-                    visitor.VisitExtension(Keccak?.Bytes ?? FullRlp?.Bytes, context);
+                    visitor.VisitExtension(Keccak != null ? Keccak.Value.BytesAsSpan : FullRlp?.Bytes, context);
                     context.Level++;
                     TrieNode child = GetChild(0);
                     context.BranchChildIndex = null;
@@ -577,7 +587,7 @@ namespace Nethermind.Store
                 }
                 case NodeType.Leaf:
                 {
-                    visitor.VisitLeaf(Keccak?.Bytes ?? FullRlp?.Bytes, context);
+                    visitor.VisitLeaf(Keccak != null ? Keccak.Value.BytesAsSpan : FullRlp?.Bytes, context);
                     if (!context.IsStorage)
                     {
                         Account account = _decoder.Decode(Value.AsRlpContext());
