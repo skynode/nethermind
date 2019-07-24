@@ -81,5 +81,16 @@ namespace Nethermind.Core.Test.Crypto
             Address address = ecdsa.RecoverAddress(tx, 1);
             Assert.AreEqual(key.Address, address);
         }
+        
+//        [Test]
+//        public void Sign_goerli()
+//        {
+//            EthereumEcdsa ecdsa = new EthereumEcdsa(GoerliSpecProvider.Instance, LimboLogs.Instance);
+//            PrivateKey key = Build.A.PrivateKey.TestObject;
+//            Transaction tx = Build.A.Transaction.TestObject;
+//            ecdsa.Sign(key, tx, 1);
+//            Address address = ecdsa.RecoverAddress(tx, 1);
+//            Assert.AreEqual(key.Address, address);
+//        }
     }
 }

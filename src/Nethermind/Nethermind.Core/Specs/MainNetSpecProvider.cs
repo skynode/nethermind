@@ -66,7 +66,7 @@ namespace Nethermind.Core.Specs
         public static long ByzantiumBlockNumber { get; } = 4370000;
         public static long ConstantinopleFixBlockNumber { get; } = 7280000;
 
-        public int ChainId => 1;
+        public int ChainId { get; set; } = 1;
 
         private MainNetSpecProvider()
         {

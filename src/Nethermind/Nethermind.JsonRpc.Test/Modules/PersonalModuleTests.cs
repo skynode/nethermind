@@ -33,7 +33,7 @@ namespace Nethermind.JsonRpc.Test.Modules
         [SetUp]
         public void Initialize()
         {
-            _wallet = new DevWallet(new WalletConfig(),  LimboLogs.Instance);
+            _wallet = new DevWallet(MainNetSpecProvider.Instance, new WalletConfig(),  LimboLogs.Instance);
             IEthereumEcdsa ethereumEcdsa = new EthereumEcdsa(MainNetSpecProvider.Instance, LimboLogs.Instance);
             _bridge = new PersonalBridge(ethereumEcdsa, _wallet);
         }

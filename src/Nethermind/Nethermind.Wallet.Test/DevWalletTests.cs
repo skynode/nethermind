@@ -71,10 +71,11 @@ namespace Nethermind.Wallet.Test
                     config.KeyStoreDirectory = _keyStorePath;
                     ISymmetricEncrypter encrypter = new AesEncrypter(config, LimboLogs.Instance);
                     return new DevKeyStoreWallet(
+                        MainNetSpecProvider.Instance, 
                         new FileKeyStore(config, new EthereumJsonSerializer(), encrypter, new CryptoRandom(), LimboLogs.Instance),
                         LimboLogs.Instance);
                 case DevWalletType.Memory:
-                    return new DevWallet(new WalletConfig(), LimboLogs.Instance);
+                    return new DevWallet(MainNetSpecProvider.Instance, new WalletConfig(), LimboLogs.Instance);
                 default:
                     throw new ArgumentOutOfRangeException(nameof(devWalletType), devWalletType, null);
             }
@@ -129,7 +130,7 @@ namespace Nethermind.Wallet.Test
                 Transaction tx = new Transaction();
                 tx.SenderAddress = signerAddress;
                 
-                wallet.Sign(tx, networkId);
+                wallet.Sign(tx, 0, networkId);
                 Address recovered = ecdsa.RecoverAddress(tx, networkId);
                 Assert.AreEqual(signerAddress, recovered, $"{i}");
                 Assert.AreEqual(networkId, tx.Signature.GetChainId, "chainId");

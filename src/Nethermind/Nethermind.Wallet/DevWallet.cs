@@ -23,6 +23,7 @@ using System.Security;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
 using Nethermind.Core.Encoding;
+using Nethermind.Core.Specs;
 using Nethermind.Logging;
 using Nethermind.Secp256k1;
 
@@ -31,6 +32,7 @@ namespace Nethermind.Wallet
     [DoNotUseInSecuredContext("For dev purposes only")]
     public class DevWallet : IWallet
     {
+        private readonly ISpecProvider _specProvider;
         private const string AnyPassword = "#DEV_ACCOUNT_NETHERMIND_ANY_PASSWORD#";
         private static byte[] _keySeed = new byte[32];
         private readonly ILogger _logger;
@@ -40,8 +42,9 @@ namespace Nethermind.Wallet
         public event EventHandler<AccountLockedEventArgs> AccountLocked;
         public event EventHandler<AccountUnlockedEventArgs> AccountUnlocked;
 
-        public DevWallet(IWalletConfig walletConfig, ILogManager logManager)
+        public DevWallet(ISpecProvider specProvider, IWalletConfig walletConfig, ILogManager logManager)
         {
+            _specProvider = specProvider ?? throw new ArgumentNullException(nameof(specProvider));
             _logger = logManager.GetClassLogger() ?? throw new ArgumentNullException(nameof(logManager));
 
             _keySeed[31] = 1;
@@ -126,10 +129,10 @@ namespace Nethermind.Wallet
             return Sign(message, address);
         }
 
-        public void Sign(Transaction tx, int chainId)
+        public void Sign(Transaction tx, long blockNumber, int chainId)
         {
             if (_logger.IsDebug) _logger?.Debug($"Signing transaction: {tx.Value} to {tx.To}");
-            Keccak hash = Keccak.Compute(Rlp.Encode(tx, true, true, chainId));
+            Keccak hash = Keccak.Compute(Rlp.Encode(tx, true, _specProvider.GetSpec(blockNumber).IsEip155Enabled, chainId));
             tx.Signature = Sign(hash, tx.SenderAddress);
             tx.Signature.V = tx.Signature.V + 8 + 2 * chainId;
         }

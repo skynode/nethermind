@@ -68,7 +68,7 @@ namespace Nethermind.DataMarketplace.Core.Services
             transaction.GasLimit = 100000;
             transaction.GasPrice = 0.GWei();
             transaction.Nonce = (UInt256) _blockchainBridge.GetNonce(_consumerAddress);
-            _wallet.Sign(transaction, _blockchainBridge.GetNetworkId());
+            _wallet.Sign(transaction, 0, _blockchainBridge.GetNetworkId());
             BlockchainBridge.CallOutput callOutput = _blockchainBridge.Call(_blockchainBridge.Head, transaction);
             return (callOutput.OutputData ?? new byte[] {0}).ToUInt256();
         }
@@ -107,7 +107,7 @@ namespace Nethermind.DataMarketplace.Core.Services
             transaction.GasLimit = 70000; // check  
             transaction.GasPrice = 20.GWei();
             transaction.Nonce = (UInt256) _blockchainBridge.GetNonce(onBehalfOf);
-            _wallet.Sign(transaction, _blockchainBridge.GetNetworkId());
+            _wallet.Sign(transaction, 0, _blockchainBridge.GetNetworkId());
             return _blockchainBridge.SendTransaction(transaction);
         }
 

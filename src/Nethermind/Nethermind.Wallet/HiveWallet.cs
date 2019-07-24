@@ -72,7 +72,7 @@ namespace Nethermind.Wallet
 
         public Address[] GetAccounts() => _addresses.ToArray();
 
-        public void Sign(Transaction tx, int chainId)
+        public void Sign(Transaction tx, long blockNumber, int chainId)
         {
             throw new NotSupportedException();
         }

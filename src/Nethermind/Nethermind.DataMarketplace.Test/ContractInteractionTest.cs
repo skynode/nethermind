@@ -92,7 +92,7 @@ namespace Nethermind.DataMarketplace.Test
 
         protected void Prepare()
         {
-            _wallet = new DevWallet(new WalletConfig(), _logManager);
+            _wallet = new DevWallet(GoerliSpecProvider.Instance, new WalletConfig(), _logManager);
             _feeAccount = _wallet.GetAccounts()[0];
             _consumerAccount = _wallet.GetAccounts()[1];
             _providerAccount = _wallet.GetAccounts()[2];

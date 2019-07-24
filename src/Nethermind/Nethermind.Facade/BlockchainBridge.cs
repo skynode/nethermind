@@ -91,7 +91,7 @@ namespace Nethermind.Facade
 
         public void Sign(Transaction tx)
         {
-            _wallet.Sign(tx, _blockTree.ChainId);
+            _wallet.Sign(tx, _blockTree.Head?.Number ?? 0, _blockTree.ChainId);
         }
 
         public BlockHeader Head => _blockTree.Head;
@@ -148,7 +148,11 @@ namespace Nethermind.Facade
         public TxReceipt GetReceipt(Keccak txHash)
         {
             var txReceipt = _receiptStorage.Find(txHash);
-            txReceipt.TxHash = txHash;
+            if (txReceipt != null)
+            {
+                txReceipt.TxHash = txHash;
+            }
+
             return txReceipt;
         }
 

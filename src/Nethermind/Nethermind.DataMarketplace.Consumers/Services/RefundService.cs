@@ -59,7 +59,7 @@ namespace Nethermind.DataMarketplace.Consumers.Services
             transaction.GasLimit = 90000; // check  
             transaction.GasPrice = 20.GWei();
             transaction.Nonce = (UInt256) _blockchainBridge.GetNonce(onBehalfOf);
-            _wallet.Sign(transaction, _blockchainBridge.GetNetworkId());
+            _wallet.Sign(transaction, 0, _blockchainBridge.GetNetworkId());
             
             if (_logger.IsInfo)
             {
@@ -86,7 +86,7 @@ namespace Nethermind.DataMarketplace.Consumers.Services
                 _logger.Info($"Sending an early refund claim transaction on {earlyRefundClaim.DepositId} to be refunded to {earlyRefundClaim.RefundTo}");
             }
             
-            _wallet.Sign(transaction, _blockchainBridge.GetNetworkId());
+            _wallet.Sign(transaction, 0, _blockchainBridge.GetNetworkId());
             return _blockchainBridge.SendTransaction(transaction, true);
         }
     }

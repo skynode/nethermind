@@ -37,6 +37,7 @@ namespace Nethermind.Cli
         {
             JintEngine = new Engine();
             JintEngine.SetValue("gasPrice", (double) 20.GWei());
+            JintEngine.SetValue("ether", "1000000000000000000");
             JintEngine.SetValue("load", new Action<string>(LoadFile));
             JintEngine.SetValue("log", new Action<JsValue>(v =>
             {

@@ -32,7 +32,7 @@ namespace Nethermind.Wallet
         bool LockAccount(Address address);
         Signature Sign(Keccak message, Address address, SecureString passphrase = null);
         Address[] GetAccounts();
-        void Sign(Transaction tx, int chainId);
+        void Sign(Transaction tx, long blockNumber, int chainId);
         bool IsUnlocked(Address address);
         event EventHandler<AccountLockedEventArgs> AccountLocked;
         event EventHandler<AccountUnlockedEventArgs> AccountUnlocked;

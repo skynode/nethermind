@@ -24,6 +24,7 @@ using Nethermind.Core;
 using Nethermind.Core.Crypto;
 using Nethermind.Core.Encoding;
 using Nethermind.Core.Model;
+using Nethermind.Core.Specs;
 using Nethermind.KeyStore;
 using Nethermind.Logging;
 using Nethermind.Secp256k1;
@@ -34,6 +35,7 @@ namespace Nethermind.Wallet
     public class DevKeyStoreWallet : IWallet
     {
         private static readonly byte[] KeySeed = new byte[32];
+        private readonly ISpecProvider _specProvider;
         private readonly IKeyStore _keyStore;
         private readonly ILogger _logger;
 
@@ -41,9 +43,10 @@ namespace Nethermind.Wallet
         public event EventHandler<AccountLockedEventArgs> AccountLocked;
         public event EventHandler<AccountUnlockedEventArgs> AccountUnlocked;
 
-        public DevKeyStoreWallet(IKeyStore keyStore, ILogManager logManager)
+        public DevKeyStoreWallet(ISpecProvider specProvider, IKeyStore keyStore, ILogManager logManager)
         {
-            _keyStore = keyStore;
+            _specProvider = specProvider ?? throw new ArgumentNullException(nameof(specProvider));
+            _keyStore = keyStore ?? throw new ArgumentNullException(nameof(keyStore));
             _logger = logManager.GetClassLogger() ?? throw new ArgumentNullException(nameof(logManager));
             KeySeed[31] = 1;
             for (int i = 0; i < 3; i++)
@@ -110,10 +113,10 @@ namespace Nethermind.Wallet
             return _unlockedAccounts.Remove(address);
         }
 
-        public void Sign(Transaction tx, int chainId)
+        public void Sign(Transaction tx, long blockNumber, int chainId)
         {
             if (_logger.IsDebug) _logger?.Debug($"Signing transaction: {tx.Value} to {tx.To}");
-            Keccak hash = Keccak.Compute(Rlp.Encode(tx, true, true, chainId));
+            Keccak hash = Keccak.Compute(Rlp.Encode(tx, true, _specProvider.GetSpec(blockNumber).IsEip155Enabled, chainId));
             tx.Signature = Sign(hash, tx.SenderAddress);
             tx.Signature.V = tx.Signature.V + 8 + 2 * chainId;
         }

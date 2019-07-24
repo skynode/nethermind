@@ -83,9 +83,9 @@ namespace Nethermind.Cli.Modules
         }
 
         [CliFunction("eth", "getCode")]
-        public JsValue GetCode(string address, string blockParameter)
+        public string GetCode(string address, string blockParameter)
         {
-            return NodeManager.PostJint("eth_getCode", address, blockParameter).Result;
+            return NodeManager.Post<string>("eth_getCode", CliParseAddress(address), blockParameter).Result;
         }
 
         [CliFunction("eth", "getBlockTransactionCountByNumber")]

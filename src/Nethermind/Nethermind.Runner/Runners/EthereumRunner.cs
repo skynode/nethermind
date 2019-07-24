@@ -195,8 +195,8 @@ namespace Nethermind.Runner.Runners
             if (_logger.IsDebug) _logger.Debug("Initializing Ethereum");
             _runnerCancellation = new CancellationTokenSource();
 
-            SetupKeyStore();
             LoadChainSpec();
+            SetupKeyStore();
             UpdateDiscoveryConfig();
             await InitBlockchain();
             RegisterJsonRpcModules();
@@ -232,10 +232,10 @@ namespace Nethermind.Runner.Runners
                     _wallet = new HiveWallet();
                     break;
                 case var config when config.EnableUnsecuredDevWallet && config.KeepDevWalletInMemory:
-                    _wallet = new DevWallet(_configProvider.GetConfig<IWalletConfig>(), _logManager);
+                    _wallet = new DevWallet(_specProvider, _configProvider.GetConfig<IWalletConfig>(), _logManager);
                     break;
                 case var config when config.EnableUnsecuredDevWallet && !config.KeepDevWalletInMemory:
-                    _wallet = new DevKeyStoreWallet(_keyStore, _logManager);
+                    _wallet = new DevKeyStoreWallet(_specProvider, _keyStore, _logManager);
                     break;
                 default:
                     _wallet = new NullWallet();
@@ -402,13 +402,12 @@ namespace Nethermind.Runner.Runners
             
             _chainSpec = loader.LoadFromFile(_initConfig.ChainSpecPath);
             _chainSpec.Bootnodes = _chainSpec.Bootnodes?.Where(n => !n.NodeId?.Equals(_nodeKey.PublicKey) ?? false).ToArray() ?? new NetworkNode[0];
+            _specProvider = new ChainSpecBasedSpecProvider(_chainSpec);
         }
 
         [Todo(Improve.Refactor, "Use chain spec for all chain configuration")]
         private async Task InitBlockchain()
         {
-            _specProvider = new ChainSpecBasedSpecProvider(_chainSpec);
-
             Account.AccountStartNonce = _chainSpec.Parameters.AccountStartNonce;
 
             /* sync */

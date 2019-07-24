@@ -19,6 +19,7 @@
 using System;
 using System.IO;
 using Nethermind.Core.Extensions;
+using Nethermind.Core.Specs;
 using Nethermind.Logging;
 using Nethermind.DataMarketplace.Integration.Test.JsonRpc.Dto;
 using Nethermind.JsonRpc.Data;
@@ -138,7 +139,7 @@ namespace Nethermind.DataMarketplace.Integration.Test
         public NdmContext DeployNdmContract(string name = "Deploy contract")
         {
             TransactionForRpc deployContract = new TransactionForRpc();
-            deployContract.From = new DevWallet(new WalletConfig(), LimboLogs.Instance).GetAccounts()[0];
+            deployContract.From = new DevWallet(GoerliSpecProvider.Instance, new WalletConfig(), LimboLogs.Instance).GetAccounts()[0];
             deployContract.Gas = 4000000;
             deployContract.Data = Bytes.FromHexString(File.ReadAllText("contractCode.txt"));
             deployContract.Value = 0;

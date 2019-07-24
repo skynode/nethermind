@@ -70,7 +70,7 @@ namespace Nethermind.Wallet
             return Array.Empty<Address>();
         }
 
-        public void Sign(Transaction tx, int chainId)
+        public void Sign(Transaction tx, long blockNumber, int chainId)
         {
             throw new NotImplementedException();
         }
