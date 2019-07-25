@@ -33,6 +33,7 @@ using Nethermind.Dirichlet.Numerics;
 using Nethermind.Facade;
 using Nethermind.JsonRpc.Data;
 using Nethermind.Logging;
+using Nethermind.Store;
 using Newtonsoft.Json;
 
 namespace Nethermind.JsonRpc.Modules.Eth
@@ -177,6 +178,43 @@ namespace Nethermind.JsonRpc.Modules.Eth
             }
         }
 
+        public ResultWrapper<byte[]> eth_getStorageSize(Address address, BlockParameter blockParameter)
+        {
+            try
+            {
+                _readerWriterLockSlim.EnterWriteLock();
+                if (_blockchainBridge.Head == null)
+                {
+                    return ResultWrapper<byte[]>.Fail($"Incorrect head block: {(_blockchainBridge.Head != null ? "HeadBlock is null" : "HeadBlock header is null")}");
+                }
+
+                if (blockParameter.Type == BlockParameterType.Pending)
+                {
+                    blockParameter.Type = BlockParameterType.Latest;
+                }
+
+                Block block;
+                try
+                {
+                    block = _blockchainBridge.GetBlock(blockParameter);
+                }
+                catch (JsonRpcException ex)
+                {
+                    return ResultWrapper<byte[]>.Fail(ex.Message, ex.ErrorType, null);
+                }
+                
+                Account account = _blockchainBridge.GetAccount(address, block.StateRoot);
+                SizeCalculator sizeCalculator = new SizeCalculator();
+
+
+                return new byte[0];
+            }
+            finally
+            {
+                _readerWriterLockSlim.ExitWriteLock();
+            }
+        }
+        
         public ResultWrapper<byte[]> eth_getStorageAt(Address address, BigInteger positionIndex, BlockParameter blockParameter)
         {
             try

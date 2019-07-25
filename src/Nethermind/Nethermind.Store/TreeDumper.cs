@@ -19,6 +19,7 @@
 using System.Text;
 using Nethermind.Core.Crypto;
 using Nethermind.Core.Extensions;
+using Nethermind.Dirichlet.Numerics;
 
 namespace Nethermind.Store
 {
@@ -77,6 +78,44 @@ namespace Nethermind.Store
         public override string ToString()
         {
             return _builder.ToString();
+        }
+    }
+    
+    public class SizeCalculator : ITreeVisitor
+    {
+        public UInt256 Size { get; set; }
+
+        public void VisitTree(Keccak rootHash, VisitContext context)
+        {
+        }
+        
+        public void VisitMissingNode(Keccak nodeHash, VisitContext context)
+        {
+        }
+
+        public void VisitBranch(byte[] hashOrRlp, VisitContext context)
+        {
+            Size += (UInt256)hashOrRlp.Length;
+        }
+
+        public void VisitExtension(byte[] hashOrRlp, VisitContext context)
+        {
+            Size += (UInt256)hashOrRlp.Length;
+        }
+
+        public void VisitLeaf(byte[] hashOrRlp, VisitContext context)
+        {
+            Size += (UInt256)hashOrRlp.Length;
+        }
+
+        public void VisitCode(Keccak codeHash, byte[] code, VisitContext context)
+        {
+            Size += (UInt256)code.Length;
+        }
+
+        public override string ToString()
+        {
+            return Size.ToString();
         }
     }
 }
