@@ -1515,7 +1515,7 @@ namespace Nethermind.Evm
                         }
                         else
                         {
-                            UInt256 codeSize = accountCode.Length;
+                            UInt256 codeSize = (UInt256)accountCode.Length;
                             PushUInt256(ref codeSize, bytesOnStack);
                         }
 
