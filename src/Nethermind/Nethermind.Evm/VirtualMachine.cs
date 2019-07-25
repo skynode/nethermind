@@ -1508,8 +1508,17 @@ namespace Nethermind.Evm
 
                         Address address = PopAddress(bytesOnStack);
                         byte[] accountCode = GetCachedCodeInfo(address)?.MachineCode;
-                        BigInteger codeSize = accountCode?.Length ?? BigInteger.Zero;
-                        PushUInt(ref codeSize, bytesOnStack);
+                        int codeLength = accountCode?.Length ?? 0;
+                        if (codeLength == 0)
+                        {
+                            PushZero(bytesOnStack);
+                        }
+                        else
+                        {
+                            BigInteger codeSize = accountCode.Length;
+                            PushUInt(ref codeSize, bytesOnStack);
+                        }
+
                         break;
                     }
                     case Instruction.EXTCODECOPY:
