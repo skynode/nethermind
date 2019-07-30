@@ -101,7 +101,7 @@ jobs:
     - script: 
       - git -c submodule."src/tests".update=none submodule update --init
       - dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:Exclude="[Nethermind.HashLib]*%2c[Nethermind.Core.Test]*" src/Nethermind/Nethermind.Store.Test
-      name: "Nethermind.Runner.Test"
+      name: "Nethermind.Store.Test"
     - script: 
       - git -c submodule."src/tests".update=none submodule update --init
       - dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:Exclude="[Nethermind.HashLib]*%2c[Nethermind.Core.Test]*" src/Nethermind/Nethermind.Wallet.Test
