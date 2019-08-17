@@ -337,8 +337,8 @@ namespace Nethermind.Network.P2P
         {
             if (_protocols.ContainsKey(Protocol.Eth) && _lastPacketType != 0 || _lastInPacketType != 0)
             {
-                if (_logger.IsWarn) _logger.Warn($"{this} disconnect call {disconnectReason} {disconnectType} - last ETH message was eth.{_lastPacketType} {_lastData?.ToHexString()}");
-                if (_logger.IsWarn) _logger.Warn($"{this} disconnect call {disconnectReason} {disconnectType} - last IN ETH message was eth.{_lastPacketType} {_lastInData?.ToHexString()}");
+                if (_logger.IsWarn) _logger.Warn($"{this} disconnect call {disconnectReason} {disconnectType} {details} - last ETH message was eth.{_lastPacketType} {_lastData?.ToHexString()}");
+                if (_logger.IsWarn) _logger.Warn($"{this} disconnect call {disconnectReason} {disconnectType} {details} - last IN ETH message was eth.{_lastPacketType} {_lastInData?.ToHexString()}");
             }
 
             lock (_sessionStateLock)
