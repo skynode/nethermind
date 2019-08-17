@@ -149,8 +149,20 @@ namespace Nethermind.Network.P2P
 
         public IPingSender PingSender { get; set; }
 
+        private int _lastPacketType;
+        private byte[] _lastData;
+        
+        private int _lastInPacketType;
+        private byte[] _lastInData;
+        
         public void DeliverMessage(Packet packet)
         {
+            if (packet.Protocol == Protocol.Eth)
+            {
+                _lastData = packet.Data;
+                _lastPacketType = packet.PacketType;
+            }
+
             lock (_sessionStateLock)
             {
                 if (State < SessionState.Initialized)
@@ -195,6 +207,12 @@ namespace Nethermind.Network.P2P
             {
                 if (_logger.IsTrace) _logger.Warn($"Received a message from node: {RemoteNodeId}, ({dynamicMessageCode} => {messageId}), known protocols ({_protocols.Count}): {string.Join(", ", _protocols.Select(x => $"{x.Key}.{x.Value.ProtocolVersion} {x.Value.MessageIdSpaceSize}"))}");
                 return;
+            }
+            
+            if (packet.Protocol == Protocol.Eth)
+            {
+                _lastInData = packet.Data;
+                _lastInPacketType = packet.PacketType;
             }
 
             packet.PacketType = messageId;
@@ -317,8 +335,12 @@ namespace Nethermind.Network.P2P
 
         public void Disconnect(DisconnectReason disconnectReason, DisconnectType disconnectType, string details)
         {
-            if (_logger.IsTrace) _logger.Trace($"|NetworkTrace| {this} disconnect call {disconnectReason} {disconnectType}");
-            
+            if (_protocols.ContainsKey(Protocol.Eth) && _lastPacketType != 0 || _lastInPacketType != 0)
+            {
+                if (_logger.IsWarn) _logger.Warn($"{this} disconnect call {disconnectReason} {disconnectType} - last ETH message was eth.{_lastPacketType} {_lastData?.ToHexString()}");
+                if (_logger.IsWarn) _logger.Warn($"{this} disconnect call {disconnectReason} {disconnectType} - last IN ETH message was eth.{_lastPacketType} {_lastInData?.ToHexString()}");
+            }
+
             lock (_sessionStateLock)
             {
                 if (State >= SessionState.Disconnecting)
