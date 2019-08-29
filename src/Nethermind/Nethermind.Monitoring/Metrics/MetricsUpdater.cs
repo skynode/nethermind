@@ -47,6 +47,7 @@ namespace Nethermind.Monitoring.Metrics
             _metrics.UpdateMetrics(typeof(Blockchain.Metrics));
             _metrics.UpdateMetrics(typeof(Evm.Metrics));
             _metrics.UpdateMetrics(typeof(Store.Metrics));
+            _metrics.UpdateMetrics(typeof(Db.Metrics));
             _metrics.UpdateMetrics(typeof(Network.Metrics));
             _metrics.UpdateMetrics(typeof(JsonRpc.Metrics));
         }

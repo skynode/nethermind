@@ -13,17 +13,13 @@
 // 
 //  You should have received a copy of the GNU Lesser General Public License
 //  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
-
-namespace Nethermind.Store
+namespace Nethermind.Db.Config
 {
-    public static class Metrics
+    public interface IDbPartConfig
     {
-        public static long StateTreeReads { get;set;}
-        public static long StateTreeWrites { get; set; }
-        public static long StorageTreeReads { get; set; }
-        public static long StorageTreeWrites { get; set; }
-        public static long TreeNodeHashCalculations { get; set; }
-        public static long TreeNodeRlpEncodings { get; set; }
-        public static long TreeNodeRlpDecodings { get; set; }
+        ulong WriteBufferSize { get; }
+        uint WriteBufferNumber { get; }
+        ulong BlockCacheSize { get; }
+        bool CacheIndexAndFilterBlocks { get; }
     }
 }

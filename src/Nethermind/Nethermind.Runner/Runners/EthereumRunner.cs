@@ -393,17 +393,17 @@ namespace Nethermind.Runner.Runners
             Account.AccountStartNonce = _chainSpec.Parameters.AccountStartNonce;
 
             /* sync */
-            IDbConfig dbConfig = _configProvider.GetConfig<IDbConfig>();
+            IDbsConfig dbsConfig = _configProvider.GetConfig<IDbsConfig>();
             _syncConfig = _configProvider.GetConfig<ISyncConfig>();
 
-            foreach (PropertyInfo propertyInfo in typeof(IDbConfig).GetProperties())
+            foreach (PropertyInfo propertyInfo in typeof(IDbsConfig).GetProperties())
             {
-                if (_logger.IsDebug) _logger.Debug($"DB {propertyInfo.Name}: {propertyInfo.GetValue(dbConfig)}");
+                if (_logger.IsDebug) _logger.Debug($"DB {propertyInfo.Name}: {propertyInfo.GetValue(dbsConfig)}");
             }
 
             _dbProvider = HiveEnabled
                 ? (IDbProvider) new MemDbProvider()
-                : new RocksDbProvider(_initConfig.BaseDbPath, dbConfig, _logManager, _initConfig.StoreTraces, _initConfig.StoreReceipts || _syncConfig.DownloadReceiptsInFastSync);
+                : new RocksDbProvider(_initConfig.BaseDbPath, dbsConfig, _logManager, _initConfig.StoreTraces, _initConfig.StoreReceipts || _syncConfig.DownloadReceiptsInFastSync);
             
             // IDbProvider debugRecorder = new RocksDbProvider(Path.Combine(_initConfig.BaseDbPath, "debug"), dbConfig, _logManager, _initConfig.StoreTraces, _initConfig.StoreReceipts);
             // _dbProvider = new RpcDbProvider(_jsonSerializer, new BasicJsonRpcClient(KnownRpcUris.Localhost, _jsonSerializer, _logManager), _logManager, debugRecorder);

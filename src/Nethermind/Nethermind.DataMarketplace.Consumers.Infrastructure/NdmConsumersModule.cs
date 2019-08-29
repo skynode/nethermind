@@ -55,7 +55,7 @@ namespace Nethermind.DataMarketplace.Consumers.Infrastructure
         {
             AddDecoders();
             var ndmConfig = services.RequiredServices.NdmConfig;
-            var dbConfig = services.RequiredServices.ConfigProvider.GetConfig<IDbConfig>();
+            var dbConfig = services.RequiredServices.ConfigProvider.GetConfig<IDbsConfig>();
             var contractAddress = string.IsNullOrWhiteSpace(ndmConfig.ContractAddress)
                 ? Address.Zero
                 : new Address(ndmConfig.ContractAddress);

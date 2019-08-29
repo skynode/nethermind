@@ -17,6 +17,7 @@
  */
 
 using System;
+using System.Globalization;
 
 namespace Nethermind.Core.Extensions
 {
@@ -33,6 +34,14 @@ namespace Nethermind.Core.Extensions
                 return false;
             }
             return string.Compare(value1.Trim(), value2.Trim(), StringComparison.CurrentCultureIgnoreCase) == 0;
+        }
+
+        public static string ToCamelCase(this string str, CultureInfo cultureInfo = null)
+        {
+            cultureInfo = cultureInfo ?? CultureInfo.InvariantCulture;
+            return !string.IsNullOrEmpty(str) && str.Length > 1
+                ? Char.ToLower(str[0], cultureInfo) + str.Substring(1)
+                : str;
         }
     }
 }

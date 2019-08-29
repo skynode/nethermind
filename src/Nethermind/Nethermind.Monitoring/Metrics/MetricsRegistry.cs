@@ -34,6 +34,7 @@ namespace Nethermind.Monitoring.Metrics
         {
             RegisterMetrics(typeof(Blockchain.Metrics));
             RegisterMetrics(typeof(Store.Metrics));
+            RegisterMetrics(typeof(Db.Metrics));
             RegisterMetrics(typeof(Evm.Metrics));
             RegisterMetrics(typeof(Network.Metrics));
             RegisterMetrics(typeof(JsonRpc.Metrics));

@@ -1,97 +1,82 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Reflection;
+using Nethermind.Core.Extensions;
 using Nethermind.Db.Config;
 using Nethermind.Logging;
-using Nethermind.Store;
-using NLog.Filters;
 using RocksDbSharp;
 
 namespace Nethermind.Db
 {
-    public abstract class DbOnTheRocks : IDb, IDbWithSpan
+    public abstract class DbOnTheRocks
     {
-        private static readonly ConcurrentDictionary<string, RocksDb> DbsByPath = new ConcurrentDictionary<string, RocksDb>();
-        private readonly RocksDb _db;
+        protected readonly RocksDb Db;
         private WriteBatch _currentBatch;
+        
+        public string Name { get; }
 
-        public abstract string Name { get; }
-
-        public DbOnTheRocks(string basePath, string dbPath, IDbConfig dbConfig, ILogManager logManager = null) // TODO: check column families
+        [SuppressMessage("ReSharper", "VirtualMemberCallInConstructor")]
+        protected DbOnTheRocks(string basePath, string name, IDbPartConfig dbConfig, ILogManager logManager = null)
         {
-            var fullPath = Path.Combine(basePath, dbPath);
+            Name = name;
+            var fullPath = Path.Combine(basePath, Name.ToCamelCase());
+            Directory.CreateDirectory(fullPath);
             var logger = logManager?.GetClassLogger();
-            if (!Directory.Exists(fullPath))
-            {
-                Directory.CreateDirectory(fullPath);
-            }
-            
             if (logger != null)
             {
                 if (logger.IsInfo) logger.Info($"Using database directory {fullPath}");
             }
+            
+            Db = CreateDb(dbConfig, fullPath);
+        }
 
+        private RocksDb CreateDb(IDbPartConfig dbConfig, string fullPath)
+        {
             try
             {
                 var options = BuildOptions(dbConfig);
-                _db = DbsByPath.GetOrAdd(fullPath, path => RocksDb.Open(options, path));
+                return OpenDb(options, fullPath);
             }
             catch (DllNotFoundException e) when (e.Message.Contains("libdl"))
             {
-                throw new ApplicationException($"Unable to load 'libdl' necessary to init the RocksDB database. Please run{Environment.NewLine}" +
-                                               "sudo apt update && sudo apt install libsnappy-dev libc6-dev libc6");
+                throw new ApplicationException(
+                    $"Unable to load 'libdl' necessary to init the RocksDB database. Please run{Environment.NewLine}" +
+                    "sudo apt update && sudo apt install libsnappy-dev libc6-dev libc6");
             }
         }
+
+        protected abstract RocksDb OpenDb(DbOptions options, string fullPath);
         
-        protected abstract void UpdateReadMetrics();
-        protected abstract void UpdateWriteMetrics();
-
-        private T ReadConfig<T>(IDbConfig dbConfig, string propertyName)
-        {
-            var prefixed = string.Concat(Name == "State" ? string.Empty : string.Concat(Name, "Db"),
-                propertyName);
-            try
-            {
-                return (T) dbConfig.GetType().GetProperty(prefixed, BindingFlags.Public | BindingFlags.Instance)
-                    .GetValue(dbConfig);
-            }
-            catch (Exception e)
-            {
-                throw new InvalidDataException($"Unable to read {prefixed} property from DB config", e);
-            }
-        }
-
-        private DbOptions BuildOptions(IDbConfig dbConfig)
+        protected abstract DbParts.DbPart GetDbPart(ColumnFamilyHandle cf);
+        
+        protected virtual DbOptions BuildOptions(IDbPartConfig dbConfig)
         {
             var tableOptions = new BlockBasedTableOptions();
-            tableOptions.SetBlockSize(16 * 1024);
+            tableOptions.SetBlockSize(16.KB());
             tableOptions.SetPinL0FilterAndIndexBlocksInCache(true);
-            tableOptions.SetCacheIndexAndFilterBlocks(ReadConfig<bool>(dbConfig, nameof(dbConfig.CacheIndexAndFilterBlocks)));
+            tableOptions.SetCacheIndexAndFilterBlocks(dbConfig.CacheIndexAndFilterBlocks);
 
             tableOptions.SetFilterPolicy(BloomFilterPolicy.Create(10, true));
             tableOptions.SetFormatVersion(2);
 
-            var blockCacheSize = ReadConfig<ulong>(dbConfig, nameof(dbConfig.BlockCacheSize));
+            var blockCacheSize = dbConfig.BlockCacheSize;
             var cache = Native.Instance.rocksdb_cache_create_lru(new UIntPtr(blockCacheSize));
             tableOptions.SetBlockCache(cache);
 
@@ -99,8 +84,8 @@ namespace Nethermind.Db
             options.SetCreateIfMissing(true);
             options.SetAdviseRandomOnOpen(true);
             options.OptimizeForPointLookup(blockCacheSize); // I guess this should be the one option controlled by the DB size property - bind it to LRU cache size
-            //options.SetCompression(CompressionTypeEnum.rocksdb_snappy_compression);
-            //options.SetLevelCompactionDynamicLevelBytes(true);
+            // options.SetCompression(CompressionTypeEnum.rocksdb_snappy_compression);
+            // options.SetLevelCompactionDynamicLevelBytes(true);
 
             /*
              * Multi-Threaded Compactions
@@ -112,91 +97,101 @@ namespace Nethermind.Db
              */
             options.SetMaxBackgroundCompactions(Environment.ProcessorCount);
 
-            //options.SetMaxOpenFiles(32);
-            options.SetWriteBufferSize(ReadConfig<ulong>(dbConfig, nameof(dbConfig.WriteBufferSize)));
-            options.SetMaxWriteBufferNumber((int)ReadConfig<uint>(dbConfig, nameof(dbConfig.WriteBufferNumber)));
+            // options.SetMaxOpenFiles(32);
+            options.SetWriteBufferSize(dbConfig.WriteBufferSize);
+            options.SetMaxWriteBufferNumber((int)dbConfig.WriteBufferNumber);
             options.SetMinWriteBufferNumberToMerge(2);
             options.SetBlockBasedTableFactory(tableOptions);
             
             options.SetMaxBackgroundFlushes(Environment.ProcessorCount);
             options.IncreaseParallelism(Environment.ProcessorCount);
-//            options.SetLevelCompactionDynamicLevelBytes(true); // only switch on on empty DBs
+            // options.SetLevelCompactionDynamicLevelBytes(true); // only switch on on empty DBs
             return options;
         }
-        
-        public byte[] this[byte[] key]
+
+        private void UpdateReadMetrics(ColumnFamilyHandle cf)
+        {
+            GetDbPart(cf).Reads++;
+        }
+
+        private void UpdateWriteMetrics(ColumnFamilyHandle cf)
+        {
+            GetDbPart(cf).Writes++;
+        }
+
+        public byte[] this[byte[] key, ColumnFamilyHandle cf = null]
         {
             get
             {
-                UpdateReadMetrics();
-                return _db.Get(key);
+                UpdateReadMetrics(cf);
+                return Db.Get(key, cf);
             }
             set
             {
-                UpdateWriteMetrics();
+                UpdateWriteMetrics(cf);
                 if (_currentBatch != null)
                 {
                     if (value == null)
                     {
-                        _currentBatch.Delete(key);
+                        _currentBatch.Delete(key, cf);
                     }
                     else
                     {
-                        _currentBatch.Put(key, value);
+                        _currentBatch.Put(key, value, cf);
                     }
                 }
                 else
                 {
                     if (value == null)
                     {
-                        _db.Remove(key);
+                        Db.Remove(key, cf);
                     }
                     else
                     {
-                        _db.Put(key, value);
+                        Db.Put(key, value, cf);
                     }
                 }
             }
         }
 
-        public Span<byte> GetSpan(byte[] key)
+        public Span<byte> GetSpan(byte[] key, ColumnFamilyHandle cf = null)
         {
-            UpdateReadMetrics();
-            return _db.GetSpan(key);
+            UpdateReadMetrics(cf);
+            return Db.GetSpan(key, cf);
         }
 
         public void DangerousReleaseMemory(in Span<byte> span)
         {
-            _db.DangerousReleaseMemory(in span);
+            Db.DangerousReleaseMemory(in span);
         }
 
-        public void Remove(byte[] key)
+        public void Remove(byte[] key, ColumnFamilyHandle cf = null)
         {
-            _db.Remove(key);
+            Db.Remove(key, cf);
         }
 
-        public byte[][] GetAll()
+        public byte[][] GetAll(ColumnFamilyHandle cf = null)
         {
-            var iterator = _db.NewIterator();
-            iterator = iterator.SeekToFirst();
-            var values = new List<byte[]>();
-            while (iterator.Valid())
+            var iterator = Db.NewIterator(cf);
+            using (iterator = iterator.SeekToFirst())
             {
-                values.Add(iterator.Value());
-                iterator = iterator.Next();
+                var values = new List<byte[]>();
+                while (iterator.Valid())
+                {
+                    values.Add(iterator.Value());
+                    iterator = iterator.Next();
+                }
+                
+                return values.ToArray();
             }
-
-            iterator.Dispose();
-
-            return values.ToArray();
         }
 
         private byte[] _keyExistsBuffer = new byte[1];
         
-        public bool KeyExists(byte[] key)
+        public bool KeyExists(byte[] key, ColumnFamilyHandle cf = null)
         {
             // seems it has no performance impact
-            return _db.Get(key) != null;
+            return Db.Get(key, cf) != null;
 //            return _db.Get(key, 32, _keyExistsBuffer, 0, 0, null, null) != -1;
         }
         
@@ -207,14 +202,14 @@ namespace Nethermind.Db
 
         public void CommitBatch()
         {
-            _db.Write(_currentBatch);
+            Db.Write(_currentBatch);
             _currentBatch.Dispose();
             _currentBatch = null;
         }
 
         public void Dispose()
         {
-            _db?.Dispose();
+            Db?.Dispose();
             _currentBatch?.Dispose();
         }
     }
