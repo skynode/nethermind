@@ -17,13 +17,10 @@
  */
 
 using System;
-using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
+using System.Threading;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
 using Nethermind.Core.Encoding;
@@ -36,6 +33,7 @@ namespace Nethermind.Mining
 {
     public class Ethash : IEthash
     {
+        private static HeaderDecoder _headerDecoder;
         private readonly ILogger _logger;
 
         public Ethash(ILogManager logManager)
@@ -43,7 +41,7 @@ namespace Nethermind.Mining
             _logger = logManager?.GetClassLogger() ?? throw new ArgumentNullException(nameof(logManager));
         }
 
-        private readonly LruCache<uint, Task<IEthashDataSet>> _cacheCache = new LruCache<uint, Task<IEthashDataSet>>(10);
+        private readonly LruCache<uint, IEthashDataSet> _cacheCache = new LruCache<uint, IEthashDataSet>(5);
 
         public const int WordBytes = 4; // bytes in word
         public static uint DataSetBytesInit = (uint) BigInteger.Pow(2, 30); // bytes in dataset at genesis
@@ -210,38 +208,56 @@ namespace Nethermind.Mining
 
         private readonly Stopwatch _cacheStopwatch = new Stopwatch();
 
+        private ReaderWriterLockSlim _cacheLock = new ReaderWriterLockSlim();
+
         private IEthashDataSet GetOrAddCache(uint epoch)
         {
-            lock (_cacheCache)
-            {
-                for (uint i = Math.Max(epoch, 2) - 2; i < epoch + 3; i++)
-                {
-                    if (_cacheCache.Get(i) == null)
-                    {
-                        _cacheCache.Set(i, BuildCache(i));
-                    }
-                }
+            _cacheLock.EnterUpgradeableReadLock();
 
-                return _cacheCache.Get(epoch).Result;
+            try
+            {
+                IEthashDataSet dataSet = _cacheCache.Get(epoch);
+                if (dataSet != null)
+                {
+                    return dataSet;
+                }
+                
+                _cacheLock.EnterWriteLock();
+                {
+                    dataSet = _cacheCache.Get(epoch);
+                    if (dataSet == null)
+                    {
+                        uint cacheSize = GetCacheSize(epoch);
+                        Keccak seed = GetSeedHash(epoch);
+                        if (_logger.IsDebug) _logger.Debug($"Building cache for epoch {epoch}");
+                        _cacheStopwatch.Restart();
+                        dataSet = new EthashCache(cacheSize, seed.Bytes);
+                        _cacheStopwatch.Stop();
+                        if (_logger.IsDebug) _logger.Debug($"Cache for epoch {epoch} built in {_cacheStopwatch.ElapsedMilliseconds}ms");
+                        _cacheCache.Set(epoch, dataSet);
+                    }
+
+                    return dataSet;
+                }
+            }
+            finally
+            {
+                if (_cacheLock.IsReadLockHeld)
+                {
+                    _cacheLock.ExitReadLock();
+                }
+                
+                if (_cacheLock.IsUpgradeableReadLockHeld)
+                {
+                    _cacheLock.ExitUpgradeableReadLock();
+                }
+                
+                if (_cacheLock.IsWriteLockHeld)
+                {
+                    _cacheLock.ExitWriteLock();
+                }
             }
         }
-
-        private Task<IEthashDataSet> BuildCache(uint epoch)
-        {
-            return Task.Run(() =>
-            {
-                uint cacheSize = GetCacheSize(epoch);
-                Keccak seed = GetSeedHash(epoch);
-                if (_logger.IsInfo) _logger.Info($"Building ethash cache for epoch {epoch}");
-                _cacheStopwatch.Restart();
-                IEthashDataSet dataSet = new EthashCache(cacheSize, seed.Bytes);
-                _cacheStopwatch.Stop();
-                if (_logger.IsInfo) _logger.Info($"Cache for epoch {epoch} with size {cacheSize} nd seed {seed.Bytes.ToHexString()} built in {_cacheStopwatch.ElapsedMilliseconds}ms");
-                return dataSet;
-            });
-        }
-
-        private static HeaderDecoder _headerDecoder = new HeaderDecoder();
 
         private static Keccak GetTruncatedHash(BlockHeader header)
         {
