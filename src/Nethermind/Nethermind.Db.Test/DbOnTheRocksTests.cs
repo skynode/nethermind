@@ -16,6 +16,7 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
+using System;
 using Nethermind.Db.Config;
 using NUnit.Framework;
 
@@ -27,9 +28,11 @@ namespace Nethermind.Db.Test
         [Test]
         public void Smoke_test()
         {
-            IDbsConfig config = new SeparateDbsConfig();
-            PartDbOnTheRocks db = new PartDbOnTheRocks("blocks", DbParts.Blocks, config[DbParts.Blocks]);
-            db[new byte[] {1, 2, 3}] = new byte[] {4, 5, 6};
+            IDbsConfig config = new DbsConfig();
+            SeparatePartDbOnTheRocks db = new SeparatePartDbOnTheRocks("blocks", DbParts.Blocks,config.GetPartConfig(DbParts.Blocks).PartConfig)
+            {
+                [new byte[] {1, 2, 3}] = new byte[] {4, 5, 6}
+            };
             Assert.AreEqual(new byte[] {4, 5, 6}, db[new byte[] {1, 2, 3}]);
         }
     }

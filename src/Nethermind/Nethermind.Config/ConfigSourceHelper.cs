@@ -67,6 +67,10 @@ namespace Nethermind.Config
                     value = collection;
                 }
             }
+            else if(valueType.IsClass && valueType != typeof(string))
+            {
+                return JsonConvert.DeserializeObject(valueString, valueType);
+            }
             else
             {
                 value = GetValue(valueType, valueString);

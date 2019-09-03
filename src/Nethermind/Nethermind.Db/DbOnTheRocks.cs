@@ -33,7 +33,7 @@ namespace Nethermind.Db
         public string Name { get; }
 
         [SuppressMessage("ReSharper", "VirtualMemberCallInConstructor")]
-        protected DbOnTheRocks(string basePath, string name, IDbPartConfig dbConfig, ILogManager logManager = null)
+        protected DbOnTheRocks(string basePath, string name, DbPartConfig dbConfig, ILogManager logManager = null)
         {
             Name = name;
             var fullPath = Path.Combine(basePath, Name.ToCamelCase());
@@ -47,7 +47,7 @@ namespace Nethermind.Db
             Db = CreateDb(dbConfig, fullPath);
         }
 
-        private RocksDb CreateDb(IDbPartConfig dbConfig, string fullPath)
+        private RocksDb CreateDb(DbPartConfig dbConfig, string fullPath)
         {
             try
             {
@@ -66,7 +66,7 @@ namespace Nethermind.Db
         
         protected abstract DbParts.DbPart GetDbPart(ColumnFamilyHandle cf);
         
-        protected virtual DbOptions BuildOptions(IDbPartConfig dbConfig)
+        protected virtual DbOptions BuildOptions(DbPartConfig dbConfig)
         {
             var tableOptions = new BlockBasedTableOptions();
             tableOptions.SetBlockSize(16.KB());

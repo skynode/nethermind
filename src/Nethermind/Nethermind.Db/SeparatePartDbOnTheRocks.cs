@@ -26,12 +26,12 @@ using RocksDbSharp;
 
 namespace Nethermind.Db
 {   
-    public class PartDbOnTheRocks : DbOnTheRocks, IDb, IDbWithSpan
+    public class SeparatePartDbOnTheRocks : DbOnTheRocks, IDb, IDbWithSpan
     {
         private readonly DbParts.DbPart _dbPart;
         private static readonly ConcurrentDictionary<string, RocksDb> DbsByPath = new ConcurrentDictionary<string, RocksDb>();
 
-        public PartDbOnTheRocks(string basePath, DbParts.DbPart dbPart, IDbPartConfig dbConfig, ILogManager logManager = null)
+        public SeparatePartDbOnTheRocks(string basePath, DbParts.DbPart dbPart, DbPartConfig dbConfig, ILogManager logManager = null)
             : base(basePath, dbPart.ToString(), dbConfig, logManager)
         {
             _dbPart = dbPart;

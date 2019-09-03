@@ -405,7 +405,7 @@ namespace Nethermind.Runner.Runners
 
             _dbProvider = HiveEnabled
                 ? (IDbProvider) new MemDbProvider()
-                : new RocksDbProvider(_initConfig.BaseDbPath, dbsConfig, _logManager, _initConfig.StoreTraces, _initConfig.StoreReceipts || _syncConfig.DownloadReceiptsInFastSync);
+                : new RocksDbProvider(dbsConfig, _logManager, _initConfig.StoreTraces, _initConfig.StoreReceipts || _syncConfig.DownloadReceiptsInFastSync);
             
             // IDbProvider debugRecorder = new RocksDbProvider(Path.Combine(_initConfig.BaseDbPath, "debug"), dbConfig, _logManager, _initConfig.StoreTraces, _initConfig.StoreReceipts);
             // _dbProvider = new RpcDbProvider(_jsonSerializer, new BasicJsonRpcClient(KnownRpcUris.Localhost, _jsonSerializer, _logManager), _logManager, debugRecorder);
@@ -570,7 +570,7 @@ namespace Nethermind.Runner.Runners
 
             _disposeStack.Push(subscription);
 
-            await InitializeNetwork();
+            await InitializeNetwork(dbsConfig);
         }
 
         private void InitBlockProducers()
@@ -709,7 +709,7 @@ namespace Nethermind.Runner.Runners
             }
         }
 
-        private async Task InitializeNetwork()
+        private async Task InitializeNetwork(IDbsConfig dbsConfig)
         {
             var maxPeersCount = _configProvider.GetConfig<INetworkConfig>().ActivePeersMaxCount;
             _syncPeerPool = new EthSyncPeerPool(_blockTree, _nodeStatsManager, _syncConfig, maxPeersCount, _logManager);
@@ -729,8 +729,8 @@ namespace Nethermind.Runner.Runners
                 _syncConfig,
                 _logManager);
 
-            InitDiscovery();
-            await InitPeer().ContinueWith(initPeerTask =>
+            InitDiscovery(dbsConfig);
+            await InitPeer(dbsConfig).ContinueWith(initPeerTask =>
             {
                 if (initPeerTask.IsFaulted)
                 {
@@ -879,7 +879,7 @@ namespace Nethermind.Runner.Runners
             return Task.CompletedTask;
         }
 
-        private async Task InitPeer()
+        private async Task InitPeer(IDbsConfig dbsConfig)
         {
             /* rlpx */
             var eciesCipher = new EciesCipher(_cryptoRandom);
@@ -911,7 +911,7 @@ namespace Nethermind.Runner.Runners
             _staticNodesManager = new StaticNodesManager(_initConfig.StaticNodesPath, _logManager);
             await _staticNodesManager.InitAsync();
 
-            var peersDb = new SimpleFilePublicKeyDb("PeersDB", Path.Combine(_initConfig.BaseDbPath, PeersDbPath), _logManager);
+            var peersDb = new SimpleFilePublicKeyDb("PeersDB", Path.Combine(dbsConfig.Default.BasePath, PeersDbPath), _logManager);
             var peerStorage = new NetworkStorage(peersDb, _logManager);
 
             ProtocolValidator protocolValidator = new ProtocolValidator(_nodeStatsManager, _blockTree, _logManager);
@@ -923,7 +923,7 @@ namespace Nethermind.Runner.Runners
                 var filterStore = new FilterStore();
                 var filterManager = new FilterManager(filterStore, _blockProcessor, _txPool, _logManager);
                 var capabilityConnector = await _ndmInitializer.InitAsync(_configProvider, _dbProvider,
-                    _initConfig.BaseDbPath, _blockTree, _txPool, _specProvider, _receiptStorage, _wallet, filterStore,
+                    _blockTree, _txPool, _specProvider, _receiptStorage, _wallet, filterStore,
                     filterManager, _timestamper, _ethereumEcdsa, _rpcModuleProvider, _keyStore, _ethereumJsonSerializer,
                     _cryptoRandom, _enode, _ndmConsumerChannelManager, _ndmDataPublisher, _grpcServer,
                     _nodeStatsManager, _protocolsManager, protocolValidator, _messageSerializationService,
@@ -950,7 +950,7 @@ namespace Nethermind.Runner.Runners
             if (_logger.IsDebug) _logger.Debug("Peer manager initialization completed");
         }
 
-        private void InitDiscovery()
+        private void InitDiscovery(IDbsConfig dbsConfig)
         {
             if (!_initConfig.DiscoveryEnabled)
             {
@@ -992,7 +992,7 @@ namespace Nethermind.Runner.Runners
                 discoveryConfig,
                 _logManager);
 
-            var discoveryDb = new SimpleFilePublicKeyDb("DiscoveryDB", Path.Combine(_initConfig.BaseDbPath, DiscoveryNodesDbPath), _logManager);
+            var discoveryDb = new SimpleFilePublicKeyDb("DiscoveryDB", Path.Combine(dbsConfig.Default.BasePath, DiscoveryNodesDbPath), _logManager);
             var discoveryStorage = new NetworkStorage(
                 discoveryDb,
                 _logManager);

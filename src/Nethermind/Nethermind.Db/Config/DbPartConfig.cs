@@ -18,11 +18,16 @@ using Nethermind.Core.Extensions;
 
 namespace Nethermind.Db.Config
 {
-    public class DbPartConfig : IDbPartConfig
+    public class DbPartConfig // : IDbPartConfig
     {
         public static readonly DbPartConfig Default8 = new DbPartConfig(8.MB(), 32.MB());
         public static readonly DbPartConfig Default16 = new DbPartConfig(16.MB(), 64.MB());
         public static readonly DbPartConfig Default = Default16;
+
+        public DbPartConfig()
+        {
+            
+        }
         
         public DbPartConfig(
             ulong writeBufferSize,
@@ -30,17 +35,16 @@ namespace Nethermind.Db.Config
             bool cacheIndexAndFilterBlock = true,
             uint writeBufferNumber = 4)
         {
+            WriteBufferSize = writeBufferSize;
             BlockCacheSize = blockCacheSize;
             CacheIndexAndFilterBlocks = cacheIndexAndFilterBlock;
-            WriteBufferSize = writeBufferSize;
             WriteBufferNumber = writeBufferNumber;
         }
 
-        public ulong WriteBufferSize { get; }
-        public uint WriteBufferNumber { get; }
-        public ulong BlockCacheSize { get; }
-        public bool CacheIndexAndFilterBlocks { get; }
+        public ulong WriteBufferSize { get; } = (uint) 16.MB();
+        public ulong BlockCacheSize { get; } = 64.MB();
+        public bool CacheIndexAndFilterBlocks { get; } = true;
+        public uint WriteBufferNumber { get; } = 4;
+        public string BasePath { get; set; }
     }
-    
-    // public class DbPart
 }

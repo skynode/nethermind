@@ -50,7 +50,6 @@ namespace Nethermind.DataMarketplace.Test.Infrastructure
         private IConfigProvider _configProvider;
         private IConfigManager _configManager;
         private INdmConfig _ndmConfig;
-        private string _baseDbPath;
         private IDbProvider _rocksProvider;
         private IMongoProvider _mongoProvider;
         private ILogManager _logManager;
@@ -83,7 +82,6 @@ namespace Nethermind.DataMarketplace.Test.Infrastructure
             _configProvider = Substitute.For<IConfigProvider>();
             _configManager = Substitute.For<IConfigManager>();
             _ndmConfig = new NdmConfig();
-            _baseDbPath = "db";
             _rocksProvider = Substitute.For<IDbProvider>();
             _mongoProvider = Substitute.For<IMongoProvider>();
             _logManager = Substitute.For<ILogManager>();
@@ -115,7 +113,7 @@ namespace Nethermind.DataMarketplace.Test.Infrastructure
         public void init_should_return_services()
         {
             var services = _ndmModule.Init(new NdmRequiredServices(_configProvider, _configManager, _ndmConfig,
-                _baseDbPath, _rocksProvider, _mongoProvider, _logManager, _blockTree, _transactionPool, _specProvider,
+                _rocksProvider, _mongoProvider, _logManager, _blockTree, _transactionPool, _specProvider,
                 _receiptStorage, _filterStore, _filterManager, _wallet, _timestamper, _ecdsa, _keyStore,
                 _rpcModuleProvider, _jsonSerializer, _cryptoRandom, _enode, _ndmConsumerChannelManager,
                 _ndmDataPublisher, _grpcServer, _ethRequestService, _notifier, _enableUnsecuredDevWallet,

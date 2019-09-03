@@ -14,23 +14,13 @@
 //  You should have received a copy of the GNU Lesser General Public License
 //  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
-using Nethermind.Core.Extensions;
-
-namespace Nethermind.Db.Config
+namespace Nethermind.DataMarketplace.Consumers.Infrastructure.Persistence.Rocks
 {
-    public class SingleDbConfig : IDbsConfig
+    public static class DbParts
     {
-        public static SingleDbConfig Default = new SingleDbConfig();
-        
-        private const string DatabaseKey = "All";
-
-        public IDbConfig ColumnDb { get; } = new DbConfig(DatabaseKey, new DbPartConfig(512.MB(), 2048.MB()));
-        
-        public IDbConfig GetPartConfig(DbParts.DbPart dbPart)
-        {
-            return dbPart == null
-                ? ColumnDb
-                : new DbConfig(DatabaseKey, SeparateDbsConfig.Default.GetPartConfig(dbPart).PartConfig);
-        }
+        public static readonly Db.DbParts.DbPart ConsumerDepositApprovals = nameof(ConsumerDepositApprovals);
+        public static readonly Db.DbParts.DbPart ConsumerReceipts = nameof(ConsumerReceipts);
+        public static readonly Db.DbParts.DbPart ConsumerSessions = nameof(ConsumerSessions);
+        public static readonly Db.DbParts.DbPart Deposits = nameof(Deposits);
     }
 }

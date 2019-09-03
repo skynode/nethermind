@@ -19,6 +19,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using Nethermind.Config;
+using Nethermind.Logging;
 using Nethermind.Store;
 using RocksDbSharp;
 
@@ -26,29 +27,34 @@ namespace Nethermind.Db.Config
 {
     public interface IDbsConfig : IConfig
     {
-        IDbConfig GetPartConfig(DbParts.DbPart dbPart = null);
+        IDictionary<DbParts.DbPart, DbConfig> Parts { get; set; }
+        IEnumerable<DbConfig> Dbs { get; set; }
+        DbPartConfig Default { get; set; }
+        DbConfig GetPartConfig(DbParts.DbPart dbPart);
+        (DbConfig Config, bool MultiPartDb) GetDbConfig(DbConfig partConfig);
+        void SetNewDefaultBasePath(string defaultBasePath, ILogger logger);
     }
 
-    public interface IDbConfig
-    {
-        IDbPartConfig PartConfig { get; }
-        string Key { get; }
-    }
+//    public interface IDbConfig
+//    {
+//        IDbPartConfig PartConfig { get; }
+//        string Key { get; }
+//    }
 
-    public class DbConfig : IDbConfig
+    public class DbConfig
     {
-        public DbConfig(DbParts.DbPart dbPart, IDbPartConfig partConfig) : this(dbPart.ToString(), partConfig)
+        public DbConfig(DbParts.DbPart dbPart, DbPartConfig partConfig) : this(dbPart.ToString(), partConfig)
         {
             DbPart = dbPart;
         }
         
-        public DbConfig(string key, IDbPartConfig partConfig)
+        public DbConfig(string key, DbPartConfig partConfig)
         {
             Key = key;
             PartConfig = partConfig;
         }
 
-        public IDbPartConfig PartConfig { get; }
+        public DbPartConfig PartConfig { get; }
         public string Key { get; }
         public DbParts.DbPart DbPart { get; }
     }

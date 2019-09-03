@@ -15,6 +15,7 @@
 //  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -26,19 +27,17 @@ namespace Nethermind.Db
 {
     public class ColumnDbOnTheRocks : DbOnTheRocks
     {
-        private Dictionary<DbParts.DbPart, ColumnFamilyHandle> ColumnFamilies { get; }
-        private Dictionary<ColumnFamilyHandle, DbParts.DbPart> Handles { get; }
+        private ConcurrentDictionary<DbParts.DbPart, ColumnFamilyHandle> ColumnFamilies { get; } = new ConcurrentDictionary<DbParts.DbPart, ColumnFamilyHandle>();
+        private ConcurrentDictionary<ColumnFamilyHandle, DbParts.DbPart> Handles { get; } = new ConcurrentDictionary<ColumnFamilyHandle, DbParts.DbPart>();
         
-        public ColumnDbOnTheRocks(string basePath, string name, IDbsConfig dbsConfig, IEnumerable<DbParts.DbPart> columnFamilies, ILogManager logManager = null) 
-            : base(basePath, name, dbsConfig.GetPartConfig().PartConfig, logManager)
+        public ColumnDbOnTheRocks(string basePath, string name, DbPartConfig dbConfig, ILogManager logManager = null) 
+            : base(basePath, name, dbConfig, logManager)
         {
-            ColumnFamilies = InitColumnFamilies(dbsConfig, columnFamilies);
-            Handles = ColumnFamilies.ToDictionary(kvp => kvp.Value, kvp => kvp.Key);
         }
-        
-        private Dictionary<DbParts.DbPart, ColumnFamilyHandle> InitColumnFamilies(IDbsConfig dbsConfig, IEnumerable<DbParts.DbPart> columnFamilies)
+
+        public void CreateColumnFamily(DbParts.DbPart dbPart, DbConfig dbConfig)
         {
-            ColumnFamilyOptions CreateColumnFamilyOptions(IDbPartConfig dbPartConfig)
+            ColumnFamilyOptions CreateColumnFamilyOptions(DbPartConfig dbPartConfig)
             {
                 var options = new ColumnFamilyOptions();
                 options.SetWriteBufferSize(dbPartConfig.WriteBufferSize);
@@ -46,7 +45,8 @@ namespace Nethermind.Db
                 return options;
             }
             
-            return columnFamilies.ToDictionary(f => f, f => Db.CreateColumnFamily(CreateColumnFamilyOptions(dbsConfig.GetPartConfig(f).PartConfig), f.ToString()));
+            var cf = ColumnFamilies.GetOrAdd(dbPart, part => Db.CreateColumnFamily(CreateColumnFamilyOptions(dbConfig.PartConfig), dbPart.ToString()));
+            Handles.GetOrAdd(cf, dbPart);
         }
         
         protected override RocksDb OpenDb(DbOptions options, string fullPath) => RocksDb.Open(options, fullPath);
@@ -83,8 +83,8 @@ namespace Nethermind.Db
         {
             if (ColumnFamilies.TryGetValue(dbPart, out var cf))
             {
-                ColumnFamilies.Remove(dbPart);
-                Handles.Remove(cf);
+                ColumnFamilies.TryRemove(dbPart, out _);
+                Handles.TryRemove(cf, out _);
             }
 
             if (ColumnFamilies.Count == 0)

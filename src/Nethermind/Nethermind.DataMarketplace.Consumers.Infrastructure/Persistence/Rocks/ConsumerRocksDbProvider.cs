@@ -20,44 +20,30 @@ using Nethermind.Db;
 using Nethermind.Db.Config;
 using Nethermind.Logging;
 using Nethermind.Store;
-using DbPart = Nethermind.Db.DbParts.DbPart;
 
 namespace Nethermind.DataMarketplace.Consumers.Infrastructure.Persistence.Rocks
 {
-    public class ConsumerRocksDbProvider : IConsumerDbProvider
+    public class ConsumerRocksDbProvider : RocksDbProviderBase, IConsumerDbProvider
     {
         public IDb ConsumerDepositApprovalsDb { get; }
         public IDb ConsumerReceiptsDb { get; }
         public IDb ConsumerSessionsDb { get; }
         public IDb DepositsDb { get; }
 
-        public ConsumerRocksDbProvider(string basePath, IDbsConfig dbsConfig, ILogManager logManager)
+        public ConsumerRocksDbProvider(IDbsConfig dbsConfig, ILogManager logManager) : base(dbsConfig, logManager)
         {
-            ConsumerDepositApprovalsDb = CreatePartDbOnTheRocks(basePath, dbsConfig, logManager, DbParts.ConsumerDepositApprovals);
-            ConsumerReceiptsDb = CreatePartDbOnTheRocks(basePath, dbsConfig, logManager, DbParts.ConsumerReceipts);
-            ConsumerSessionsDb = CreatePartDbOnTheRocks(basePath, dbsConfig, logManager, DbParts.ConsumerSessions);
-            DepositsDb = CreatePartDbOnTheRocks(basePath, dbsConfig, logManager, DbParts.Deposits);
+            ConsumerDepositApprovalsDb = CreatePartDb(DbParts.ConsumerDepositApprovals);
+            ConsumerReceiptsDb = CreatePartDb(DbParts.ConsumerReceipts);
+            ConsumerSessionsDb = CreatePartDb(DbParts.ConsumerSessions);
+            DepositsDb = CreatePartDb(DbParts.Deposits);
         }
 
-        private static PartDbOnTheRocks CreatePartDbOnTheRocks(string basePath, IDbsConfig dbsConfig, ILogManager logManager, DbPart dbPart)
-        {
-            return new PartDbOnTheRocks(basePath, dbPart, dbsConfig[dbPart], logManager);
-        }
-
-        public void Dispose()
+        public override void Dispose()
         {
             ConsumerDepositApprovalsDb?.Dispose();
             ConsumerReceiptsDb?.Dispose();
             ConsumerSessionsDb?.Dispose();
             DepositsDb?.Dispose();
         }
-    }
-    
-    public static class DbParts
-    {
-        public static readonly DbPart ConsumerDepositApprovals = new DbPart(nameof(ConsumerDepositApprovals));
-        public static readonly DbPart ConsumerReceipts = new DbPart(nameof(ConsumerReceipts));
-        public static readonly DbPart ConsumerSessions = new DbPart(nameof(ConsumerSessions));
-        public static readonly DbPart Deposits = new DbPart(nameof(Deposits));
     }
 }

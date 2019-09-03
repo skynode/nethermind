@@ -25,9 +25,10 @@ namespace Nethermind.Db
         private readonly ColumnDbOnTheRocks _db;
         private readonly DbParts.DbPart _dbPart;
 
-        public ColumnPartDbOnTheRocks(ColumnDbOnTheRocks db,  DbParts.DbPart dbPart)
+        public ColumnPartDbOnTheRocks(ColumnDbOnTheRocks db, DbParts.DbPart dbPart, DbConfig config)
         {
             _db = db;
+            db.CreateColumnFamily(dbPart, config);
             _dbPart = dbPart;
             Name = dbPart.ToString();
         }

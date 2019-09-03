@@ -13,13 +13,15 @@
 // 
 //  You should have received a copy of the GNU Lesser General Public License
 //  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
+
 namespace Nethermind.Db.Config
 {
-    public interface IDbPartConfig
-    {
-        ulong WriteBufferSize { get; }
-        uint WriteBufferNumber { get; }
-        ulong BlockCacheSize { get; }
-        bool CacheIndexAndFilterBlocks { get; }
-    }
+//    public interface IDbPartConfig
+//    {
+//        ulong WriteBufferSize { get; }
+//        uint WriteBufferNumber { get; }
+//        ulong BlockCacheSize { get; }
+//        bool CacheIndexAndFilterBlocks { get; }
+//        string BasePath { get; set; }
+//    }
 }

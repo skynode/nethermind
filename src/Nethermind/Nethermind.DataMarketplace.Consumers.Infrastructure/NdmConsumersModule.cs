@@ -60,8 +60,7 @@ namespace Nethermind.DataMarketplace.Consumers.Infrastructure
                 ? Address.Zero
                 : new Address(ndmConfig.ContractAddress);
             var logManager = services.RequiredServices.LogManager;
-            var rocksDbProvider = new ConsumerRocksDbProvider(services.RequiredServices.BaseDbPath, dbConfig,
-                logManager);
+            var rocksDbProvider = new ConsumerRocksDbProvider(dbConfig, logManager);
             var depositDetailsRlpDecoder = new DepositDetailsDecoder();
             var depositApprovalRlpDecoder = new DepositApprovalDecoder();
             var receiptRlpDecoder = new DataDeliveryReceiptDetailsDecoder();

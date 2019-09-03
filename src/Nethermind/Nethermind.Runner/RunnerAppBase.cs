@@ -35,6 +35,7 @@ using Nethermind.DataMarketplace.Core.Services;
 using Nethermind.DataMarketplace.Infrastructure.Modules;
 using Nethermind.DataMarketplace.Initializers;
 using Nethermind.DataMarketplace.WebSockets;
+using Nethermind.Db.Config;
 using Nethermind.Grpc;
 using Nethermind.Grpc.Clients;
 using Nethermind.Grpc.Servers;
@@ -87,6 +88,7 @@ namespace Nethermind.Runner
             {
                 var configProvider = buildConfigProvider();
                 var initConfig = configProvider.GetConfig<IInitConfig>();
+                var dbsConfig = configProvider.GetConfig<IDbsConfig>();
 
                 Logger = new NLogLogger(initConfig.LogFileName, initConfig.LogDirectory);
                 LogMemoryConfiguration();
@@ -94,9 +96,7 @@ namespace Nethermind.Runner
                 var pathDbPath = getDbBasePath();
                 if (!string.IsNullOrWhiteSpace(pathDbPath))
                 {
-                    var newDbPath = Path.Combine(pathDbPath, initConfig.BaseDbPath);
-                    if (Logger.IsDebug) Logger.Debug($"Adding prefix to baseDbPath, new value: {newDbPath}, old value: {initConfig.BaseDbPath}");
-                    initConfig.BaseDbPath = newDbPath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "db");
+                    dbsConfig.SetNewDefaultBasePath(pathDbPath, Logger);
                 }
 
                 Console.Title = initConfig.LogFileName;

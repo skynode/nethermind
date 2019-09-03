@@ -70,8 +70,8 @@ namespace Nethermind.DataMarketplace.Infrastructure
         public bool EnableUnsecuredDevWallet { get; }
         public IBlockProcessor BlockProcessor { get; }
 
-        public NdmRequiredServices(IConfigProvider configProvider, IConfigManager configManager, INdmConfig ndmConfig,
-            string baseDbPath, IDbProvider rocksProvider, IMongoProvider mongoProvider, ILogManager logManager,
+        public NdmRequiredServices(IConfigProvider configProvider, IConfigManager configManager, INdmConfig ndmConfig, 
+            IDbProvider rocksProvider, IMongoProvider mongoProvider, ILogManager logManager,
             IBlockTree blockTree, ITxPool transactionPool, ISpecProvider specProvider, IReceiptStorage receiptStorage,
             IFilterStore filterStore, IFilterManager filterManager, IWallet wallet, ITimestamper timestamper,
             IEthereumEcdsa ecdsa, IKeyStore keyStore, IRpcModuleProvider rpcModuleProvider,
@@ -83,7 +83,6 @@ namespace Nethermind.DataMarketplace.Infrastructure
             ConfigProvider = configProvider;
             ConfigManager = configManager;
             NdmConfig = ndmConfig;
-            BaseDbPath = baseDbPath;
             RocksProvider = rocksProvider;
             MongoProvider = mongoProvider;
             LogManager = logManager;
