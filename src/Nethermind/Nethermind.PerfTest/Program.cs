@@ -231,6 +231,9 @@ namespace Nethermind.PerfTest
             var specProvider = new ChainSpecBasedSpecProvider(chainSpec);
             IRewardCalculator rewardCalculator = new RewardCalculator(specProvider);
 
+            DbConfig dbConfig = DbConfig.Default;
+            dbConfig.RecycleLogFileNum = 32;
+            dbConfig.WriteAheadLogSync = true;
             var dbProvider = new RocksDbProvider(DbBasePath, DbConfig.Default, _logManager, true, true);
             var stateDb = dbProvider.StateDb;
             var codeDb = dbProvider.CodeDb;
