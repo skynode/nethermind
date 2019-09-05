@@ -22,6 +22,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Nethermind.Config;
 using Nethermind.Runner.Config;
 using Nethermind.WebSockets;
@@ -40,14 +41,14 @@ namespace Nethermind.Runner
 
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddMvc(options => options.EnableEndpointRouting = false).SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
+            services.AddMvc(options => options.EnableEndpointRouting = false).SetCompatibilityVersion(CompatibilityVersion.Version_3_0);
             Bootstrap.Instance.RegisterJsonRpcServices(services);
             var corsOrigins = Environment.GetEnvironmentVariable("NETHERMIND_CORS_ORIGINS") ?? "*";
             services.AddCors(c => c.AddPolicy("Cors",
                 p => p.AllowAnyMethod().AllowAnyHeader().WithOrigins(corsOrigins)));
         }
 
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             var config = app.ApplicationServices.GetService<IConfigProvider>().GetConfig<IInitConfig>();
             if (env.IsDevelopment())

@@ -48,7 +48,6 @@ namespace Nethermind.Network.Benchmarks
         private NewBlockMessage _outputMessage;
 
         private NewBlockMessageSerializer _newBlockMessageSerializer;
-        private NewBlockMessageSerializer _zeroNewBlockMessageSerializer;
         private Block _block;
         private TestMerger _merger;
         private TestZeroMerger _zeroMerger;
