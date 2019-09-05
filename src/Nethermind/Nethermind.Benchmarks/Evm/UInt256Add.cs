@@ -18,6 +18,8 @@
 
 using System;
 using System.Numerics;
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
 using BenchmarkDotNet.Attributes;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
@@ -34,25 +36,25 @@ namespace Nethermind.Benchmarks.Evm
 
         private (byte[] A, byte[] B)[] _scenarios = new[]
         {
-            (Bytes.FromHexString("0x00"), Bytes.FromHexString("0x00")),
-            (Bytes.FromHexString("0x00"), Bytes.FromHexString("0x01")),
-            (Bytes.FromHexString("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE"), Bytes.FromHexString("0x01")),
-            (Bytes.FromHexString("0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"), Bytes.FromHexString("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")),
-            (Bytes.FromHexString("0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"), Bytes.FromHexString("0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")),
+//            (Bytes.FromHexString("0x00"), Bytes.FromHexString("0x00")),
+//            (Bytes.FromHexString("0x00"), Bytes.FromHexString("0x01")),
+//            (Bytes.FromHexString("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE"), Bytes.FromHexString("0x01")),
+//            (Bytes.FromHexString("0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"), Bytes.FromHexString("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")),
+//            (Bytes.FromHexString("0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"), Bytes.FromHexString("0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")),
             (Bytes.FromHexString("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"), Bytes.FromHexString("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")),
         };
 
-        [Params(0, 1, 2, 3, 4, 5)]
+        [Params(0)]
         public int ScenarioIndex { get; set; }
 
         [GlobalSetup]
         public void Setup()
         {
             _scenarios[ScenarioIndex].A.PadLeft(32).AsSpan().CopyTo(_stack.AsSpan().Slice(0, 32));
-            _scenarios[ScenarioIndex].B.PadLeft(32).AsSpan().CopyTo(_stack.AsSpan().Slice(32, 64));
+            _scenarios[ScenarioIndex].B.PadLeft(32).AsSpan().CopyTo(_stack.AsSpan().Slice(32, 32));
         }
 
-        [Benchmark]
+        [Benchmark(Baseline = true)]
         public void Current()
         {
             Span<byte> span = _stack.AsSpan();
@@ -66,7 +68,10 @@ namespace Nethermind.Benchmarks.Evm
         public void Improved()
         {
             Span<byte> span = _stack.AsSpan();
-            UInt256.AddInPlace(span.Slice(0, 32), span.Slice(32, 32));
+            Span<byte> a = span.Slice(0, 32);
+            Span<byte> b = span.Slice(32, 32);
+            
+            Bytes.AddOnStack(a, b);
         }
     }
 }

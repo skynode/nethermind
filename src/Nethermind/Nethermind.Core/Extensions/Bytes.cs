@@ -24,6 +24,8 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
 using System.Text;
 using Nethermind.Core.Crypto;
 using Nethermind.Dirichlet.Numerics;
@@ -296,6 +298,47 @@ namespace Nethermind.Core.Extensions
             }
 
             return result;
+        }
+
+        private static byte[] _reverseMask = {31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
+
+        public static void Avx2Reverse256InPlace(Span<byte> bytes)
+        {
+            unsafe
+            {
+                fixed (byte* ptr_a = bytes, ptr_mask = _reverseMask)
+                {
+                    Vector256<byte> bytesVector = Avx2.LoadVector256(ptr_a);
+                    Vector256<byte> maskVec = Avx2.LoadVector256(ptr_mask);
+                    Vector256<byte> resVec = Avx2.Shuffle(bytesVector, maskVec);
+                    resVec = Avx2.Permute4x64(resVec.As<byte, ulong>(), 0b01001110).As<ulong, byte>();
+                    Avx2.Store(ptr_a, resVec);
+                }
+            }
+        }
+        
+        public static unsafe Vector256<byte> Avx2Reverse256InPlace(Vector256<byte> bytes)
+        {
+            fixed (byte* ptr_mask = _reverseMask)
+            {
+                Vector256<byte> maskVec = Avx2.LoadVector256(ptr_mask);
+                Vector256<byte> resVec = Avx2.Shuffle(bytes, maskVec);
+                return Avx2.Permute4x64(resVec.As<byte, ulong>(), 0b01001110).As<ulong, byte>();
+            }
+        }
+        
+        public static unsafe void AddOnStack(Span<byte> a, Span<byte> b)
+        {
+            fixed (byte* ptr_a = a, ptr_b = b)
+            {
+                Avx2Reverse256InPlace(a);
+                Avx2Reverse256InPlace(b);
+                Vector256<byte> aVector = Avx2.LoadVector256(ptr_a);
+                Vector256<byte> bVector = Avx2.LoadVector256(ptr_b);
+                Vector256<byte> resVector = Avx2.Add(aVector, bVector);
+                Avx2.Store(ptr_a, resVector);
+                Avx2Reverse256InPlace(a);
+            }
         }
 
         public static BigInteger ToUnsignedBigInteger(this byte[] bytes, Endianness endianness = Endianness.Big)

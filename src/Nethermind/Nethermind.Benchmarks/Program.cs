@@ -50,7 +50,7 @@ namespace Nethermind.Benchmarks
 //            BenchmarkRunner.Run<PrecompileSha2>();
 //            BenchmarkRunner.Run<PrecompileRipemd>();
 //            BenchmarkRunner.Run<SimpleTransferProcessing>();
-//            BenchmarkRunner.Run<UInt256Add>();
+            BenchmarkRunner.Run<UInt256Add>();
 //            BenchmarkRunner.Run<UInt256Subtract>();
 //            BenchmarkRunner.Run<UInt256Multiply>();
 //            BenchmarkRunner.Run<UInt256Divide>();
@@ -61,7 +61,7 @@ namespace Nethermind.Benchmarks
 //            BenchmarkRunner.Run<RlpDecodeAccount>();
 //            BenchmarkRunner.Run<RlpEncodeAccount>();
 //            BenchmarkRunner.Run<RlpDecodeBlock>();
-            BenchmarkRunner.Run<RlpEncodeBlock>();
+            //BenchmarkRunner.Run<RlpEncodeBlock>();
 //            BenchmarkRunner.Run<RlpEncodeHeader>();
 //            BenchmarkRunner.Run<RlpEncodeTransaction>();
 //              BenchmarkRunner.Run<RlpEncodeLong>();
@@ -72,6 +72,7 @@ namespace Nethermind.Benchmarks
 //            BenchmarkRunner.Run<BitwiseAnd>();
 //            BenchmarkRunner.Run<BitwiseNot>();
 //            BenchmarkRunner.Run<BitwiseXor>();
+//            BenchmarkRunner.Run<Endianness>();
 
 //              BenchmarkRunner.Run<PatriciaTree>();
 //            

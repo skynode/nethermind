@@ -892,11 +892,15 @@ namespace Nethermind.Evm
                             return CallResult.OutOfGasException;
                         }
 
-                        // TODO: can calculate in place...
-                        PopUInt256(out UInt256 b, bytesOnStack);
-                        PopUInt256(out UInt256 a, bytesOnStack);
-                        UInt256.Add(out UInt256 c, ref a, ref b, false);
-                        PushUInt256(ref c, bytesOnStack);
+                        Span<byte> b = PopBytes(bytesOnStack);
+                        Span<byte> a = PopBytes(bytesOnStack);
+                        Bytes.AddOnStack(a, b);
+                        
+//                        // TODO: can calculate in place...
+//                        PopUInt256(out UInt256 b, bytesOnStack);
+//                        PopUInt256(out UInt256 a, bytesOnStack);
+//                        UInt256.Add(out UInt256 c, ref a, ref b, false);
+//                        PushUInt256(ref c, bytesOnStack);
                         
                         break;
                     }
