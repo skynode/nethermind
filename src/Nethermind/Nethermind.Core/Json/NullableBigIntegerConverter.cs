@@ -18,11 +18,11 @@
 
 using System;
 using System.Numerics;
-using Newtonsoft.Json;
+using System.Text.Json;
 
 namespace Nethermind.Core.Json
 {
-    public class NullableBigIntegerConverter : JsonConverter<BigInteger?>
+    public class NullableBigIntegerConverter : System.Text.Json.Serialization.JsonConverter<BigInteger?>
     {
         private BigIntegerConverter _bigIntegerConverter;
         
@@ -36,25 +36,25 @@ namespace Nethermind.Core.Json
             _bigIntegerConverter = new BigIntegerConverter(conversion);
         }
 
-        public override void WriteJson(JsonWriter writer, BigInteger? value, Newtonsoft.Json.JsonSerializer serializer)
+        public override BigInteger? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            if (!value.HasValue)
-            {
-                writer.WriteNull();
-                return;
-            }
-            
-            _bigIntegerConverter.WriteJson(writer, value.Value, serializer);
-        }
-
-        public override BigInteger? ReadJson(JsonReader reader, Type objectType, BigInteger? existingValue, bool hasExistingValue, Newtonsoft.Json.JsonSerializer serializer)
-        {
-            if (reader.TokenType == JsonToken.Null)
+            if (reader.TokenType == JsonTokenType.Null)
             {
                 return null;
             }
             
-            return _bigIntegerConverter.ReadJson(reader, objectType, existingValue ?? 0, hasExistingValue, serializer);
+            return _bigIntegerConverter.Read(ref reader, typeToConvert, options);
+        }
+
+        public override void Write(Utf8JsonWriter writer, BigInteger? value, JsonSerializerOptions options)
+        {
+            if (!value.HasValue)
+            {
+                writer.WriteNullValue();
+                return;
+            }
+            
+            _bigIntegerConverter.Write(writer, value.Value, options);
         }
     }
 }

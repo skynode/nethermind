@@ -17,27 +17,28 @@
  */
 
 using System;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Nethermind.Core.Extensions;
-using Newtonsoft.Json;
 
 namespace Nethermind.Core.Json
 {
     public class ByteArrayConverter : JsonConverter<byte[]>
     {
-        public override void WriteJson(JsonWriter writer, byte[] value, Newtonsoft.Json.JsonSerializer serializer)
+        public override byte[] Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            writer.WriteValue(value.ToHexString(true));
-        }
-
-        public override byte[] ReadJson(JsonReader reader, Type objectType, byte[] existingValue, bool hasExistingValue, Newtonsoft.Json.JsonSerializer serializer)
-        {
-            if (reader.TokenType == JsonToken.Null)
+            if (reader.TokenType == JsonTokenType.Null)
             {
                 return null;
             }
             
-            string s = (string) reader.Value;
+            string s = reader.GetString();
             return Bytes.FromHexString(s);
+        }
+
+        public override void Write(Utf8JsonWriter writer, byte[] value, JsonSerializerOptions options)
+        {
+            writer.WriteStringValue(value.ToHexString(true));
         }
     }
 }

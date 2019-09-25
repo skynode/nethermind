@@ -18,51 +18,65 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Nethermind.Core.Json;
 using Nethermind.Evm.Tracing;
-using Nethermind.JsonRpc.Modules.Trace;
-using Newtonsoft.Json;
 
 namespace Nethermind.JsonRpc.Modules.DebugModule
 {
     public class GethLikeTxTraceConverter : JsonConverter<GethLikeTxTrace>
     {
-        public override void WriteJson(JsonWriter writer, GethLikeTxTrace value, JsonSerializer serializer)
+        private readonly BigIntegerConverter _bigIntegerConverter = new BigIntegerConverter();
+        private readonly ByteArrayConverter _byteArrayConverter = new ByteArrayConverter();
+        
+        public override GethLikeTxTrace Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void Write(Utf8JsonWriter writer, GethLikeTxTrace value, JsonSerializerOptions options)
         {
             if (value == null)
             {
-                writer.WriteNull();
+                writer.WriteNullValue();
                 return;
             }
 
             writer.WriteStartObject();
 
-            writer.WriteProperty("gas", value.Gas, serializer);
-            writer.WriteProperty("failed", value.Failed);
-            writer.WriteProperty("returnValue", value.ReturnValue, serializer);
+            writer.WritePropertyName("gas");
+            _bigIntegerConverter.Write(writer, value.Gas, options);
+            
+            writer.WriteBoolean("failed", value.Failed);
+            
+            writer.WritePropertyName("returnValue");
+            _byteArrayConverter.Write(writer, value.ReturnValue, options);
+
 
             writer.WritePropertyName("structLogs");
-            WriteEntries(writer, value.Entries, serializer);
+            WriteEntries(writer, value.Entries, options);
 
             writer.WriteEndObject();
         }
-
-        private static void WriteEntries(JsonWriter writer, List<GethTxTraceEntry> entries, JsonSerializer serializer)
+        
+        private static void WriteEntries(Utf8JsonWriter writer, List<GethTxTraceEntry> entries, JsonSerializerOptions options)
         {
             writer.WriteStartArray();
             foreach (GethTxTraceEntry entry in entries)
             {
                 writer.WriteStartObject();
-                writer.WriteProperty("pc", entry.Pc);
-                writer.WriteProperty("op", entry.Operation);
-                writer.WriteProperty("gas", entry.Gas);
-                writer.WriteProperty("gasCost", entry.GasCost);
-                writer.WriteProperty("depth", entry.Depth);
-                writer.WriteProperty("error", entry.Error);
+                writer.WriteNumber("pc", entry.Pc);
+                writer.WriteString("op", entry.Operation);
+                writer.WriteNumber("gas", entry.Gas);
+                writer.WriteNumber("gasCost", entry.GasCost);
+                writer.WriteNumber("depth", entry.Depth);
+                writer.WriteString("error", entry.Error);
                 writer.WritePropertyName("stack");
                 writer.WriteStartArray();
                 foreach (string stackItem in entry.Stack)
                 {
-                    writer.WriteValue(stackItem);    
+                    writer.WriteStringValue(stackItem);    
                 }
                 
                 writer.WriteEndArray();
@@ -71,7 +85,7 @@ namespace Nethermind.JsonRpc.Modules.DebugModule
                 writer.WriteStartArray();
                 foreach (string memory in entry.Memory)
                 {
-                    writer.WriteValue(memory);    
+                    writer.WriteStringValue(memory);    
                 }
                 writer.WriteEndArray();
                 
@@ -79,7 +93,7 @@ namespace Nethermind.JsonRpc.Modules.DebugModule
                 writer.WriteStartObject();
                 foreach ((string storageIndex, string storageValue) in entry.SortedStorage)
                 {
-                    writer.WriteProperty(storageIndex, storageValue);
+                    writer.WriteString(storageIndex, storageValue);
                 }
                 
                 writer.WriteEndObject();
@@ -90,9 +104,5 @@ namespace Nethermind.JsonRpc.Modules.DebugModule
             writer.WriteEndArray();
         }
 
-        public override GethLikeTxTrace ReadJson(JsonReader reader, Type objectType, GethLikeTxTrace existingValue, bool hasExistingValue, JsonSerializer serializer)
-        {
-            throw new NotSupportedException();
-        }
     }
 }

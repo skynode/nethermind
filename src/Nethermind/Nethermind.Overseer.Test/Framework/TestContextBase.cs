@@ -1,8 +1,8 @@
 using System;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Nethermind.Overseer.Test.Framework.Steps;
 using Nethermind.Overseer.Test.JsonRpc;
-using Newtonsoft.Json;
 using NUnit.Framework;
 
 namespace Nethermind.Overseer.Test.Framework
@@ -70,7 +70,7 @@ namespace Nethermind.Overseer.Test.Framework
             var result = await funcTask;
 
             TestContext.WriteLine($"Received a response for JSON RPC call '{methodName}'." +
-                                   $"{Environment.NewLine}{JsonConvert.SerializeObject(result)}");
+                                   $"{Environment.NewLine}{JsonSerializer.Serialize(result)}");
 
             return await funcTask;
         }

@@ -18,8 +18,9 @@
 
 using System;
 using System.Globalization;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Nethermind.Dirichlet.Numerics;
-using Newtonsoft.Json;
 
 namespace Nethermind.Core.Json
 {
@@ -37,42 +38,14 @@ namespace Nethermind.Core.Json
             _conversion = conversion;
         }
 
-        public override void WriteJson(JsonWriter writer, UInt256 value, Newtonsoft.Json.JsonSerializer serializer)
+        public override UInt256 Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            if (value.IsZero)
+            if (reader.TryGetInt64(out var value))
             {
-                writer.WriteValue("0x0");
-                return;
+                return new UInt256(value);
             }
 
-            NumberConversion usedConversion = _conversion == NumberConversion.Decimal
-                ? value < int.MaxValue ? NumberConversion.Decimal : NumberConversion.Hex
-                : _conversion;
-
-            switch (usedConversion)
-            {
-                case NumberConversion.PaddedHex:
-                    writer.WriteValue(string.Concat("0x", value.ToString("x64").TrimStart('0')));
-                    break;
-                case NumberConversion.Hex:
-                    writer.WriteValue(string.Concat("0x", value.ToString("x").TrimStart('0')));
-                    break;
-                case NumberConversion.Decimal:
-                    writer.WriteValue((int) value);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
-        }
-
-        public override UInt256 ReadJson(JsonReader reader, Type objectType, UInt256 existingValue, bool hasExistingValue, Newtonsoft.Json.JsonSerializer serializer)
-        {
-            if (reader.Value is long || reader.Value is int)
-            {
-                return new UInt256((long) reader.Value);
-            }
-
-            string s = (string) reader.Value;
+            string s = reader.GetString();
             if (s == "0x0")
             {
                 return UInt256.Zero;
@@ -98,6 +71,34 @@ namespace Nethermind.Core.Json
             catch (Exception)
             {
                 return UInt256.Parse(s, NumberStyles.AllowHexSpecifier);
+            }
+        }
+
+        public override void Write(Utf8JsonWriter writer, UInt256 value, JsonSerializerOptions options)
+        {
+            if (value.IsZero)
+            {
+                writer.WriteStringValue("0x0");
+                return;
+            }
+
+            NumberConversion usedConversion = _conversion == NumberConversion.Decimal
+                ? value < int.MaxValue ? NumberConversion.Decimal : NumberConversion.Hex
+                : _conversion;
+
+            switch (usedConversion)
+            {
+                case NumberConversion.PaddedHex:
+                    writer.WriteStringValue(string.Concat("0x", value.ToString("x64").TrimStart('0')));
+                    break;
+                case NumberConversion.Hex:
+                    writer.WriteStringValue(string.Concat("0x", value.ToString("x").TrimStart('0')));
+                    break;
+                case NumberConversion.Decimal:
+                    writer.WriteNumberValue((int) value);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
     }

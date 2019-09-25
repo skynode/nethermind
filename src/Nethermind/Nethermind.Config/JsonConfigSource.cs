@@ -20,7 +20,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
 
 namespace Nethermind.Config
 {
@@ -33,10 +33,10 @@ namespace Nethermind.Config
 
         private void ApplyJsonConfig(string jsonContent)
         {
-            var json = (JObject) JToken.Parse(jsonContent);
-            foreach (var moduleEntry in json)
+            using var document = JsonDocument.Parse(jsonContent);
+            foreach (var moduleEntry in document.RootElement.EnumerateObject())
             {
-                LoadModule(moduleEntry.Key, (JObject)moduleEntry.Value);
+                LoadModule(moduleEntry.Name, moduleEntry.Value);
             }
         }
 
@@ -77,20 +77,20 @@ namespace Nethermind.Config
             ApplyJsonConfig(File.ReadAllText(configFilePath));
         }
 
-        private void LoadModule(string moduleName, JObject value)
+        private void LoadModule(string moduleName, JsonElement value)
         {
             var configItems = value;
             var itemsDict = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
 
-            foreach (var configItem in configItems)
+            foreach (var configItem in configItems.EnumerateObject())
             {
-                if (!itemsDict.ContainsKey(configItem.Key))
+                if (!itemsDict.ContainsKey(configItem.Name))
                 {
-                    itemsDict[configItem.Key] = configItem.Value.ToString();
+                    itemsDict[configItem.Name] = configItem.Value.ToString();
                 }
                 else
                 {
-                    throw new Exception($"Duplicated config value: {configItem.Key}, module: {moduleName}");
+                    throw new Exception($"Duplicated config value: {configItem.Name}, module: {moduleName}");
                 }
             }
 

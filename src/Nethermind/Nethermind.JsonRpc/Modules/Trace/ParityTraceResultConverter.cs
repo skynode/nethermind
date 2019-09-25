@@ -17,36 +17,44 @@
  */
 
 using System;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Nethermind.Core.Json;
 using Nethermind.Evm.Tracing;
-using Newtonsoft.Json;
 
 namespace Nethermind.JsonRpc.Modules.Trace
 {
     public class ParityTraceResultConverter : JsonConverter<ParityTraceResult>
     {
-        public override void WriteJson(JsonWriter writer, ParityTraceResult value, JsonSerializer serializer)
+        private readonly AddressConverter _addressConverter = new AddressConverter();
+        private readonly ByteArrayConverter _byteArrayConverter = new ByteArrayConverter();
+        
+        public override ParityTraceResult Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void Write(Utf8JsonWriter writer, ParityTraceResult value, JsonSerializerOptions options)
         {
             writer.WriteStartObject();
 
             if (value.Address != null)
             {
-                writer.WriteProperty("address", value.Address, serializer);    
-                writer.WriteProperty("code", value.Code, serializer);
+                writer.WritePropertyName("address");
+                _addressConverter.Write(writer, value.Address, options);
+                writer.WritePropertyName("code");
+                _byteArrayConverter.Write(writer, value.Code, options);
             }
             
-            writer.WriteProperty("gasUsed", string.Concat("0x", value.GasUsed.ToString("x")));
+            writer.WriteString("gasUsed", string.Concat("0x", value.GasUsed.ToString("x")));
             
             if(value.Address == null)
             {
-                writer.WriteProperty("output", value.Output, serializer);    
+                writer.WritePropertyName("output");
+                _byteArrayConverter.Write(writer, value.Output, options);
             }
             
             writer.WriteEndObject();
-        }
-
-        public override ParityTraceResult ReadJson(JsonReader reader, Type objectType, ParityTraceResult existingValue, bool hasExistingValue, JsonSerializer serializer)
-        {
-            throw new NotSupportedException();
         }
     }
 }

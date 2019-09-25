@@ -17,25 +17,25 @@
  */
 
 
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace Nethermind.Evm.Tracing
 {
     public class GethTraceOptions
     {
-        [JsonProperty("disableStorage")]
+        [JsonPropertyName("disableStorage")]
         public bool DisableStorage { get; set; }
         
-        [JsonProperty("disableMemory")]
+        [JsonPropertyName("disableMemory")]
         public bool DisableMemory { get; set; }
         
-        [JsonProperty("disableStack")]
+        [JsonPropertyName("disableStack")]
         public bool DisableStack { get; set; }
         
-        [JsonProperty("tracer")]
+        [JsonPropertyName("tracer")]
         public string Tracer { get; set; }
         
-        [JsonProperty("timeout")]
+        [JsonPropertyName("timeout")]
         public string Timeout { get; set; }
         
         public static GethTraceOptions Default = new GethTraceOptions();

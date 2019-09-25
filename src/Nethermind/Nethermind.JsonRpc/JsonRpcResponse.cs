@@ -16,41 +16,42 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
+using System.Text.Json.Serialization;
 using Nethermind.Core.Json;
 using Nethermind.Dirichlet.Numerics;
-using Newtonsoft.Json;
 
 namespace Nethermind.JsonRpc
 {
     public class JsonRpcResponse
     {
-        [JsonProperty(PropertyName = "jsonrpc", Order = 1)]
+        
+        [JsonConverter(typeof(UInt256Converter))]
+        [JsonPropertyName("id")]
+        public UInt256 Id { get; set; }
+        
+        [JsonPropertyName("jsonrpc")]
         public string JsonRpc { get; set; }
 
-        [JsonProperty(PropertyName = "result", NullValueHandling = NullValueHandling.Ignore, Order = 2)]
+        [JsonPropertyName("result")]
         public object Result { get; set; }
 
-        [JsonProperty(PropertyName = "error", NullValueHandling = NullValueHandling.Ignore, Order = 3)]
+        [JsonPropertyName("error")]
         public Error Error { get; set; }
-
-        [JsonConverter(typeof(UInt256Converter), NumberConversion.Decimal)]
-        [JsonProperty(PropertyName = "id", Order = 0)]
-        public UInt256 Id { get; set; }
     }
 
     public class JsonRpcResponse<T>
     {
-        [JsonProperty(PropertyName = "jsonrpc", Order = 1)]
+        [JsonConverter(typeof(UInt256Converter))]
+        [JsonPropertyName("id")]
+        public UInt256 Id { get; set; }
+        
+        [JsonPropertyName("jsonrpc")]
         public string JsonRpc { get; set; }
 
-        [JsonProperty(PropertyName = "result", NullValueHandling = NullValueHandling.Ignore, Order = 2)]
+        [JsonPropertyName("result")]
         public T Result { get; set; }
 
-        [JsonProperty(PropertyName = "error", NullValueHandling = NullValueHandling.Ignore, Order = 3)]
+        [JsonPropertyName("error")]
         public Error Error { get; set; }
-
-        [JsonConverter(typeof(UInt256Converter), NumberConversion.Decimal)]
-        [JsonProperty(PropertyName = "id", Order = 0)]
-        public UInt256 Id { get; set; }
     }
 }

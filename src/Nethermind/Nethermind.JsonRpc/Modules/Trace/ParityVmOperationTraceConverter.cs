@@ -17,17 +17,17 @@
  */
 
 using System;
-using System.Linq;
-using Nethermind.Core;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Nethermind.Core.Extensions;
-using Nethermind.Evm.Precompiles;
 using Nethermind.Evm.Tracing;
-using Newtonsoft.Json;
 
 namespace Nethermind.JsonRpc.Modules.Trace
 {
     public class ParityVmOperationTraceConverter : JsonConverter<ParityVmOperationTrace>
     {
+        private readonly ParityVmTraceConverter _vmTraceConverter = new ParityVmTraceConverter();
+        
         //{
 //  "cost": 0.0,
 //            "ex": {
@@ -39,26 +39,30 @@ namespace Nethermind.JsonRpc.Modules.Trace
 //            "pc": 526.0,
 //            "sub": null
 //        }
-        public override void WriteJson(JsonWriter writer, ParityVmOperationTrace value, JsonSerializer serializer)
+        public override ParityVmOperationTrace Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void Write(Utf8JsonWriter writer, ParityVmOperationTrace value, JsonSerializerOptions options)
         {
             writer.WriteStartObject();
 
-            writer.WriteProperty("cost", value.Cost);
+            writer.WritePropertyName("cost");
+            writer.WriteNumberValue(value.Cost);
             writer.WritePropertyName("ex");
             writer.WriteStartObject();
             writer.WritePropertyName("mem");
             if (value.Memory != null)
             {
                 writer.WriteStartObject();
-                writer.WritePropertyName("data");
-                writer.WriteValue(value.Memory.Data.ToHexString(true, false));
-                writer.WritePropertyName("off");
-                writer.WriteValue(value.Memory.Offset);
+                writer.WriteString("data", value.Memory.Data.ToHexString(true, false));
+                writer.WriteNumber("off", value.Memory.Offset);
                 writer.WriteEndObject();
             }
             else
             {
-                writer.WriteNull();
+                writer.WriteNullValue();
             }
 
             writer.WritePropertyName("push");
@@ -67,42 +71,37 @@ namespace Nethermind.JsonRpc.Modules.Trace
                 writer.WriteStartArray();
                 for (int i = 0; i < value.Push.Length; i++)
                 {
-                    writer.WriteValue(value.Push[i].ToHexString(true, true));
+                    writer.WriteStringValue(value.Push[i].ToHexString(true, true));
                 }
 
                 writer.WriteEndArray();
             }
             else
             {
-                writer.WriteNull();
+                writer.WriteNullValue();
             }
 
             writer.WritePropertyName("store");
             if (value.Store != null)
             {
                 writer.WriteStartObject();
-                writer.WritePropertyName("key");
-                writer.WriteValue(value.Store.Key.ToHexString(true, true));
-                writer.WritePropertyName("val");
-                writer.WriteValue(value.Store.Value.ToHexString(true, true));
+                writer.WriteString("key", value.Store.Key.ToHexString(true, true));
+                writer.WriteString("val", value.Store.Value.ToHexString(true, true));
                 writer.WriteEndObject();
             }
             else
             {
-                writer.WriteNull();
+                writer.WriteNullValue();
             }
 
-            writer.WriteProperty("used", value.Used);
+            writer.WriteNumber("used", value.Used);
             writer.WriteEndObject();
 
-            writer.WriteProperty("pc", value.Pc, serializer);
-            writer.WriteProperty("sub", value.Sub, serializer);
-            writer.WriteEndObject();
-        }
+            writer.WriteNumber("pc", value.Pc);
+            writer.WritePropertyName("sub");
+            _vmTraceConverter.Write(writer, value.Sub, options);
 
-        public override ParityVmOperationTrace ReadJson(JsonReader reader, Type objectType, ParityVmOperationTrace existingValue, bool hasExistingValue, JsonSerializer serializer)
-        {
-            throw new NotImplementedException();
+            writer.WriteEndObject();
         }
     }
 }

@@ -17,9 +17,9 @@
  */
 
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Serialization;
 using Nethermind.Core.Crypto;
 using Nethermind.Dirichlet.Numerics;
-using Newtonsoft.Json;
 
 namespace Nethermind.Core.Specs.ChainSpecStyle.Json
 {
@@ -29,7 +29,7 @@ namespace Nethermind.Core.Specs.ChainSpecStyle.Json
     {
         public long NetworkId { get; set; }
         
-        [JsonProperty(PropertyName = "registrar")]
+        [JsonPropertyName("registrar")]
         public Address EnsRegistrar { get; set; }
         
         public long? GasLimitBoundDivisor { get; set; }

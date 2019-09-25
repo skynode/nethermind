@@ -19,142 +19,56 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Nethermind.Core.Extensions;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Nethermind.Core.Json;
 using Nethermind.Dirichlet.Numerics;
 using Nethermind.Evm.Tracing;
-using Newtonsoft.Json;
-using JsonSerializer = Newtonsoft.Json.JsonSerializer;
 
 namespace Nethermind.JsonRpc.Modules.Trace
 {
     public class ParityAccountStateChangeConverter : JsonConverter<ParityAccountStateChange>
     {
-        private ByteArrayConverter _bytesConverter = new ByteArrayConverter();
-        private UInt256Converter _intConverter = new UInt256Converter();
-        private Bytes32Converter _32BytesConverter = new Bytes32Converter();
+        private readonly ByteArrayConverter _bytesConverter = new ByteArrayConverter();
+        private readonly UInt256Converter _intConverter = new UInt256Converter();
+        private readonly Bytes32Converter _32BytesConverter = new Bytes32Converter();
 
-        private void WriteChange(JsonWriter writer, ParityStateChange<byte[]> change, JsonSerializer serializer)
+        public override ParityAccountStateChange Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            if (change == null)
-            {
-                writer.WriteValue("=");
-            }
-            else
-            {
-                if (change.Before == null)
-                {
-                    writer.WriteStartObject();
-                    writer.WritePropertyName("+");
-                    _bytesConverter.WriteJson(writer, change.After, serializer);
-                    writer.WriteEndObject();
-                }
-                else
-                {
-                    writer.WriteStartObject();
-                    writer.WritePropertyName("*");
-                    writer.WriteStartObject();
-                    writer.WritePropertyName("from");
-                    _bytesConverter.WriteJson(writer, change.Before, serializer);
-                    writer.WritePropertyName("to");
-                    _bytesConverter.WriteJson(writer, change.After, serializer);
-                    writer.WriteEndObject();
-                    writer.WriteEndObject();
-                }
-            }
+            throw new NotImplementedException();
         }
 
-        private void WriteChange(JsonWriter writer, ParityStateChange<UInt256?> change, JsonSerializer serializer)
-        {
-            if (change == null)
-            {
-                writer.WriteValue("=");
-            }
-            else
-            {
-                if (change.Before == null)
-                {
-                    writer.WriteStartObject();
-                    writer.WritePropertyName("+");
-                    _intConverter.WriteJson(writer, change.After, serializer);
-                    writer.WriteEndObject();
-                }
-                else
-                {
-                    writer.WriteStartObject();
-                    writer.WritePropertyName("*");
-                    writer.WriteStartObject();
-                    writer.WritePropertyName("from");
-                    _intConverter.WriteJson(writer, change.Before, serializer);
-                    writer.WritePropertyName("to");
-                    _intConverter.WriteJson(writer, change.After, serializer);
-                    writer.WriteEndObject();
-                    writer.WriteEndObject();
-                }
-            }
-        }
-
-        private void WriteStorageChange(JsonWriter writer, ParityStateChange<byte[]> change, bool isNew, JsonSerializer serializer)
-        {
-            if (change == null)
-            {
-                writer.WriteValue("=");
-            }
-            else
-            {
-                if (isNew)
-                {
-                    writer.WriteStartObject();
-                    writer.WritePropertyName("+");
-                    _32BytesConverter.WriteJson(writer, change.After, serializer);
-                    writer.WriteEndObject();
-                }
-                else
-                {
-                    writer.WriteStartObject();
-                    writer.WritePropertyName("*");
-                    writer.WriteStartObject();
-                    writer.WritePropertyName("from");
-                    _32BytesConverter.WriteJson(writer, change.Before, serializer);
-                    writer.WritePropertyName("to");
-                    _32BytesConverter.WriteJson(writer, change.After, serializer);
-                    writer.WriteEndObject();
-                    writer.WriteEndObject();
-                }
-            }
-        }
-
-        public override void WriteJson(JsonWriter writer, ParityAccountStateChange value, JsonSerializer serializer)
+        public override void Write(Utf8JsonWriter writer, ParityAccountStateChange value, JsonSerializerOptions options)
         {
             writer.WriteStartObject();
             writer.WritePropertyName("balance");
             if (value.Balance == null)
             {
-                writer.WriteValue("=");
+                writer.WriteStringValue("=");
             }
             else
             {
-                WriteChange(writer, value.Balance, serializer);
+                WriteChange(writer, value.Balance, options);
             }
 
             writer.WritePropertyName("code");
             if (value.Code == null)
             {
-                writer.WriteValue("=");
+                writer.WriteStringValue("=");
             }
             else
             {
-                WriteChange(writer, value.Code, serializer);
+                WriteChange(writer, value.Code, options);
             }
 
             writer.WritePropertyName("nonce");
             if (value.Nonce == null)
             {
-                writer.WriteValue("=");
+                writer.WriteStringValue("=");
             }
             else
             {
-                WriteChange(writer, value.Nonce, serializer);
+                WriteChange(writer, value.Nonce, options);
             }
 
             writer.WritePropertyName("storage");
@@ -168,7 +82,7 @@ namespace Nethermind.JsonRpc.Modules.Trace
                     trimmedKey = trimmedKey.Substring(trimmedKey.Length - 64, 64);
                     
                     writer.WritePropertyName(string.Concat("0x", trimmedKey));
-                    WriteStorageChange(writer, pair.Value, value.Balance?.Before == null && value.Balance?.After != null, serializer);
+                    WriteStorageChange(writer, pair.Value, value.Balance?.Before == null && value.Balance?.After != null, options);
                 }
             }
 
@@ -176,10 +90,95 @@ namespace Nethermind.JsonRpc.Modules.Trace
 
             writer.WriteEndObject();
         }
-
-        public override ParityAccountStateChange ReadJson(JsonReader reader, Type objectType, ParityAccountStateChange existingValue, bool hasExistingValue, JsonSerializer serializer)
+        
+        private void WriteChange(Utf8JsonWriter writer, ParityStateChange<byte[]> change, JsonSerializerOptions options)
         {
-            throw new NotSupportedException();
+            if (change == null)
+            {
+                writer.WriteStringValue("=");
+            }
+            else
+            {
+                if (change.Before == null)
+                {
+                    writer.WriteStartObject();
+                    writer.WritePropertyName("+");
+                    _bytesConverter.Write(writer, change.After, options);
+                    writer.WriteEndObject();
+                }
+                else
+                {
+                    writer.WriteStartObject();
+                    writer.WritePropertyName("*");
+                    writer.WriteStartObject();
+                    writer.WritePropertyName("from");
+                    _bytesConverter.Write(writer, change.Before, options);
+                    writer.WritePropertyName("to");
+                    _bytesConverter.Write(writer, change.After, options);
+                    writer.WriteEndObject();
+                    writer.WriteEndObject();
+                }
+            }
+        }
+
+        private void WriteChange(Utf8JsonWriter writer, ParityStateChange<UInt256?> change, JsonSerializerOptions options)
+        {
+            if (change == null)
+            {
+                writer.WriteStringValue("=");
+            }
+            else
+            {
+                if (change.Before == null)
+                {
+                    writer.WriteStartObject();
+                    writer.WritePropertyName("+");
+                    _intConverter.Write(writer, change.After ?? 0, options);
+                    writer.WriteEndObject();
+                }
+                else
+                {
+                    writer.WriteStartObject();
+                    writer.WritePropertyName("*");
+                    writer.WriteStartObject();
+                    writer.WritePropertyName("from");
+                    _intConverter.Write(writer, change.Before.Value, options);
+                    writer.WritePropertyName("to");
+                    _intConverter.Write(writer, change.After ?? 0, options);
+                    writer.WriteEndObject();
+                    writer.WriteEndObject();
+                }
+            }
+        }
+
+        private void WriteStorageChange(Utf8JsonWriter writer, ParityStateChange<byte[]> change, bool isNew, JsonSerializerOptions options)
+        {
+            if (change == null)
+            {
+                writer.WriteStringValue("=");
+            }
+            else
+            {
+                if (isNew)
+                {
+                    writer.WriteStartObject();
+                    writer.WritePropertyName("+");
+                    _32BytesConverter.Write(writer, change.After, options);
+                    writer.WriteEndObject();
+                }
+                else
+                {
+                    writer.WriteStartObject();
+                    writer.WritePropertyName("*");
+                    writer.WriteStartObject();
+                    writer.WritePropertyName("from");
+                    _32BytesConverter.Write(writer, change.Before, options);
+                    writer.WritePropertyName("to");
+                    _32BytesConverter.Write(writer, change.After, options);
+                    writer.WriteEndObject();
+                    writer.WriteEndObject();
+                }
+            }
         }
     }
 }

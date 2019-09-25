@@ -40,8 +40,7 @@ namespace Nethermind.Runner
 
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddMvc()
-                .AddNewtonsoftJson();
+            services.AddMvc();
             Bootstrap.Instance.RegisterJsonRpcServices(services);
             var corsOrigins = Environment.GetEnvironmentVariable("NETHERMIND_CORS_ORIGINS") ?? "*";
             services.AddCors(c => c.AddPolicy("Cors",

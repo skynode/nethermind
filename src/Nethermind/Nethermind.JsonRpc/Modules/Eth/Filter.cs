@@ -17,10 +17,11 @@
  */
 
 using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
 using Nethermind.Core;
 using Nethermind.Core.Json;
 using Nethermind.JsonRpc.Data;
-using Newtonsoft.Json.Linq;
 
 namespace Nethermind.JsonRpc.Modules.Eth
 {
@@ -45,11 +46,23 @@ namespace Nethermind.JsonRpc.Modules.Eth
 
         public void FromJson(string jsonValue)
         {
-            var filter = _jsonSerializer.Deserialize<JObject>(jsonValue);
-            FromBlock = GetBlockParameter(filter["fromBlock"]?.ToObject<string>());
-            ToBlock = GetBlockParameter(filter["toBlock"]?.ToObject<string>());
-            Address = GetAddress(filter["address"]);
-            Topics = GetTopics(filter["topics"] as JArray);
+            var filter = _jsonSerializer.Deserialize<Dictionary<string, JsonElement>>(jsonValue);
+            if (filter.TryGetValue("fromBlock", out var fromBlock))
+            {
+                FromBlock = GetBlockParameter(fromBlock.ToString());
+            }
+            if (filter.TryGetValue("toBlock", out var toBlock))
+            {
+                ToBlock = GetBlockParameter(toBlock.ToString());
+            }
+            if (filter.TryGetValue("address", out var address))
+            {
+                Address = GetAddress(address);
+            }
+            if (filter.TryGetValue("topics", out var topics))
+            {
+                Topics = GetTopics(topics);
+            }
         }
 
         private static BlockParameter GetBlockParameter(string value)
@@ -68,31 +81,31 @@ namespace Nethermind.JsonRpc.Modules.Eth
             return block;
         }
 
-        private static object GetAddress(JToken token) => GetSingleOrMany(token);
+        private static object GetAddress(JsonElement element) => GetSingleOrMany(element);
 
-        private static IEnumerable<object> GetTopics(JArray array)
+        private static IEnumerable<object> GetTopics(object array)
         {
-            if (array is null)
+            if (array is null || !(array is IEnumerable<JsonElement> elements))
             {
                 yield break;
             }
 
-            foreach (var token in array)
+            foreach (var element in elements)
             {
-                yield return GetSingleOrMany(token);
+                yield return GetSingleOrMany(element);
             }
         }
 
-        private static object GetSingleOrMany(JToken token)
+        private static object GetSingleOrMany(JsonElement element)
         {
-            switch (token)
+            switch (element.ValueKind)
             {
-                case null:
+                case JsonValueKind.Null:
                     return null;
-                case JArray _:
-                    return token.ToObject<IEnumerable<string>>();
+                case JsonValueKind.Array:
+                    return element.EnumerateArray().Select(e => e.GetString()).ToList();
                 default:
-                    return token.ToObject<string>();
+                    return element.GetString();
             }
         }
     }

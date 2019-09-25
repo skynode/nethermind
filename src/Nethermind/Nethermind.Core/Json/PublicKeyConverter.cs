@@ -18,22 +18,23 @@
 
 
 using System;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Nethermind.Core.Crypto;
-using Newtonsoft.Json;
 
 namespace Nethermind.Core.Json
 {
     public class PublicKeyConverter : JsonConverter<PublicKey>
     {
-        public override void WriteJson(JsonWriter writer, PublicKey value, JsonSerializer serializer)
+        public override PublicKey Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            writer.WriteValue(value.ToString());
+            string s = reader.GetString();
+            return s == null ? null : new PublicKey(s);
         }
 
-        public override PublicKey ReadJson(JsonReader reader, Type objectType, PublicKey existingValue, bool hasExistingValue, JsonSerializer serializer)
+        public override void Write(Utf8JsonWriter writer, PublicKey value, JsonSerializerOptions options)
         {
-            string s = (string)reader.Value;
-            return s == null ? null : new PublicKey(s);
+            writer.WriteStringValue(value.ToString());
         }
     }
 }

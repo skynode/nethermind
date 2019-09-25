@@ -17,31 +17,31 @@
  */
 
 using System;
-using Nethermind.JsonRpc.Modules.Trace;
-using Newtonsoft.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Nethermind.JsonRpc.Modules.Eth
 {
     public class SyncingResultConverter : JsonConverter<SyncingResult>
     {
-        public override void WriteJson(JsonWriter writer, SyncingResult value, JsonSerializer serializer)
+        public override SyncingResult Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void Write(Utf8JsonWriter writer, SyncingResult value, JsonSerializerOptions options)
         {
             if (!value.IsSyncing)
             {
-                writer.WriteValue(false);
+                writer.WriteBooleanValue(false);
                 return;
             }
 
             writer.WriteStartObject();
-            writer.WriteProperty("startingBlock", value.StartingBlock, serializer);
-            writer.WriteProperty("currentBlock", value.CurrentBlock, serializer);
-            writer.WriteProperty("highestBlock", value.HighestBlock, serializer);
+            writer.WriteNumber("startingBlock", value.StartingBlock);
+            writer.WriteNumber("currentBlock", value.CurrentBlock);
+            writer.WriteNumber("highestBlock", value.HighestBlock);
             writer.WriteEndObject();
-        }
-
-        public override SyncingResult ReadJson(JsonReader reader, Type objectType, SyncingResult existingValue, bool hasExistingValue, JsonSerializer serializer)
-        {
-            throw new NotSupportedException();
         }
     }
 }

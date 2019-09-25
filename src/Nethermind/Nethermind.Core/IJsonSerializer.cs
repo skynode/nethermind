@@ -17,16 +17,12 @@
  */
 
 using System.Collections.Generic;
-using Newtonsoft.Json;
-using NLog;
+using System.Text.Json.Serialization;
 
 namespace Nethermind.Core
 {
     public interface IJsonSerializer
     {
-        [Todo(Improve.Refactor, "Move this method to a IRpcJsonSerializer")]
-        T DeserializeAnonymousType<T>(string json, T definition);
-        
         [Todo(Improve.Refactor, "Move this method to a IRpcJsonSerializer")]
         (T Model, List<T> Collection) DeserializeObjectOrArray<T>(string json);
         

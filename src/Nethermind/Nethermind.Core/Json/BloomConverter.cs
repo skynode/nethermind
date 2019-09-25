@@ -17,22 +17,23 @@
  */
 
 using System;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Nethermind.Core.Extensions;
-using Newtonsoft.Json;
 
 namespace Nethermind.Core.Json
 {
     public class BloomConverter : JsonConverter<Bloom>
     {
-        public override void WriteJson(JsonWriter writer, Bloom value, Newtonsoft.Json.JsonSerializer serializer)
+        public override Bloom Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            writer.WriteValue(value?.Bytes.ToHexString(true));
+            string s = reader.GetString();
+            return s == null ? null : new Bloom(Bytes.FromHexString(s).AsSpan().ToBigEndianBitArray2048());
         }
 
-        public override Bloom ReadJson(JsonReader reader, Type objectType, Bloom existingValue, bool hasExistingValue, Newtonsoft.Json.JsonSerializer serializer)
+        public override void Write(Utf8JsonWriter writer, Bloom value, JsonSerializerOptions options)
         {
-            string s = (string)reader.Value;
-            return s == null ? null : new Bloom(Bytes.FromHexString(s).AsSpan().ToBigEndianBitArray2048());
+            writer.WriteStringValue(value?.Bytes.ToHexString(true));
         }
     }
 }

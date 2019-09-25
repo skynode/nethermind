@@ -21,6 +21,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Nethermind.Core;
 using Nethermind.Core.Json;
@@ -28,14 +30,14 @@ using Nethermind.Core.Model;
 using Nethermind.Dirichlet.Numerics;
 using Nethermind.JsonRpc.Modules;
 using Nethermind.Logging;
-using Newtonsoft.Json;
-using JsonSerializer = Newtonsoft.Json.JsonSerializer;
 
 namespace Nethermind.JsonRpc
 {
     [Todo(Improve.Refactor, "Use JsonConverters and JSON serialization everywhere")]
     public class JsonRpcService : IJsonRpcService
     {
+        private readonly JsonSerializerOptions _serializerOptions = new JsonSerializerOptions();
+        
         public static IDictionary<ErrorType, int> ErrorCodes => new Dictionary<ErrorType, int>
         {
             {ErrorType.ParseError, -32700},
@@ -51,7 +53,6 @@ namespace Nethermind.JsonRpc
 
         private readonly ILogger _logger;
         private readonly IRpcModuleProvider _rpcModuleProvider;
-        private readonly JsonSerializer _serializer;
 
         private Dictionary<Type, JsonConverter> _converterLookup = new Dictionary<Type, JsonConverter>();
 
@@ -59,12 +60,11 @@ namespace Nethermind.JsonRpc
         {
             _logger = logManager.GetClassLogger();
             _rpcModuleProvider = rpcModuleProvider;
-            _serializer = new JsonSerializer();
 
             foreach (JsonConverter converter in rpcModuleProvider.Converters)
             {
                 if (_logger.IsDebug) _logger.Debug($"Registering {converter.GetType().Name} inside {nameof(JsonRpcService)}");
-                _serializer.Converters.Add(converter);
+                _serializerOptions.Converters.Add(converter);
                 _converterLookup.Add(converter.GetType().BaseType.GenericTypeArguments[0], converter);
                 Converters.Add(converter);
             }
@@ -72,7 +72,7 @@ namespace Nethermind.JsonRpc
             foreach (JsonConverter converter in EthereumJsonSerializer.BasicConverters)
             {
                 if (_logger.IsDebug) _logger.Debug($"Registering {converter.GetType().Name} (default)");
-                _serializer.Converters.Add(converter);
+                _serializerOptions.Converters.Add(converter);
                 _converterLookup.Add(converter.GetType().BaseType.GenericTypeArguments[0], converter);
                 Converters.Add(converter);
             }
@@ -231,17 +231,17 @@ namespace Nethermind.JsonRpc
                     }
                     else if (paramType == typeof(string[]))
                     {
-                        executionParam = _serializer.Deserialize<string[]>(new JsonTextReader(new StringReader(providedParameter)));
+                        executionParam = JsonSerializer.Deserialize<string[]>(providedParameter, _serializerOptions);
                     }
                     else
                     {
                         if (providedParameter.StartsWith('[') || providedParameter.StartsWith('{'))
                         {
-                            executionParam = JsonConvert.DeserializeObject(providedParameter, paramType, Converters.ToArray());
+                            executionParam = JsonSerializer.Deserialize(providedParameter, paramType, _serializerOptions);
                         }
                         else
                         {
-                            executionParam = JsonConvert.DeserializeObject($"\"{providedParameter}\"", paramType, Converters.ToArray());
+                            executionParam = JsonSerializer.Deserialize($"\"{providedParameter}\"", paramType, _serializerOptions);
                         }
                     }
 

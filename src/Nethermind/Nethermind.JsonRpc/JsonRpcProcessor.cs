@@ -20,15 +20,11 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
-using System.IO;
-using System.Linq;
-using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Nethermind.Core;
 using Nethermind.Logging;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 
 namespace Nethermind.JsonRpc
 {
@@ -36,7 +32,7 @@ namespace Nethermind.JsonRpc
     {
         private readonly IJsonRpcService _jsonRpcService;
         private readonly IJsonSerializer _jsonSerializer;
-        private JsonSerializer _traceSerializer;
+        private readonly JsonSerializerOptions _traceSerializerOptions = new JsonSerializerOptions();
         private readonly ILogger _logger;
 
         public JsonRpcProcessor(IJsonRpcService jsonRpcService, IJsonSerializer jsonSerializer, ILogManager logManager)
@@ -54,17 +50,11 @@ namespace Nethermind.JsonRpc
         /// </summary>
         private void BuildTraceJsonSerializer()
         {
-            JsonSerializerSettings jsonSettings = new JsonSerializerSettings
-            {
-                ContractResolver = new CamelCasePropertyNamesContractResolver()
-            };
-
             foreach (JsonConverter converter in _jsonRpcService.Converters)
             {
-                jsonSettings.Converters.Add(converter);
+                _traceSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+                _traceSerializerOptions.Converters.Add(converter);
             }
-
-            _traceSerializer = JsonSerializer.Create(jsonSettings);
         }
 
         public async Task<JsonRpcResult> ProcessAsync(string request)
@@ -92,8 +82,7 @@ namespace Nethermind.JsonRpc
                 JsonRpcResponse response = await _jsonRpcService.SendRequestAsync(rpcRequest.Model);
                 if (response.Error != null)
                 {
-                    if (_logger.IsError)
-                        _logger.Error($"Failed to respond to {rpcRequest.Model.Method} {response.Error.Message}");
+                    if (_logger.IsError) _logger.Error($"Failed to respond to {rpcRequest.Model.Method} {response.Error.Message}");
                     Metrics.JsonRpcErrors++;
                 }
                 else
@@ -123,8 +112,7 @@ namespace Nethermind.JsonRpc
                     JsonRpcResponse response = await _jsonRpcService.SendRequestAsync(jsonRpcRequest);
                     if (response.Error != null)
                     {
-                        if (_logger.IsError)
-                            _logger.Error($"Failed to respond to {jsonRpcRequest.Method} {response.Error.Message}");
+                        if (_logger.IsError) _logger.Error($"Failed to respond to {jsonRpcRequest.Method} {response.Error.Message}");
                         Metrics.JsonRpcErrors++;
                     }
                     else
@@ -156,14 +144,7 @@ namespace Nethermind.JsonRpc
         {
             if (_logger.IsTrace)
             {
-                StringBuilder builder = new StringBuilder();
-                using (StringWriter stringWriter = new StringWriter(builder))
-                using (JsonTextWriter jsonWriter = new JsonTextWriter(stringWriter))
-                {
-                    _traceSerializer.Serialize(jsonWriter, response);
-                }
-                
-                _logger.Trace($"Sending JSON RPC response: {builder}");
+                _logger.Trace($"Sending JSON RPC response: {JsonSerializer.Serialize(response)}");
             }
         }
         
@@ -171,14 +152,7 @@ namespace Nethermind.JsonRpc
         {
             if (_logger.IsTrace)
             {
-                var builder = new StringBuilder();
-                using (StringWriter stringWriter = new StringWriter(builder))
-                using (JsonTextWriter jsonWriter = new JsonTextWriter(stringWriter))
-                {
-                    _traceSerializer.Serialize(jsonWriter, responses);
-                }
-                
-                _logger.Trace($"Sending JSON RPC response: {builder}");
+                _logger.Trace($"Sending JSON RPC response: {JsonSerializer.Serialize(responses)}");
             }
         }
     }

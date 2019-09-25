@@ -18,48 +18,46 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using Newtonsoft.Json;
-using JsonSerializer = Newtonsoft.Json.JsonSerializer;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Nethermind.JsonRpc.Modules.Trace
 {
     public class ParityTraceAddressConverter : JsonConverter<int[]>
     {
-        public override void WriteJson(JsonWriter writer, int[] value, JsonSerializer serializer)
+        public override int[] Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            List<int> result = new List<int>();
+            int? pathPart = null;
+
+            do
+            {
+                if (reader.TryGetInt32(out var value))
+                {
+                    pathPart = value;
+                    result.Add(value);
+                }
+            } while (pathPart != null);
+            
+            return result.ToArray();
+        }
+
+        public override void Write(Utf8JsonWriter writer, int[] value, JsonSerializerOptions options)
         {
             if (value == null)
             {
-                writer.WriteNull();
+                writer.WriteNullValue();
             }
             else
             {
                 writer.WriteStartArray();
                 foreach (int i in value)
                 {
-                    writer.WriteValue(i);
+                    writer.WriteNumberValue(i);
                 }
 
                 writer.WriteEndArray();
             }
-        }
-
-        public override int[] ReadJson(JsonReader reader, Type objectType, int[] existingValue, bool hasExistingValue, JsonSerializer serializer)
-        {
-            List<int> result = new List<int>();
-            int? pathPart;
-
-            do
-            {
-                pathPart = reader.ReadAsInt32();
-                if (pathPart.HasValue)
-                {
-                    result.Add(pathPart.Value);
-                }
-            } while (pathPart != null);
-            
-            return result.ToArray();
         }
     }
 }

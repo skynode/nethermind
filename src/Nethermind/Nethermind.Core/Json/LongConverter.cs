@@ -18,7 +18,8 @@
 
 using System;
 using System.Globalization;
-using Newtonsoft.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Nethermind.Core.Json
 {
@@ -35,40 +36,40 @@ namespace Nethermind.Core.Json
         {
             _conversion = conversion;
         }
+        
+        public override long Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TryGetInt64(out var value))
+            {
+                return value;
+            }
+            
+            string s = reader.GetString();
+            return FromString(s);
+        }
 
-        public override void WriteJson(JsonWriter writer, long value, Newtonsoft.Json.JsonSerializer serializer)
+        public override void Write(Utf8JsonWriter writer, long value, JsonSerializerOptions options)
         {
             if (value == 0L)
             {
-                writer.WriteValue("0x0");
+                writer.WriteStringValue("0x0");
                 return;
             }
             
             switch (_conversion)
             {
                 case NumberConversion.PaddedHex:
-                    writer.WriteValue(string.Concat("0x", value.ToString("x64").TrimStart('0')));
+                    writer.WriteStringValue(string.Concat("0x", value.ToString("x64").TrimStart('0')));
                     break;
                 case NumberConversion.Hex:
-                    writer.WriteValue(string.Concat("0x", value.ToString("x").TrimStart('0')));
+                    writer.WriteStringValue(string.Concat("0x", value.ToString("x").TrimStart('0')));
                     break;
                 case NumberConversion.Decimal:
-                    writer.WriteValue(value.ToString());
+                    writer.WriteStringValue(value.ToString());
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
-        }
-
-        public override long ReadJson(JsonReader reader, Type objectType, long existingValue, bool hasExistingValue, Newtonsoft.Json.JsonSerializer serializer)
-        {
-            if (reader.Value is long || reader.Value is int)
-            {
-                return (long)reader.Value;
-            }
-
-            string s = (string) reader.Value;
-            return FromString(s);
         }
 
         public static long FromString(string s)

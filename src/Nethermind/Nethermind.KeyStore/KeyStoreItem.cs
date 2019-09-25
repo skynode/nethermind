@@ -16,22 +16,22 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace Nethermind.KeyStore
 {
     public class KeyStoreItem
     {
-        [JsonProperty(PropertyName = "version", Order = 0)]
+        [JsonPropertyName("version")]
         public int Version { get; set; }
         
-        [JsonProperty(PropertyName = "id", Order = 1)]
+        [JsonPropertyName("id")]
         public string Id { get; set; }
         
-        [JsonProperty(PropertyName = "address", Order = 2)]
+        [JsonPropertyName("address")]
         public string Address { get; set; }
         
-        [JsonProperty(PropertyName = "crypto", Order = 3)]
+        [JsonPropertyName("crypto")]
         public Crypto Crypto { get; set; }
     }
 }

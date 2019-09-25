@@ -17,8 +17,8 @@
  */
 
 using System;
-using Nethermind.Dirichlet.Numerics;
-using Newtonsoft.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Nethermind.Core.Json
 {
@@ -36,25 +36,25 @@ namespace Nethermind.Core.Json
             _longConverter = new LongConverter(conversion);
         }
 
-        public override void WriteJson(JsonWriter writer, long? value, Newtonsoft.Json.JsonSerializer serializer)
+        public override long? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            if (!value.HasValue)
-            {
-                writer.WriteNull();
-                return;
-            }
-            
-            _longConverter.WriteJson(writer, value.Value, serializer);
-        }
-
-        public override long? ReadJson(JsonReader reader, Type objectType, long? existingValue, bool hasExistingValue, Newtonsoft.Json.JsonSerializer serializer)
-        {
-            if (reader.TokenType == JsonToken.Null)
+            if (reader.TokenType == JsonTokenType.Null)
             {
                 return null;
             }
             
-            return _longConverter.ReadJson(reader, objectType, existingValue ?? 0, hasExistingValue, serializer);
+            return _longConverter.Read(ref reader, typeToConvert, options);
+        }
+
+        public override void Write(Utf8JsonWriter writer, long? value, JsonSerializerOptions options)
+        {
+            if (!value.HasValue)
+            {
+                writer.WriteNullValue();
+                return;
+            }
+            
+            _longConverter.Write(writer, value.Value, options);
         }
     }
 }

@@ -21,8 +21,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Nethermind.JsonRpc;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
+using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 
 namespace Nethermind.Runner.Controllers
 {
@@ -31,33 +31,32 @@ namespace Nethermind.Runner.Controllers
     public class MainController : ControllerBase
     {
         private readonly IJsonRpcProcessor _jsonRpcProcessor;
-        private static JsonSerializer _serializer;
         private static readonly object LockObject = new object();
 
         public MainController(IJsonRpcProcessor jsonRpcProcessor, IJsonRpcService jsonRpcService)
         {
             _jsonRpcProcessor = jsonRpcProcessor;
 
-            if (_serializer == null)
-            {
-                lock (LockObject)
-                {
-                    if (_serializer == null)
-                    {
-                        var jsonSettings = new JsonSerializerSettings
-                        {
-                            ContractResolver = new CamelCasePropertyNamesContractResolver()
-                        };
-
-                        foreach (var converter in jsonRpcService.Converters)
-                        {
-                            jsonSettings.Converters.Add(converter);
-                        }
-
-                        _serializer = JsonSerializer.Create(jsonSettings);
-                    }
-                }
-            }
+//            if (_serializer == null)
+//            {
+//                lock (LockObject)
+//                {
+//                    if (_serializer == null)
+//                    {
+//                        var jsonSettings = new JsonSerializerSettings
+//                        {
+//                            ContractResolver = new CamelCasePropertyNamesContractResolver()
+//                        };
+//
+//                        foreach (var converter in jsonRpcService.Converters)
+//                        {
+//                            jsonSettings.Converters.Add(converter);
+//                        }
+//
+//                        _serializer = JsonSerializer.Create(jsonSettings);
+//                    }
+//                }
+//            }
         }
 
         [HttpGet]
@@ -69,16 +68,10 @@ namespace Nethermind.Runner.Controllers
             using var reader = new StreamReader(Request.Body, Encoding.UTF8);
             var request = await reader.ReadToEndAsync();
             var result = await _jsonRpcProcessor.ProcessAsync(request);
-            await using var streamWriter = new StreamWriter(Response.Body);
-            using var jsonTextWriter = new JsonTextWriter(streamWriter);
-            if (result.IsCollection)
-            {
-                _serializer.Serialize(jsonTextWriter, result.Responses);
-            }
-            else
-            {
-                _serializer.Serialize(jsonTextWriter, result.Responses[0]);
-            }
+            var json = result.IsCollection
+                ? JsonSerializer.Serialize(result.Responses)
+                : JsonSerializer.Serialize(result.Responses[0]);
+            await Response.WriteAsync(json);
         }
     }
 }

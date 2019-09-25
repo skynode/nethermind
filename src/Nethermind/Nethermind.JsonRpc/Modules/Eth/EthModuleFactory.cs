@@ -18,6 +18,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 using Nethermind.Blockchain;
 using Nethermind.Blockchain.Filters;
 using Nethermind.Blockchain.Receipts;
@@ -29,7 +30,6 @@ using Nethermind.JsonRpc.Eip1186;
 using Nethermind.Logging;
 using Nethermind.Store;
 using Nethermind.Wallet;
-using Newtonsoft.Json;
 
 namespace Nethermind.JsonRpc.Modules.Eth
 {

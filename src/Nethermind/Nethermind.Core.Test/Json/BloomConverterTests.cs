@@ -16,11 +16,8 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System.IO;
-using Nethermind.Core.Crypto;
+using System.Text.Json;
 using Nethermind.Core.Json;
-using Nethermind.Dirichlet.Numerics;
-using Newtonsoft.Json;
 using NUnit.Framework;
 
 namespace Nethermind.Core.Test.Json
@@ -32,9 +29,9 @@ namespace Nethermind.Core.Test.Json
         public void Can_read_null()
         {
             BloomConverter converter = new BloomConverter();
-            JsonReader reader = new JsonTextReader(new StringReader(""));
-            reader.ReadAsString();
-            Bloom result = converter.ReadJson(reader, typeof(Bloom), null, false, JsonSerializer.CreateDefault());
+            Utf8JsonReader reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(""));
+            reader.Read();
+            Bloom result = converter.Read(ref reader, typeof(Bloom), null);
             Assert.AreEqual(null, result);
         }
     }

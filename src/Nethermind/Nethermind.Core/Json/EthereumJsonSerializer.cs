@@ -16,10 +16,9 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
 using System.Collections.Generic;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Nethermind.Core.Json
 {
@@ -27,7 +26,15 @@ namespace Nethermind.Core.Json
     {
         public EthereumJsonSerializer()
         {
-            _serializer = JsonSerializer.Create(_settings);
+            foreach (var basicConverter in BasicConverters)
+            {
+                _readableSettings.Converters.Add(basicConverter);
+            }
+            
+            foreach (var readableConverter in ReadableConverters)
+            {
+                _readableSettings.Converters.Add(readableConverter);
+            }
         }
 
         public static IList<JsonConverter> BasicConverters { get; } = new List<JsonConverter>
@@ -60,111 +67,102 @@ namespace Nethermind.Core.Json
             new PublicKeyConverter()
         };
         
-        private static JsonSerializerSettings _settings = new JsonSerializerSettings
+        private readonly JsonSerializerOptions _basicSettings = new JsonSerializerOptions
         {
-            NullValueHandling = NullValueHandling.Ignore,
-            Formatting = Formatting.None,
-            Converters = BasicConverters
+            IgnoreNullValues = true,
+            WriteIndented = false,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
         
-        private static JsonSerializerSettings _readableSettings = new JsonSerializerSettings
+        private readonly JsonSerializerOptions _readableSettings = new JsonSerializerOptions
         {
-            NullValueHandling = NullValueHandling.Ignore,
-            Formatting = Formatting.Indented,
-            Converters = ReadableConverters
+            IgnoreNullValues = true,
+            WriteIndented = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
-        
-        public T DeserializeAnonymousType<T>(string json, T definition)
-        {
-            throw new NotSupportedException();
-        }
 
         public T Deserialize<T>(string json)
         {
-            return JsonConvert.DeserializeObject<T>(json, _settings);
+            return JsonSerializer.Deserialize<T>(json, _basicSettings);
         }
-
-        private JsonSerializer _serializer;
 
         public (T Model, List<T> Collection) DeserializeObjectOrArray<T>(string json)
         {
-            var token = JToken.Parse(json);
-            if (token is JArray array)
+            if (json.StartsWith("["))
             {
-                foreach (var tokenElement in array)
-                {
-                    UpdateParams(tokenElement);
-                }
-
-                return (default, array.ToObject<List<T>>(_serializer));
+                return (default, JsonSerializer.Deserialize<List<T>>(json));
             }
-            
-            UpdateParams(token);
-            return (token.ToObject<T>(_serializer), null);
-        }
-        
-        private void UpdateParams(JToken token)
-        {
-            var paramsToken = token.SelectToken("params");
-            if (paramsToken == null)
-            {
-                paramsToken = token.SelectToken("Params");
-                if (paramsToken == null)
-                {
-                    return;
-                }
 
-//                if (paramsToken == null)
+            return (JsonSerializer.Deserialize<T>(json), default);
+//            
+//            using (var document = JsonDocument.Parse(json))
+//            {
+//                if (document.RootElement.ValueKind == JsonValueKind.Array)
 //                {
-//                    throw new FormatException("Missing 'params' token");
+//                    foreach (var element in document.RootElement.EnumerateArray())
+//                    {
+//                        UpdateParams(element);
+//                    }
+//
+//                    return (default, JsonSerializer.Deserialize<List<T>>(document));
 //                }
-            }
-            
-            var values = new List<string>();
-            foreach (var value in paramsToken.Value<IEnumerable<object>>())
-            {
-                var valueString = value?.ToString();
-                if (valueString == null)
-                {
-                    values.Add($"\"null\"");
-                    continue;
-                }
-                
-                if (valueString.StartsWith("{") || valueString.StartsWith("["))
-                {
-                    values.Add(Serialize(valueString));
-                    continue;
-                }
-                values.Add($"\"{valueString}\"");
-            }
-
-            var json = $"[{string.Join(",", values)}]";
-            paramsToken.Replace(JToken.Parse(json));
+//
+//                UpdateParams(document.RootElement);
+//
+//                return (JsonSerializer.Serialize(document), default);
+//            }
         }
+
+//        private void UpdateParams(JsonElement element)
+//        {
+//            JsonProperty paramsProperty;
+//            foreach (var property in element.EnumerateObject())
+//            {
+//                if (property.Name != "params" && property.Name != "Params")
+//                {
+//                    continue;
+//                }
+//                
+//                paramsProperty = property;
+//                break;
+//            }
+//
+//            if (string.IsNullOrWhiteSpace(paramsProperty.Name))
+//            {
+//                return;
+//            }
+//
+//            var values = new List<string>();
+//            foreach (var property in paramsProperty.Value.EnumerateArray())
+//            {
+//                var valueString = property.GetString();
+//                if (valueString == null)
+//                {
+//                    values.Add($"\"null\"");
+//                    continue;
+//                }
+//                
+//                if (valueString.StartsWith("{") || valueString.StartsWith("["))
+//                {
+//                    values.Add(Serialize(valueString));
+//                    continue;
+//                }
+//                values.Add($"\"{valueString}\"");
+//            }
+//
+//            var json = $"[{string.Join(",", values)}]";
+//            paramsToken.Replace(JToken.Parse(json));
+//        }
 
         public string Serialize<T>(T value, bool indented = false)
         {
-            return JsonConvert.SerializeObject(value, indented ? _readableSettings : _settings);
+            return JsonSerializer.Serialize(value, indented ? _readableSettings : _basicSettings);
         }
 
         public void RegisterConverter(JsonConverter converter)
         {
-            BasicConverters.Add(converter);
-            ReadableConverters.Add(converter);
-            
-            _readableSettings = new JsonSerializerSettings
-            {
-                NullValueHandling = NullValueHandling.Ignore,
-                Formatting = Formatting.Indented,
-                Converters = ReadableConverters
-            };
-            
-            _settings = new JsonSerializerSettings
-            {
-                NullValueHandling = NullValueHandling.Ignore,
-                Formatting = Formatting.None,
-                Converters = BasicConverters
-            };
+            _basicSettings.Converters.Add(converter);
+            _readableSettings.Converters.Add(converter);
         }
     }
 }

@@ -16,19 +16,14 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
-using System.IO;
-using System.Text;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
 using Nethermind.Core.Encoding;
 using Nethermind.Core.Extensions;
 using Nethermind.Core.Test.Builders;
-using Nethermind.Dirichlet.Numerics;
 using Nethermind.JsonRpc.Eip1186;
 using Nethermind.JsonRpc.Test.Data;
 using Nethermind.Store;
-using Newtonsoft.Json;
 using NUnit.Framework;
 
 namespace Nethermind.JsonRpc.Test.Eip1186

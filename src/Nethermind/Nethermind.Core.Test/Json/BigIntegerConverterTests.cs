@@ -16,10 +16,9 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System.IO;
 using System.Numerics;
+using System.Text.Json;
 using Nethermind.Core.Json;
-using Newtonsoft.Json;
 using NUnit.Framework;
 
 namespace Nethermind.Core.Test.Json
@@ -31,9 +30,9 @@ namespace Nethermind.Core.Test.Json
         public void Regression_0xa00000()
         {
             BigIntegerConverter converter = new BigIntegerConverter();
-            JsonReader reader = new JsonTextReader(new StringReader("0xa00000"));
-            reader.ReadAsString();
-            BigInteger result = converter.ReadJson(reader, typeof(BigInteger), BigInteger.Zero, false, JsonSerializer.CreateDefault());
+            Utf8JsonReader reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes("0xa00000"));
+            reader.Read();
+            BigInteger result = converter.Read(ref reader, typeof(BigInteger), null);
             Assert.AreEqual(BigInteger.Parse("10485760"), result);
         }
         
@@ -41,9 +40,9 @@ namespace Nethermind.Core.Test.Json
         public void Can_read_0x0()
         {
             BigIntegerConverter converter = new BigIntegerConverter();
-            JsonReader reader = new JsonTextReader(new StringReader("0x0"));
-            reader.ReadAsString();
-            BigInteger result = converter.ReadJson(reader, typeof(BigInteger), BigInteger.Zero, false, JsonSerializer.CreateDefault());
+            Utf8JsonReader reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes("0x0"));
+            reader.Read();
+            BigInteger result = converter.Read(ref reader, typeof(BigInteger), null);
             Assert.AreEqual(BigInteger.Parse("0"), result);
         }
         
@@ -51,9 +50,9 @@ namespace Nethermind.Core.Test.Json
         public void Can_read_0()
         {
             BigIntegerConverter converter = new BigIntegerConverter();
-            JsonReader reader = new JsonTextReader(new StringReader("0"));
-            reader.ReadAsString();
-            BigInteger result = converter.ReadJson(reader, typeof(BigInteger), BigInteger.Zero, false, JsonSerializer.CreateDefault());
+            Utf8JsonReader reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes("0"));
+            reader.Read();
+            BigInteger result = converter.Read(ref reader, typeof(BigInteger), null);
             Assert.AreEqual(BigInteger.Parse("0"), result);
         }
         
@@ -61,9 +60,9 @@ namespace Nethermind.Core.Test.Json
         public void Can_read_1()
         {
             BigIntegerConverter converter = new BigIntegerConverter();
-            JsonReader reader = new JsonTextReader(new StringReader("1"));
-            reader.ReadAsString();
-            BigInteger result = converter.ReadJson(reader, typeof(BigInteger), BigInteger.Zero, false, JsonSerializer.CreateDefault());
+            Utf8JsonReader reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes("1"));
+            reader.Read();
+            BigInteger result = converter.Read(ref reader, typeof(BigInteger), null);
             Assert.AreEqual(BigInteger.Parse("1"), result);
         }
     }

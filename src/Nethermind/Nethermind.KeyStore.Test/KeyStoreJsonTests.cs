@@ -19,16 +19,13 @@
 using System.IO;
 using System.Linq;
 using System.Security;
-using Nethermind.Config;
+using System.Text.Json.Serialization;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
-using Nethermind.Core.Extensions;
 using Nethermind.Core.Json;
 using Nethermind.Core.Model;
-using Nethermind.Core.Test.Builders;
 using Nethermind.KeyStore.Config;
 using Nethermind.Logging;
-using Newtonsoft.Json;
 using NUnit.Framework;
 
 namespace Nethermind.KeyStore.Test
@@ -125,7 +122,7 @@ namespace Nethermind.KeyStore.Test
 
         private class KeyStoreTestModel
         {
-            [JsonProperty(PropertyName = "Json")]
+            [JsonPropertyName("Json")]
             public KeyStoreItem KeyData { get; set; }
             public string Password { get; set; }
             public string Priv { get; set; }

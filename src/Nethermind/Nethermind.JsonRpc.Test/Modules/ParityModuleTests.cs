@@ -17,8 +17,6 @@
  */
 
 
-using System.Collections;
-using System.Threading;
 using Nethermind.Blockchain;
 using Nethermind.Blockchain.Receipts;
 using Nethermind.Blockchain.TxPools;
@@ -28,12 +26,10 @@ using Nethermind.Core.Crypto;
 using Nethermind.Core.Specs;
 using Nethermind.Core.Test.Builders;
 using Nethermind.Dirichlet.Numerics;
-using Nethermind.Facade;
 using Nethermind.JsonRpc.Modules.Parity;
 using Nethermind.Logging;
 using Nethermind.Store;
 using Nethermind.Store.Repositories;
-using NSubstitute;
 using NUnit.Framework;
 
 namespace Nethermind.JsonRpc.Test.Modules

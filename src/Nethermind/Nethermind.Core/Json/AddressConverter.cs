@@ -17,21 +17,22 @@
  */
 
 using System;
-using Newtonsoft.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Nethermind.Core.Json
 {
     public class AddressConverter : JsonConverter<Address>
     {
-        public override void WriteJson(JsonWriter writer, Address value, JsonSerializer serializer)
+        public override Address Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            writer.WriteValue(value.ToString());
+            string s = reader.GetString();
+            return string.IsNullOrEmpty(s) ? null : new Address(s);
         }
 
-        public override Address ReadJson(JsonReader reader, Type objectType, Address existingValue, bool hasExistingValue, JsonSerializer serializer)
+        public override void Write(Utf8JsonWriter writer, Address value, JsonSerializerOptions options)
         {
-            string s = (string)reader.Value;
-            return string.IsNullOrEmpty(s) ? null : new Address(s);
+            writer.WriteStringValue(value.ToString());
         }
     }
 }

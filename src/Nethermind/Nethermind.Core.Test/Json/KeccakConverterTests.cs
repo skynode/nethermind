@@ -16,11 +16,9 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System.IO;
+using System.Text.Json;
 using Nethermind.Core.Crypto;
 using Nethermind.Core.Json;
-using Nethermind.Dirichlet.Numerics;
-using Newtonsoft.Json;
 using NUnit.Framework;
 
 namespace Nethermind.Core.Test.Json
@@ -32,9 +30,9 @@ namespace Nethermind.Core.Test.Json
         public void Can_read_null()
         {
             KeccakConverter converter = new KeccakConverter();
-            JsonReader reader = new JsonTextReader(new StringReader(""));
-            reader.ReadAsString();
-            Keccak result = converter.ReadJson(reader, typeof(Keccak), null, false, JsonSerializer.CreateDefault());
+            Utf8JsonReader reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(""));
+            reader.Read();
+            Keccak result = converter.Read(ref reader, typeof(Keccak), null);
             Assert.AreEqual(null, result);
         }
     }

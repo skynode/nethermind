@@ -18,11 +18,11 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Nethermind.JsonRpc.Modules;
 using Nethermind.JsonRpc.Test.Modules;
 using Nethermind.Logging;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 using NUnit.Framework;
 
 namespace Nethermind.JsonRpc.Test
@@ -41,10 +41,14 @@ namespace Nethermind.JsonRpc.Test
             IJsonRpcService service = BuildRpcService(module);
             JsonRpcRequest request = GetJsonRequest(method, parameters);
             JsonRpcResponse response = service.SendRequestAsync(request).Result;
-            JsonSerializerSettings settings = new JsonSerializerSettings();
-            settings.ContractResolver = new CamelCasePropertyNamesContractResolver();
-            settings.Converters = service.Converters.Union(converters).ToArray();
-            string serialized = JsonConvert.SerializeObject(response, settings);
+            JsonSerializerOptions options = new JsonSerializerOptions();
+            options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+            foreach (var converter in service.Converters)
+            {
+                options.Converters.Add(converter);
+            }
+            
+            string serialized = JsonSerializer.Serialize(response, options);
             TestContext.WriteLine(serialized.Replace("\"", "\\\""));
             return serialized;
         }

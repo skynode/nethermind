@@ -16,10 +16,8 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System.IO;
+using System.Text.Json;
 using Nethermind.Core.Json;
-using Nethermind.Core.Test.Builders;
-using Newtonsoft.Json;
 using NUnit.Framework;
 
 namespace Nethermind.Core.Test.Json
@@ -31,9 +29,9 @@ namespace Nethermind.Core.Test.Json
         public void Can_read_null()
         {
             AddressConverter converter = new AddressConverter();
-            JsonReader reader = new JsonTextReader(new StringReader(""));
-            reader.ReadAsString();
-            Address result = converter.ReadJson(reader, typeof(Address), null, false, JsonSerializer.CreateDefault());
+            Utf8JsonReader reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(""));
+            reader.Read();
+            Address result = converter.Read(ref reader, typeof(Address), null);
             Assert.AreEqual(null, result);
         }
     }

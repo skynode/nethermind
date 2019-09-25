@@ -17,20 +17,12 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using Nethermind.Blockchain;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Nethermind.Core.Json;
-using Nethermind.Facade;
-using Nethermind.JsonRpc.Modules;
 using Nethermind.JsonRpc.Modules.Eth;
 using Nethermind.JsonRpc.Modules.Trace;
-using Nethermind.Logging;
-using Newtonsoft.Json;
-using NSubstitute;
 using NUnit.Framework;
-using JsonSerializer = Newtonsoft.Json.JsonSerializer;
 
 namespace Nethermind.JsonRpc.Test.Data
 {
@@ -38,63 +30,48 @@ namespace Nethermind.JsonRpc.Test.Data
     {
         protected void TestConverter<T>(T item, Func<T, T, bool> equalityComparer, JsonConverter<T> converter)
         {
-            JsonSerializer serializer = new JsonSerializer();
-            serializer.Converters.Add(converter);
-            StringBuilder builder = new StringBuilder();
-            StringWriter writer = new StringWriter(builder);
-            serializer.Serialize(writer, item);
-            string result = builder.ToString();
-            JsonReader reader = new JsonTextReader(new StringReader(result));
-            T deserialized = serializer.Deserialize<T>(reader);
+            JsonSerializerOptions options = new JsonSerializerOptions();
+            options.Converters.Add(converter);
+            string result = JsonSerializer.Serialize(item, options);
+            T deserialized = JsonSerializer.Deserialize<T>(result, options);
 
             Assert.True(equalityComparer(item, deserialized));
         }
 
         protected void TestSerialization<T>(T item, Func<T, T, bool> equalityComparer)
         {
-            JsonSerializer serializer = BuildSerializer<T>();
-
-            StringBuilder builder = new StringBuilder();
-            StringWriter writer = new StringWriter(builder);
-            serializer.Serialize(writer, item);
-            string result = builder.ToString();
-            JsonReader reader = new JsonTextReader(new StringReader(result));
-            T deserialized = serializer.Deserialize<T>(reader);
+            JsonSerializerOptions options = BuildSerializerOptions<T>();
+            string result = JsonSerializer.Serialize(item,options);
+            T deserialized = JsonSerializer.Deserialize<T>(result, options);
 
             Assert.True(equalityComparer(item, deserialized));
         }
 
-        private static JsonSerializer BuildSerializer<T>()
+        private static JsonSerializerOptions BuildSerializerOptions<T>()
         {
-            TraceModule module = new TraceModule(Substitute.For<IBlockchainBridge>(), NullLogManager.Instance, Substitute.For<ITracer>());
-
-            JsonSerializer serializer = new JsonSerializer();
+            JsonSerializerOptions options = new JsonSerializerOptions();
             foreach (JsonConverter converter in EthModuleFactory.Converters)
             {
-                serializer.Converters.Add(converter);
+                options.Converters.Add(converter);
             }            
             
             foreach (JsonConverter converter in TraceModuleFactory.Converters)
             {
-                serializer.Converters.Add(converter);
+                options.Converters.Add(converter);
             }
 
             foreach (JsonConverter converter in EthereumJsonSerializer.BasicConverters)
             {
-                serializer.Converters.Add(converter);
+                options.Converters.Add(converter);
             }
 
-            return serializer;
+            return options;
         }
 
         protected void TestOneWaySerialization<T>(T item, string expectedResult)
         {
-            JsonSerializer serializer = BuildSerializer<T>();
-
-            StringBuilder builder = new StringBuilder();
-            StringWriter writer = new StringWriter(builder);
-            serializer.Serialize(writer, item);
-            string result = builder.ToString();
+            JsonSerializerOptions options = BuildSerializerOptions<T>();
+            string result = JsonSerializer.Serialize(item,options);
             Assert.AreEqual(expectedResult, result, result.Replace("\"", "\\\""));
         }
     }

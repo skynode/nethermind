@@ -17,27 +17,41 @@
  */
 
 using System;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Nethermind.Core.Extensions;
+using Nethermind.Core.Json;
 using Nethermind.Evm.Tracing;
-using Newtonsoft.Json;
 
 namespace Nethermind.JsonRpc.Modules.Trace
 {
     public class ParityVmTraceConverter : JsonConverter<ParityVmTrace>
     {
-        public override void WriteJson(JsonWriter writer, ParityVmTrace value, JsonSerializer serializer)
+        private readonly ByteArrayConverter _byteArrayConverter = new ByteArrayConverter();
+
+        private readonly ParityVmOperationTraceConverter _vmOperationTraceConverter =
+            new ParityVmOperationTraceConverter();
+        
+        public override ParityVmTrace Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void Write(Utf8JsonWriter writer, ParityVmTrace value, JsonSerializerOptions options)
         {
             writer.WriteStartObject();
 
-            writer.WriteProperty("code", value.Code ?? Bytes.Empty, serializer);
-            writer.WriteProperty("ops", value.Operations, serializer);
+            writer.WritePropertyName("code");
+            _byteArrayConverter.Write(writer, value.Code ?? Bytes.Empty, options);
+            writer.WritePropertyName("ops");
+            writer.WriteStartArray();
+            foreach (var op in value.Operations)
+            {
+                _vmOperationTraceConverter.Write(writer, op, options);
+            }
+            writer.WriteEndArray();
             
             writer.WriteEndObject();
-        }
-
-        public override ParityVmTrace ReadJson(JsonReader reader, Type objectType, ParityVmTrace existingValue, bool hasExistingValue, JsonSerializer serializer)
-        {
-            throw new NotImplementedException();
         }
     }
 }

@@ -20,8 +20,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text.Json.Serialization;
 using Nethermind.Logging;
-using Newtonsoft.Json;
 
 namespace Nethermind.JsonRpc.Modules
 {

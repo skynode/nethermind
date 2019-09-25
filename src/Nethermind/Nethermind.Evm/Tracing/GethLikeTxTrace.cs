@@ -18,8 +18,8 @@
 
 using System.Collections.Generic;
 using System.Numerics;
+using System.Text.Json.Serialization;
 using Nethermind.Core.Extensions;
-using Newtonsoft.Json;
 
 namespace Nethermind.Evm.Tracing
 {
@@ -38,7 +38,7 @@ namespace Nethermind.Evm.Tracing
 
         public byte[] ReturnValue { get; set; }
         
-        [JsonProperty(PropertyName = "structLogs")]
+        [JsonPropertyName("structLogs")]
         public List<GethTxTraceEntry> Entries { get; set; }
 
         public static GethLikeTxTrace QuickFail { get; } = new GethLikeTxTrace {Failed = true, ReturnValue = Bytes.Empty};

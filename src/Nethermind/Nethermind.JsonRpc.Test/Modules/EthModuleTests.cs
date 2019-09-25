@@ -17,12 +17,10 @@
  */
 
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Numerics;
 using System.Threading;
 using Nethermind.Blockchain;
 using Nethermind.Blockchain.Filters;
-using Nethermind.Blockchain.Find;
 using Nethermind.Blockchain.Receipts;
 using Nethermind.Blockchain.Rewards;
 using Nethermind.Blockchain.TxPools;

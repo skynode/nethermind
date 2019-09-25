@@ -17,9 +17,9 @@
  */
 
 using System.IO;
+using System.Text.Json;
 using Nethermind.Core.Json;
 using Nethermind.Dirichlet.Numerics;
-using Newtonsoft.Json;
 using NUnit.Framework;
 
 namespace Nethermind.Core.Test.Json
@@ -31,9 +31,9 @@ namespace Nethermind.Core.Test.Json
         public void Regression_0xa00000()
         {
             UInt256Converter converter = new UInt256Converter();
-            JsonReader reader = new JsonTextReader(new StringReader("0xa00000"));
-            reader.ReadAsString();
-            UInt256 result = converter.ReadJson(reader, typeof(UInt256), UInt256.Zero, false, JsonSerializer.CreateDefault());
+            Utf8JsonReader reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes("0xa00000"));
+            reader.Read();
+            UInt256 result = converter.Read(ref reader, typeof(UInt256), null);
             Assert.AreEqual(UInt256.Parse("10485760"), result);
         }
         
@@ -41,9 +41,9 @@ namespace Nethermind.Core.Test.Json
         public void Can_read_0x0()
         {
             UInt256Converter converter = new UInt256Converter();
-            JsonReader reader = new JsonTextReader(new StringReader("0x0"));
-            reader.ReadAsString();
-            UInt256 result = converter.ReadJson(reader, typeof(UInt256), UInt256.Zero, false, JsonSerializer.CreateDefault());
+            Utf8JsonReader reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes("0x0"));
+            reader.Read();
+            UInt256 result = converter.Read(ref reader, typeof(UInt256), null);
             Assert.AreEqual(UInt256.Parse("0"), result);
         }
         
@@ -51,9 +51,9 @@ namespace Nethermind.Core.Test.Json
         public void Can_read_0()
         {
             UInt256Converter converter = new UInt256Converter();
-            JsonReader reader = new JsonTextReader(new StringReader("0"));
-            reader.ReadAsString();
-            UInt256 result = converter.ReadJson(reader, typeof(UInt256), UInt256.Zero, false, JsonSerializer.CreateDefault());
+            Utf8JsonReader reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes("0"));
+            reader.Read();
+            UInt256 result = converter.Read(ref reader, typeof(UInt256), null);
             Assert.AreEqual(UInt256.Parse("0"), result);
         }
         
@@ -61,9 +61,9 @@ namespace Nethermind.Core.Test.Json
         public void Can_read_1()
         {
             UInt256Converter converter = new UInt256Converter();
-            JsonReader reader = new JsonTextReader(new StringReader("1"));
-            reader.ReadAsString();
-            UInt256 result = converter.ReadJson(reader, typeof(UInt256), UInt256.Zero, false, JsonSerializer.CreateDefault());
+            Utf8JsonReader reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes("1"));
+            reader.Read();
+            UInt256 result = converter.Read(ref reader, typeof(UInt256), null);
             Assert.AreEqual(UInt256.Parse("1"), result);
         }
     }

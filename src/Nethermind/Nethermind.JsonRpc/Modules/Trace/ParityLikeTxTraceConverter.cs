@@ -18,75 +18,98 @@
 
 using System;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Nethermind.Core;
-using Nethermind.Evm.Precompiles;
+using Nethermind.Core.Json;
 using Nethermind.Evm.Tracing;
-using Newtonsoft.Json;
 
 namespace Nethermind.JsonRpc.Modules.Trace
 {
     public class ParityLikeTxTraceConverter : JsonConverter<ParityLikeTxTrace>
     {
-        private ParityTraceAddressConverter _traceAddressConverter = new ParityTraceAddressConverter();
+        private readonly ByteArrayConverter _byteArrayConverter = new ByteArrayConverter();
+        private readonly KeccakConverter _keccakConverter = new KeccakConverter();
 
-        public override void WriteJson(JsonWriter writer, ParityLikeTxTrace value, JsonSerializer serializer)
+        private readonly ParityAccountStateChangeConverter _accountStateChangeConverter =
+            new ParityAccountStateChangeConverter();
+        private readonly ParityTraceActionConverter _traceActionConverter = new ParityTraceActionConverter();
+        private readonly ParityTraceAddressConverter _traceAddressConverter = new ParityTraceAddressConverter();
+        private readonly ParityTraceResultConverter _traceResultConverter = new ParityTraceResultConverter();
+        private readonly ParityVmTraceConverter _vmTraceConverter = new ParityVmTraceConverter();
+
+        public override ParityLikeTxTrace Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void Write(Utf8JsonWriter writer, ParityLikeTxTrace value, JsonSerializerOptions options)
         {
             writer.WriteStartObject();
 
-            writer.WriteProperty("output", value.Output, serializer);
+            writer.WritePropertyName("output");
+            _byteArrayConverter.Write(writer, value.Output, options);
             writer.WritePropertyName("stateDiff");
             if (value.StateChanges != null)
             {
                 writer.WriteStartObject();
-                foreach ((Address address, ParityAccountStateChange stateChange) in value.StateChanges.OrderBy(sc => sc.Key, AddressComparer.Instance)) writer.WriteProperty(address.ToString(), stateChange, serializer);
+                foreach ((Address address, ParityAccountStateChange stateChange) in
+                    value.StateChanges.OrderBy(sc => sc.Key, AddressComparer.Instance))
+                {
+                    writer.WritePropertyName(address.ToString());
+                    _accountStateChangeConverter.Write(writer, stateChange, options);
+                }
 
                 writer.WriteEndObject();
             }
             else
             {
-                writer.WriteNull();
+                writer.WriteNullValue();
             }
 
             writer.WritePropertyName("trace");
             writer.WriteStartArray();
             if (value.Action != null)
             {
-                WriteJson(writer, value.Action, serializer);
+                WriteJson(writer, value.Action, options);
             }
             writer.WriteEndArray();
 
             if (value.TransactionHash != null)
             {
-                writer.WriteProperty("transactionHash", value.TransactionHash, serializer);
+                writer.WritePropertyName("transactionHash");
+                _keccakConverter.Write(writer, value.TransactionHash, options);
             }
             
-            writer.WriteProperty("vmTrace", value.VmTrace, serializer);
+            writer.WritePropertyName("vmTrace");
+            _vmTraceConverter.Write(writer, value.VmTrace, options);
 
             writer.WriteEndObject();
-        }
 
-        /*
-         *    "action": {
-         *      "callType": "call",
-         *      "from": "0x430adc807210dab17ce7538aecd4040979a45137",
-         *      "gas": "0x1a1f8",
-         *      "input": "0x",
-         *      "to": "0x9bcb0733c56b1d8f0c7c4310949e00485cae4e9d",
-         *      "value": "0x2707377c7552d8000"
-         *    },
-         *    "blockHash": "0x3aa472d57e220458fe5b9f1587b9211de68b27504064f5f6e427c68fc1691a29",
-         *    "blockNumber": 2392500,
-         *    "result": {
-         *      "gasUsed": "0x2162",
-         *      "output": "0x"
-         *    },
-         *    "subtraces": 2,
-         *    "traceAddress": [],
-         *    "transactionHash": "0x847ed5e2e9430bc6ee925a81137ebebe0cea1352209f96723d3503eb7a707aa8",
-         *    "transactionPosition": 42,
-         *    "type": "call"
-         */
-        private void WriteJson(JsonWriter writer, ParityTraceAction traceAction, JsonSerializer serializer)
+            /*
+             *    "action": {
+             *      "callType": "call",
+             *      "from": "0x430adc807210dab17ce7538aecd4040979a45137",
+             *      "gas": "0x1a1f8",
+             *      "input": "0x",
+             *      "to": "0x9bcb0733c56b1d8f0c7c4310949e00485cae4e9d",
+             *      "value": "0x2707377c7552d8000"
+             *    },
+             *    "blockHash": "0x3aa472d57e220458fe5b9f1587b9211de68b27504064f5f6e427c68fc1691a29",
+             *    "blockNumber": 2392500,
+             *    "result": {
+             *      "gasUsed": "0x2162",
+             *      "output": "0x"
+             *    },
+             *    "subtraces": 2,
+             *    "traceAddress": [],
+             *    "transactionHash": "0x847ed5e2e9430bc6ee925a81137ebebe0cea1352209f96723d3503eb7a707aa8",
+             *    "transactionPosition": 42,
+             *    "type": "call"
+             */
+        }
+        
+        private void WriteJson(Utf8JsonWriter writer, ParityTraceAction traceAction, JsonSerializerOptions options)
         {
             if (!traceAction.IncludeInTrace)
             {
@@ -94,28 +117,25 @@ namespace Nethermind.JsonRpc.Modules.Trace
             }
             
             writer.WriteStartObject();
-            writer.WriteProperty("action", traceAction, serializer);
+            writer.WritePropertyName("action");
+            _traceActionConverter.Write(writer, traceAction, options);
             if (traceAction.Error == null)
             {
-                writer.WriteProperty("result", traceAction.Result, serializer);
+                writer.WritePropertyName("result");
+                _traceResultConverter.Write(writer, traceAction.Result, options);
             }
             else
             {
-                writer.WriteProperty("error", traceAction.Error, serializer);
+                writer.WriteString("error", traceAction.Error);
             }
 
-            writer.WriteProperty("subtraces", traceAction.Subtraces.Count(s => s.IncludeInTrace));
+            writer.WriteNumber("subtraces", traceAction.Subtraces.Count(s => s.IncludeInTrace));
             writer.WritePropertyName("traceAddress");
-            _traceAddressConverter.WriteJson(writer, traceAction.TraceAddress, serializer);
+            _traceAddressConverter.Write(writer, traceAction.TraceAddress, options);
 
-            writer.WriteProperty("type", traceAction.Type);
+            writer.WriteString("type", traceAction.Type);
             writer.WriteEndObject();
-            foreach (ParityTraceAction subtrace in traceAction.Subtraces) WriteJson(writer, subtrace, serializer);
-        }
-
-        public override ParityLikeTxTrace ReadJson(JsonReader reader, Type objectType, ParityLikeTxTrace existingValue, bool hasExistingValue, JsonSerializer serializer)
-        {
-            throw new NotImplementedException();
+            foreach (ParityTraceAction subtrace in traceAction.Subtraces) WriteJson(writer, subtrace, options);
         }
     }
 }

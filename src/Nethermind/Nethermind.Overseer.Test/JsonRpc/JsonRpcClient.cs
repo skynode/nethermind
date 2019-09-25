@@ -17,13 +17,12 @@
  */
 
 using System;
-using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using DotNetty.Common.Utilities;
 using Nethermind.Core.Json;
-using Newtonsoft.Json;
 
 namespace Nethermind.Overseer.Test.JsonRpc
 {
@@ -75,7 +74,7 @@ namespace Nethermind.Overseer.Test.JsonRpc
             }
 
             return await response.Content.ReadAsStringAsync()
-                .ContinueWith(t => JsonConvert.DeserializeObject<JsonRpcResponse<T>>(t.Result));
+                .ContinueWith(t => JsonSerializer.Deserialize<JsonRpcResponse<T>>(t.Result));
         }
 
         private StringContent GetPayload(JsonRpcRequest request)

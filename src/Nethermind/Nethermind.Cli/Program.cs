@@ -18,14 +18,12 @@
 
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using Jint.Native;
 using Nethermind.Cli.Modules;
 using Nethermind.Core;
 using Nethermind.Core.Json;
-using Nethermind.Core.Specs;
 using Nethermind.JsonRpc.Modules.Trace;
 using Nethermind.Logging;
 using Console = Colorful.Console;

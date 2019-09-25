@@ -18,7 +18,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Reflection;
+using System.Text.Json.Serialization;
 using Nethermind.Blockchain;
 using Nethermind.Blockchain.Receipts;
 using Nethermind.Blockchain.Rewards;
@@ -27,7 +27,6 @@ using Nethermind.Config;
 using Nethermind.Core.Specs;
 using Nethermind.Logging;
 using Nethermind.Store;
-using Newtonsoft.Json;
 
 namespace Nethermind.JsonRpc.Modules.DebugModule
 {
@@ -79,7 +78,7 @@ namespace Nethermind.JsonRpc.Modules.DebugModule
             return new DebugModule(_logManager, debugBridge);
         }
 
-        public static JsonConverter[] Converters = {new GethLikeTxTraceConverter()};
+        public static readonly JsonConverter[] Converters = {new GethLikeTxTraceConverter()};
 
         public override IReadOnlyCollection<JsonConverter> GetConverters() => Converters;
     }

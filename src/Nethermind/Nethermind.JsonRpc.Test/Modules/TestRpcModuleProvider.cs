@@ -18,6 +18,7 @@
 
 using System.Collections.Generic;
 using System.Reflection;
+using System.Text.Json.Serialization;
 using Nethermind.JsonRpc.Modules;
 using Nethermind.JsonRpc.Modules.DebugModule;
 using Nethermind.JsonRpc.Modules.Eth;
@@ -26,7 +27,6 @@ using Nethermind.JsonRpc.Modules.Parity;
 using Nethermind.JsonRpc.Modules.Trace;
 using Nethermind.JsonRpc.Modules.Web3;
 using Nethermind.Logging;
-using Newtonsoft.Json;
 using NSubstitute;
 
 namespace Nethermind.JsonRpc.Test.Modules
