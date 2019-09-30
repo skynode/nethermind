@@ -22,6 +22,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Nethermind.Core;
 using Nethermind.Core.Json;
+using Nethermind.Core.Json.Converters;
 using Nethermind.Evm.Tracing;
 
 namespace Nethermind.JsonRpc.Modules.Trace

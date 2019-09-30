@@ -19,6 +19,7 @@
 using System.IO;
 using System.Text.Json;
 using Nethermind.Core.Json;
+using Nethermind.Core.Json.Converters;
 using Nethermind.Dirichlet.Numerics;
 using NUnit.Framework;
 

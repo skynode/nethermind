@@ -19,26 +19,42 @@
 using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Nethermind.Core.Extensions;
 
-namespace Nethermind.Core.Json
+namespace Nethermind.Core.Json.Converters
 {
-    public class ByteArrayConverter : JsonConverter<byte[]>
+    public class NullableLongConverter : JsonConverter<long?>
     {
-        public override byte[] Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        private readonly LongConverter _longConverter;
+        
+        public NullableLongConverter() : this(NumberConversion.Hex)
+        {
+        }
+
+        public NullableLongConverter(NumberConversion conversion)
+        {
+            _longConverter = new LongConverter(conversion);
+        }
+
+        public override long? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             if (reader.TokenType == JsonTokenType.Null)
             {
                 return null;
             }
+
             
-            string s = reader.GetString();
-            return Bytes.FromHexString(s);
+            return _longConverter.Read(ref reader, typeToConvert, options);
         }
 
-        public override void Write(Utf8JsonWriter writer, byte[] value, JsonSerializerOptions options)
+        public override void Write(Utf8JsonWriter writer, long? value, JsonSerializerOptions options)
         {
-            writer.WriteStringValue(value.ToHexString(true));
+            if (!value.HasValue)
+            {
+                writer.WriteNullValue();
+                return;
+            }
+            
+            _longConverter.Write(writer, value.Value, options);
         }
     }
 }

@@ -18,6 +18,7 @@
 
 using System.Text.Json.Serialization;
 using Nethermind.Core.Json;
+using Nethermind.Core.Json.Converters;
 using Nethermind.Dirichlet.Numerics;
 
 namespace Nethermind.JsonRpc
@@ -25,8 +26,8 @@ namespace Nethermind.JsonRpc
     public class JsonRpcResponse
     {
         
-        [JsonConverter(typeof(UInt256Converter))]
         [JsonPropertyName("id")]
+        [JsonConverter(typeof(DecimalUInt256Converter))]
         public UInt256 Id { get; set; }
         
         [JsonPropertyName("jsonrpc")]
@@ -41,8 +42,8 @@ namespace Nethermind.JsonRpc
 
     public class JsonRpcResponse<T>
     {
-        [JsonConverter(typeof(UInt256Converter))]
         [JsonPropertyName("id")]
+        [JsonConverter(typeof(DecimalUInt256Converter))]
         public UInt256 Id { get; set; }
         
         [JsonPropertyName("jsonrpc")]

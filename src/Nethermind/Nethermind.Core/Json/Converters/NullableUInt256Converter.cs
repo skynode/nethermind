@@ -21,14 +21,13 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Nethermind.Dirichlet.Numerics;
 
-namespace Nethermind.Core.Json
+namespace Nethermind.Core.Json.Converters
 {
     public class NullableUInt256Converter : JsonConverter<UInt256?>
     {
-        private UInt256Converter _uInt256Converter;
+        private readonly UInt256Converter _uInt256Converter;
         
-        public NullableUInt256Converter()
-            : this(NumberConversion.Hex)
+        public NullableUInt256Converter() : this(NumberConversion.Hex)
         {
         }
 

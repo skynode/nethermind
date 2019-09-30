@@ -20,43 +20,72 @@ using System;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Nethermind.Dirichlet.Numerics;
 
-namespace Nethermind.Core.Json
+namespace Nethermind.Core.Json.Converters
 {
-    public class LongConverter : JsonConverter<long>
+    public class UInt256Converter : JsonConverter<UInt256>
     {
         private readonly NumberConversion _conversion;
 
-        public LongConverter()
-            : this(NumberConversion.Hex)
+        public UInt256Converter() : this(NumberConversion.Hex)
         {
         }
 
-        public LongConverter(NumberConversion conversion)
+        public UInt256Converter(NumberConversion conversion)
         {
             _conversion = conversion;
         }
-        
-        public override long Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+
+        public override UInt256 Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             if (reader.TryGetInt64(out var value))
             {
-                return value;
+                return new UInt256(value);
             }
-            
+
             string s = reader.GetString();
-            return FromString(s);
+            if (s == "0x0")
+            {
+                return UInt256.Zero;
+            }
+
+            if (s.StartsWith("0x0"))
+            {
+                return UInt256.Parse(s.AsSpan(2), NumberStyles.AllowHexSpecifier);
+            }
+
+            if (s.StartsWith("0x"))
+            {
+                Span<char> withZero = new Span<char>(new char[s.Length - 1]);
+                withZero[0] = '0';
+                s.AsSpan(2).CopyTo(withZero.Slice(1));
+                return UInt256.Parse(withZero, NumberStyles.AllowHexSpecifier);
+            }
+
+            try
+            {
+                return UInt256.Parse(s, NumberStyles.Integer);
+            }
+            catch (Exception)
+            {
+                return UInt256.Parse(s, NumberStyles.AllowHexSpecifier);
+            }
         }
 
-        public override void Write(Utf8JsonWriter writer, long value, JsonSerializerOptions options)
+        public override void Write(Utf8JsonWriter writer, UInt256 value, JsonSerializerOptions options)
         {
-            if (value == 0L)
+            if (value.IsZero)
             {
                 writer.WriteStringValue("0x0");
                 return;
             }
-            
-            switch (_conversion)
+
+            NumberConversion usedConversion = _conversion == NumberConversion.Decimal
+                ? value < int.MaxValue ? NumberConversion.Decimal : NumberConversion.Hex
+                : _conversion;
+
+            switch (usedConversion)
             {
                 case NumberConversion.PaddedHex:
                     writer.WriteStringValue(string.Concat("0x", value.ToString("x64").TrimStart('0')));
@@ -65,34 +94,11 @@ namespace Nethermind.Core.Json
                     writer.WriteStringValue(string.Concat("0x", value.ToString("x").TrimStart('0')));
                     break;
                 case NumberConversion.Decimal:
-                    writer.WriteStringValue(value.ToString());
+                    writer.WriteNumberValue((int) value);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
-        }
-
-        public static long FromString(string s)
-        {
-            if (s == "0x0")
-            {
-                return 0L;
-            }
-
-            if (s.StartsWith("0x0"))
-            {
-                return long.Parse(s.AsSpan(2), NumberStyles.AllowHexSpecifier);
-            }
-
-            if (s.StartsWith("0x"))
-            {
-                Span<char> withZero = new Span<char>(new char[s.Length - 1]);
-                withZero[0] = '0';
-                s.AsSpan(2).CopyTo(withZero.Slice(1));
-                return long.Parse(withZero, NumberStyles.AllowHexSpecifier);
-            }
-
-            return long.Parse(s, NumberStyles.Integer);
         }
     }
 }

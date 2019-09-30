@@ -22,6 +22,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Nethermind.Core.Json;
+using Nethermind.Core.Json.Converters;
 using Nethermind.Dirichlet.Numerics;
 using Nethermind.Evm.Tracing;
 

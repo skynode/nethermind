@@ -1,4 +1,4 @@
-namespace Nethermind.Core.Json
+namespace Nethermind.Core.Json.Converters
 {
     public enum NumberConversion
     {

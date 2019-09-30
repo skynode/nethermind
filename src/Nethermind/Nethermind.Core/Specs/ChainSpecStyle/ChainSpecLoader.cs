@@ -26,6 +26,7 @@ using System.Numerics;
 using Nethermind.Core.Crypto;
 using Nethermind.Core.Extensions;
 using Nethermind.Core.Json;
+using Nethermind.Core.Json.Converters;
 using Nethermind.Core.Specs.ChainSpecStyle.Json;
 using Nethermind.Core.Specs.GenesisFileStyle.Json;
 using Nethermind.Dirichlet.Numerics;

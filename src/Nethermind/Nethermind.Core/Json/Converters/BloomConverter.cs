@@ -16,25 +16,24 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Nethermind.Core.Crypto;
+using Nethermind.Core.Extensions;
 
-namespace Nethermind.Core.Json
+namespace Nethermind.Core.Json.Converters
 {
-    public class PublicKeyConverter : JsonConverter<PublicKey>
+    public class BloomConverter : JsonConverter<Bloom>
     {
-        public override PublicKey Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        public override Bloom Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             string s = reader.GetString();
-            return s == null ? null : new PublicKey(s);
+            return s == null ? null : new Bloom(Bytes.FromHexString(s).AsSpan().ToBigEndianBitArray2048());
         }
 
-        public override void Write(Utf8JsonWriter writer, PublicKey value, JsonSerializerOptions options)
+        public override void Write(Utf8JsonWriter writer, Bloom value, JsonSerializerOptions options)
         {
-            writer.WriteStringValue(value.ToString());
+            writer.WriteStringValue(value?.Bytes.ToHexString(true));
         }
     }
 }

@@ -21,6 +21,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Nethermind.Core.Extensions;
 using Nethermind.Core.Json;
+using Nethermind.Core.Json.Converters;
 
 namespace Nethermind.JsonRpc.Eip1186
 {

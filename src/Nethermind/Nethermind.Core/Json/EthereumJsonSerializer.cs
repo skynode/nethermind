@@ -19,6 +19,7 @@
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Nethermind.Core.Json.Converters;
 
 namespace Nethermind.Core.Json
 {

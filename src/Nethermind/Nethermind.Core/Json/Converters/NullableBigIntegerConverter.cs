@@ -20,11 +20,11 @@ using System;
 using System.Numerics;
 using System.Text.Json;
 
-namespace Nethermind.Core.Json
+namespace Nethermind.Core.Json.Converters
 {
     public class NullableBigIntegerConverter : System.Text.Json.Serialization.JsonConverter<BigInteger?>
     {
-        private BigIntegerConverter _bigIntegerConverter;
+        private readonly BigIntegerConverter _bigIntegerConverter;
         
         public NullableBigIntegerConverter()
             : this(NumberConversion.Hex)

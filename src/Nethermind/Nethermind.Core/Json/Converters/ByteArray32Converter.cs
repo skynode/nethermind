@@ -18,22 +18,21 @@
 
 using System;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Nethermind.Core.Extensions;
 
-namespace Nethermind.Core.Json
+namespace Nethermind.Core.Json.Converters
 {
-    public class BloomConverter : JsonConverter<Bloom>
+    public class Bytes32Converter : System.Text.Json.Serialization.JsonConverter<byte[]>
     {
-        public override Bloom Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        public override byte[] Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             string s = reader.GetString();
-            return s == null ? null : new Bloom(Bytes.FromHexString(s).AsSpan().ToBigEndianBitArray2048());
+            return Bytes.FromHexString(s);
         }
 
-        public override void Write(Utf8JsonWriter writer, Bloom value, JsonSerializerOptions options)
+        public override void Write(Utf8JsonWriter writer, byte[] value, JsonSerializerOptions options)
         {
-            writer.WriteStringValue(value?.Bytes.ToHexString(true));
+            writer.WriteStringValue(string.Concat("0x", value.ToHexString(false).PadLeft(64, '0')));
         }
     }
 }

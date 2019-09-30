@@ -25,8 +25,10 @@ namespace Nethermind.EvmPlayground
         
         [JsonPropertyName("jsonrpc")]
         public string Jsonrpc { get; set; }
+        
         [JsonPropertyName("result")]
         public T Result { get; set; }
+        
         [JsonPropertyName("error")]
         public string Error { get; set; }
     }

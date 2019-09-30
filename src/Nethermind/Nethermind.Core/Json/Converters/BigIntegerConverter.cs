@@ -18,42 +18,46 @@
 
 using System;
 using System.Globalization;
+using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Nethermind.Dirichlet.Numerics;
 
-namespace Nethermind.Core.Json
+namespace Nethermind.Core.Json.Converters
 {
-    public class UInt256Converter : JsonConverter<UInt256>
+    public class BigIntegerConverter : JsonConverter<BigInteger>
     {
         private readonly NumberConversion _conversion;
 
-        public UInt256Converter()
-            : this(NumberConversion.Hex)
+        public BigIntegerConverter() : this(NumberConversion.Hex)
         {
         }
 
-        public UInt256Converter(NumberConversion conversion)
+        public BigIntegerConverter(NumberConversion conversion)
         {
             _conversion = conversion;
         }
 
-        public override UInt256 Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        public override BigInteger Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             if (reader.TryGetInt64(out var value))
             {
-                return new UInt256(value);
+                return value;
             }
-
+            
             string s = reader.GetString();
+            if (!s.StartsWith("0x"))
+            {
+                return BigInteger.Parse(s);
+            }
+            
             if (s == "0x0")
             {
-                return UInt256.Zero;
+                return BigInteger.Zero;
             }
 
             if (s.StartsWith("0x0"))
             {
-                return UInt256.Parse(s.AsSpan(2), NumberStyles.AllowHexSpecifier);
+                return BigInteger.Parse(s.AsSpan(2), NumberStyles.AllowHexSpecifier);
             }
 
             if (s.StartsWith("0x"))
@@ -61,20 +65,13 @@ namespace Nethermind.Core.Json
                 Span<char> withZero = new Span<char>(new char[s.Length - 1]);
                 withZero[0] = '0';
                 s.AsSpan(2).CopyTo(withZero.Slice(1));
-                return UInt256.Parse(withZero, NumberStyles.AllowHexSpecifier);
+                return BigInteger.Parse(withZero, NumberStyles.AllowHexSpecifier);
             }
 
-            try
-            {
-                return UInt256.Parse(s, NumberStyles.Integer);
-            }
-            catch (Exception)
-            {
-                return UInt256.Parse(s, NumberStyles.AllowHexSpecifier);
-            }
+            return BigInteger.Parse(s, NumberStyles.Integer);
         }
 
-        public override void Write(Utf8JsonWriter writer, UInt256 value, JsonSerializerOptions options)
+        public override void Write(Utf8JsonWriter writer, BigInteger value, JsonSerializerOptions options)
         {
             if (value.IsZero)
             {
@@ -82,20 +79,16 @@ namespace Nethermind.Core.Json
                 return;
             }
 
-            NumberConversion usedConversion = _conversion == NumberConversion.Decimal
-                ? value < int.MaxValue ? NumberConversion.Decimal : NumberConversion.Hex
-                : _conversion;
-
-            switch (usedConversion)
+            switch (_conversion)
             {
                 case NumberConversion.PaddedHex:
-                    writer.WriteStringValue(string.Concat("0x", value.ToString("x64").TrimStart('0')));
+                    writer.WriteStringValue($"\"0x{value.ToString("x64").TrimStart('0')}\"");
                     break;
                 case NumberConversion.Hex:
-                    writer.WriteStringValue(string.Concat("0x", value.ToString("x").TrimStart('0')));
+                    writer.WriteStringValue($"\"0x{value.ToString("x").TrimStart('0')}\"");
                     break;
                 case NumberConversion.Decimal:
-                    writer.WriteNumberValue((int) value);
+                    writer.WriteStringValue(value.ToString());
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();

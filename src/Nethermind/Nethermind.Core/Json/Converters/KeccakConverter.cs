@@ -16,24 +16,25 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
+using System;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Nethermind.Core.Crypto;
-using Nethermind.Core.Json;
-using Nethermind.Core.Json.Converters;
-using NUnit.Framework;
+using Nethermind.Core.Extensions;
 
-namespace Nethermind.Core.Test.Json
+namespace Nethermind.Core.Json.Converters
 {
-    public class PublicKeyConverterTests
+    public class KeccakConverter : JsonConverter<Keccak>
     {
-        [Test]
-        public void Can_read_null()
+        public override Keccak Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            PublicKeyConverter converter = new PublicKeyConverter();
-            Utf8JsonReader reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(""));
-            reader.Read();
-            PublicKey result = converter.Read(ref reader, typeof(PublicKey), null);
-            Assert.AreEqual(null, result);
+            string s = reader.GetString();
+            return s == null ? null : new Keccak(Bytes.FromHexString(s));
+        }
+
+        public override void Write(Utf8JsonWriter writer, Keccak value, JsonSerializerOptions options)
+        {
+            writer.WriteStringValue(value.Bytes.ToHexString(true));
         }
     }
 }

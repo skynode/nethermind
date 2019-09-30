@@ -19,22 +19,20 @@
 using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Nethermind.Core.Crypto;
-using Nethermind.Core.Extensions;
 
-namespace Nethermind.Core.Json
+namespace Nethermind.Core.Json.Converters
 {
-    public class KeccakConverter : JsonConverter<Keccak>
+    public class AddressConverter : JsonConverter<Address>
     {
-        public override Keccak Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        public override Address Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             string s = reader.GetString();
-            return s == null ? null : new Keccak(Bytes.FromHexString(s));
+            return string.IsNullOrEmpty(s) ? null : new Address(s);
         }
 
-        public override void Write(Utf8JsonWriter writer, Keccak value, JsonSerializerOptions options)
+        public override void Write(Utf8JsonWriter writer, Address value, JsonSerializerOptions options)
         {
-            writer.WriteStringValue(value.Bytes.ToHexString(true));
+            writer.WriteStringValue(value.ToString());
         }
     }
 }
