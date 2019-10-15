@@ -180,6 +180,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nethermind.Facade.Test", "N
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nethermind.Evm.Benchmark", "Nethermind.Evm.Benchmark\Nethermind.Evm.Benchmark.csproj", "{2B4B8E88-0139-4C9C-8FE6-C6F2AE5A4D3D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nethermind.LoadTest", "Nethermind.LoadTest\Nethermind.LoadTest.csproj", "{3FF47B51-AFAA-4F91-93CA-1D6FED4C5BAC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -466,6 +468,10 @@ Global
 		{2B4B8E88-0139-4C9C-8FE6-C6F2AE5A4D3D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2B4B8E88-0139-4C9C-8FE6-C6F2AE5A4D3D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2B4B8E88-0139-4C9C-8FE6-C6F2AE5A4D3D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3FF47B51-AFAA-4F91-93CA-1D6FED4C5BAC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3FF47B51-AFAA-4F91-93CA-1D6FED4C5BAC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3FF47B51-AFAA-4F91-93CA-1D6FED4C5BAC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3FF47B51-AFAA-4F91-93CA-1D6FED4C5BAC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -516,6 +522,7 @@ Global
 		{2D5512D3-8E5B-4815-9791-A2220559AF92} = {1564814A-27F8-40A3-943E-8E950D5EE17D}
 		{0F09355D-ECB3-4F3F-93F7-BCDD70027B30} = {1564814A-27F8-40A3-943E-8E950D5EE17D}
 		{2B4B8E88-0139-4C9C-8FE6-C6F2AE5A4D3D} = {AE494DDC-4577-46C6-8AC1-4F6254FDA31D}
+		{3FF47B51-AFAA-4F91-93CA-1D6FED4C5BAC} = {E627BFEF-ABD3-4B8F-A9AC-204251AE440C}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {092CA5E3-6180-4ED7-A3CB-9B57FAC2AA85}
