@@ -377,7 +377,7 @@ namespace Nethermind.Blockchain
                     {
                         if (blocks[i].Hash == ex.InvalidBlockHash)
                         {
-                            // _blockTree.DeleteInvalidBlock(blocks[i]);
+                            _blockTree.DeleteInvalidBlock(blocks[i]);
                             if (_logger.IsDebug) _logger.Debug($"Skipped processing of {suggestedBlock.ToString(Block.Format.FullHashAndNumber)} because of {blocks[i].ToString(Block.Format.FullHashAndNumber)} is invalid");
                             return null;
                         }

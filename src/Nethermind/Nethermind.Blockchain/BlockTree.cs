@@ -811,7 +811,7 @@ namespace Nethermind.Blockchain
             }
             finally
             {
-                DeleteBlocks(invalidBlock.Hash);
+                // DeleteBlocks(invalidBlock.Hash);
                 CanAcceptNewBlocks = true;
             }
         }
