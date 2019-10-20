@@ -28,18 +28,12 @@ namespace Nethermind.Evm
             long result = GasCostOf.Transaction;
             long txDataNonZeroGasCost = releaseSpec.IsEip2028Enabled ? GasCostOf.TxDataNonZeroEip2028 : GasCostOf.TxDataNonZero;
 
-            if (transaction.Data != null)
+            byte[] input = transaction.Data ?? transaction.Init;
+            if (input != null)
             {
-                for (int i = 0; i < transaction.Data.Length; i++)
+                for (int i = 0; i < input.Length; i++)
                 {
-                    result += transaction.Data[i] == 0 ? GasCostOf.TxDataZero : txDataNonZeroGasCost;
-                }
-            }
-            else if (transaction.Init != null)
-            {
-                for (int i = 0; i < transaction.Init.Length; i++)
-                {
-                    result += transaction.Init[i] == 0 ? GasCostOf.TxDataZero : txDataNonZeroGasCost;
+                    result += input[i] == 0 ? GasCostOf.TxDataZero : txDataNonZeroGasCost;
                 }
             }
 
