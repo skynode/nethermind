@@ -17,12 +17,12 @@ namespace Nethermind.EvmPlayground
         private readonly ILogger _logger;
 
         public BasicJsonRpcClient(Uri uri)
-            : this(uri, new EthereumJsonSerializer(), NullLogger.Instance)
+            : this(uri, new Utf8EthereumJsonSerializer(), NullLogger.Instance)
         {
         }
 
         internal BasicJsonRpcClient(Uri uri, ILogger logger)
-            : this(uri, new EthereumJsonSerializer(), logger)
+            : this(uri, new Utf8EthereumJsonSerializer(), logger)
         {
             _logger.Info($"Starting RPC client for {uri}");
         }

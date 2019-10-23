@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2018 Demerzel Solutions Limited
  * This file is part of the Nethermind library.
  *
@@ -16,24 +16,31 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System.IO;
-using Nethermind.Core.Crypto;
+using System.Numerics;
+using Nethermind.Core.Extensions;
 using Nethermind.Core.Json;
-using Newtonsoft.Json;
 using NUnit.Framework;
+using Utf8Json;
 
 namespace Nethermind.Core.Test.Json
 {
-    public class PublicKeyConverterTests
+    [TestFixture]
+    public class BigIntegerFormatterTests
     {
-        [Test]
-        public void Can_read_null()
+        [TestCase("0xa00000", "10485760")]
+        [TestCase("\"0xa00000\"", "10485760")]
+        [TestCase("0x", "0")]
+        [TestCase("0x0", "0")]
+        [TestCase("0", "0")]
+        [TestCase("1", "1")]
+        [TestCase("\"1\"", "1")]
+        [TestCase("0x20000", "131072")]
+        public void Should_deserialize(string value, string expected)
         {
-            PublicKeyConverter converter = new PublicKeyConverter();
-            JsonReader reader = new JsonTextReader(new StringReader(""));
-            reader.ReadAsString();
-            PublicKey result = converter.ReadJson(reader, typeof(PublicKey), null, false, JsonSerializer.CreateDefault());
-            Assert.AreEqual(null, result);
+            BigIntegerFormatter formatter = new BigIntegerFormatter();
+            JsonReader reader = new JsonReader(value.GetUtf8Bytes());
+            BigInteger result = formatter.Deserialize(ref reader, EthereumFormatterResolver.Instance);
+            Assert.AreEqual(BigInteger.Parse(expected), result);
         }
     }
 }

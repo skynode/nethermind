@@ -16,23 +16,40 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
 using Nethermind.Core.Extensions;
-using Newtonsoft.Json;
+using Utf8Json;
 
 namespace Nethermind.Core.Json
 {
-    public class BloomConverter : JsonConverter<Bloom>
+    public class ByteArrayFormatter : IJsonFormatter<byte[]>
     {
-        public override void WriteJson(JsonWriter writer, Bloom value, Newtonsoft.Json.JsonSerializer serializer)
+        public void Serialize(ref JsonWriter writer, byte[] value, IJsonFormatterResolver formatterResolver)
         {
-            writer.WriteValue(value?.Bytes.ToHexString(true));
+            if (value is null)
+            {
+                writer.WriteNull();
+                return;
+            }
+            
+            writer.WriteRaw(value.ToHexString(true).GetUtf8Bytes());
         }
 
-        public override Bloom ReadJson(JsonReader reader, Type objectType, Bloom existingValue, bool hasExistingValue, Newtonsoft.Json.JsonSerializer serializer)
+        public byte[] Deserialize(ref JsonReader reader, IJsonFormatterResolver formatterResolver)
         {
-            string s = (string)reader.Value;
-            return s == null ? null : new Bloom(Bytes.FromHexString(s).AsSpan().ToBigEndianBitArray2048());
+            if (reader.ReadIsNull())
+            {
+                return null;
+            }
+            
+            var (isString, isHex, segment) = reader.GetHexStringSegment();
+            if (isString || isHex)
+            {
+                return Bytes.FromHexString(System.Text.Encoding.UTF8.GetString(segment));
+            }
+            
+            reader.AdvanceOffset(-segment.Count);
+
+            return null;
         }
     }
 }

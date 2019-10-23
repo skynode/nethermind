@@ -16,45 +16,42 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
-using Nethermind.Dirichlet.Numerics;
-using Newtonsoft.Json;
+using Nethermind.Core.Crypto;
+using Nethermind.Core.Extensions;
+using Utf8Json;
 
 namespace Nethermind.Core.Json
 {
-    public class NullableLongConverter : JsonConverter<long?>
+    public class PublicKeyFormatter : IJsonFormatter<PublicKey>
     {
-        private LongConverter _longConverter;
-        
-        public NullableLongConverter()
-            : this(NumberConversion.Hex)
+        public void Serialize(ref JsonWriter writer, PublicKey value, IJsonFormatterResolver formatterResolver)
         {
-        }
-
-        public NullableLongConverter(NumberConversion conversion)
-        {
-            _longConverter = new LongConverter(conversion);
-        }
-
-        public override void WriteJson(JsonWriter writer, long? value, Newtonsoft.Json.JsonSerializer serializer)
-        {
-            if (!value.HasValue)
+            if (value is null)
             {
                 writer.WriteNull();
                 return;
             }
             
-            _longConverter.WriteJson(writer, value.Value, serializer);
+            writer.WriteRaw(value.Bytes);
         }
 
-        public override long? ReadJson(JsonReader reader, Type objectType, long? existingValue, bool hasExistingValue, Newtonsoft.Json.JsonSerializer serializer)
+        public PublicKey Deserialize(ref JsonReader reader, IJsonFormatterResolver formatterResolver)
         {
-            if (reader.TokenType == JsonToken.Null)
+            if (reader.ReadIsNull())
             {
                 return null;
             }
             
-            return _longConverter.ReadJson(reader, objectType, existingValue ?? 0, hasExistingValue, serializer);
+            var (isString, isHex, segment) = reader.GetHexStringSegment();
+            if (isString || isHex)
+            {
+                var publicKey = System.Text.Encoding.UTF8.GetString(segment);
+                return string.IsNullOrWhiteSpace(publicKey) ? null : new PublicKey(publicKey);
+            }
+            
+            reader.AdvanceOffset(-segment.Count);
+
+            return null;
         }
     }
 }

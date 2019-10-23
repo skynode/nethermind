@@ -30,9 +30,9 @@ namespace Nethermind.JsonRpc.Modules.Trace
 {
     public class ParityAccountStateChangeConverter : JsonConverter<ParityAccountStateChange>
     {
-        private ByteArrayConverter _bytesConverter = new ByteArrayConverter();
-        private UInt256Converter _intConverter = new UInt256Converter();
-        private Bytes32Converter _32BytesConverter = new Bytes32Converter();
+        private ByteArrayFormatter _bytesFormatter = new ByteArrayFormatter();
+        private UInt256Formatter _intFormatter = new UInt256Formatter();
+        private Bytes32Formatter _32BytesFormatter = new Bytes32Formatter();
 
         private void WriteChange(JsonWriter writer, ParityStateChange<byte[]> change, JsonSerializer serializer)
         {
@@ -46,7 +46,7 @@ namespace Nethermind.JsonRpc.Modules.Trace
                 {
                     writer.WriteStartObject();
                     writer.WritePropertyName("+");
-                    _bytesConverter.WriteJson(writer, change.After, serializer);
+//                    _bytesFormatter.WriteJson(writer, change.After, serializer);
                     writer.WriteEndObject();
                 }
                 else
@@ -55,9 +55,9 @@ namespace Nethermind.JsonRpc.Modules.Trace
                     writer.WritePropertyName("*");
                     writer.WriteStartObject();
                     writer.WritePropertyName("from");
-                    _bytesConverter.WriteJson(writer, change.Before, serializer);
+//                    _bytesFormatter.WriteJson(writer, change.Before, serializer);
                     writer.WritePropertyName("to");
-                    _bytesConverter.WriteJson(writer, change.After, serializer);
+//                    _bytesFormatter.WriteJson(writer, change.After, serializer);
                     writer.WriteEndObject();
                     writer.WriteEndObject();
                 }
@@ -76,7 +76,7 @@ namespace Nethermind.JsonRpc.Modules.Trace
                 {
                     writer.WriteStartObject();
                     writer.WritePropertyName("+");
-                    _intConverter.WriteJson(writer, change.After, serializer);
+//                    _intFormatter.WriteJson(writer, change.After, serializer);
                     writer.WriteEndObject();
                 }
                 else
@@ -85,9 +85,9 @@ namespace Nethermind.JsonRpc.Modules.Trace
                     writer.WritePropertyName("*");
                     writer.WriteStartObject();
                     writer.WritePropertyName("from");
-                    _intConverter.WriteJson(writer, change.Before, serializer);
+//                    _intFormatter.WriteJson(writer, change.Before, serializer);
                     writer.WritePropertyName("to");
-                    _intConverter.WriteJson(writer, change.After, serializer);
+//                    _intFormatter.WriteJson(writer, change.After, serializer);
                     writer.WriteEndObject();
                     writer.WriteEndObject();
                 }
@@ -106,7 +106,7 @@ namespace Nethermind.JsonRpc.Modules.Trace
                 {
                     writer.WriteStartObject();
                     writer.WritePropertyName("+");
-                    _32BytesConverter.WriteJson(writer, change.After, serializer);
+//                    _32BytesConverter.WriteJson(writer, change.After, serializer);
                     writer.WriteEndObject();
                 }
                 else
@@ -115,9 +115,9 @@ namespace Nethermind.JsonRpc.Modules.Trace
                     writer.WritePropertyName("*");
                     writer.WriteStartObject();
                     writer.WritePropertyName("from");
-                    _32BytesConverter.WriteJson(writer, change.Before, serializer);
+//                    _32BytesConverter.WriteJson(writer, change.Before, serializer);
                     writer.WritePropertyName("to");
-                    _32BytesConverter.WriteJson(writer, change.After, serializer);
+//                    _32BytesConverter.WriteJson(writer, change.After, serializer);
                     writer.WriteEndObject();
                     writer.WriteEndObject();
                 }

@@ -34,5 +34,7 @@ namespace Nethermind.Core.Extensions
             }
             return string.Compare(value1.Trim(), value2.Trim(), StringComparison.CurrentCultureIgnoreCase) == 0;
         }
+
+        public static byte[] GetUtf8Bytes(this string value) => System.Text.Encoding.UTF8.GetBytes(value);
     }
 }

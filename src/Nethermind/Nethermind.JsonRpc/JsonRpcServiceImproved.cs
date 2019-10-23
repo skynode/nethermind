@@ -17,6 +17,7 @@
  */
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -34,8 +35,10 @@ using JsonSerializer = Newtonsoft.Json.JsonSerializer;
 namespace Nethermind.JsonRpc
 {
     [Todo(Improve.Refactor, "Use JsonConverters and JSON serialization everywhere")]
-    public class JsonRpcService : IJsonRpcService
+    public class JsonRpcServiceImproved
     {
+        private static readonly ArrayPool<object> Pool = ArrayPool<object>.Shared;
+        
         public static IDictionary<ErrorType, int> ErrorCodes => new Dictionary<ErrorType, int>
         {
             {ErrorType.ParseError, -32700},
@@ -55,18 +58,19 @@ namespace Nethermind.JsonRpc
 
         private Dictionary<Type, JsonConverter> _converterLookup = new Dictionary<Type, JsonConverter>();
 
-        public JsonRpcService(IRpcModuleProvider rpcModuleProvider, ILogManager logManager)
+        public JsonRpcServiceImproved(IRpcModuleProvider rpcModuleProvider, ILogManager logManager)
         {
             _logger = logManager.GetClassLogger();
             _rpcModuleProvider = rpcModuleProvider;
             _serializer = new JsonSerializer();
 
+            var converters = new List<JsonConverter>();
             foreach (JsonConverter converter in rpcModuleProvider.Converters)
             {
                 if (_logger.IsDebug) _logger.Debug($"Registering {converter.GetType().Name} inside {nameof(JsonRpcService)}");
                 _serializer.Converters.Add(converter);
                 _converterLookup.Add(converter.GetType().BaseType.GenericTypeArguments[0], converter);
-                Converters.Add(converter);
+                converters.Add(converter);
             }
 
             foreach (JsonConverter converter in EthereumJsonSerializer.BasicConverters)
@@ -74,8 +78,10 @@ namespace Nethermind.JsonRpc
                 if (_logger.IsDebug) _logger.Debug($"Registering {converter.GetType().Name} (default)");
                 _serializer.Converters.Add(converter);
                 _converterLookup.Add(converter.GetType().BaseType.GenericTypeArguments[0], converter);
-                Converters.Add(converter);
+                converters.Add(converter);
             }
+
+            Converters = converters.ToArray();
         }
 
         public async Task<JsonRpcResponse> SendRequestAsync(JsonRpcRequest rpcRequest)
@@ -207,15 +213,17 @@ namespace Nethermind.JsonRpc
         {
             try
             {
-                var executionParameters = new List<object>();
+                var executionParameters = Pool.Rent(expectedParameters.Length);
+                var addedParams = 0;
                 for (var i = 0; i < providedParameters.Length; i++)
                 {
+                    addedParams++;
                     var providedParameter = providedParameters[i];
                     var expectedParameter = expectedParameters[i];
                     var paramType = expectedParameter.ParameterType;
                     if (string.IsNullOrWhiteSpace(providedParameter))
                     {
-                        executionParameters.Add(Type.Missing);
+                        executionParameters[i] = Type.Missing;
                         continue;
                     }
 
@@ -237,23 +245,23 @@ namespace Nethermind.JsonRpc
                     {
                         if (providedParameter.StartsWith('[') || providedParameter.StartsWith('{'))
                         {
-                            executionParam = JsonConvert.DeserializeObject(providedParameter, paramType, Converters.ToArray());
+                            executionParam = JsonConvert.DeserializeObject(providedParameter, paramType, Converters);
                         }
                         else
                         {
-                            executionParam = JsonConvert.DeserializeObject($"\"{providedParameter}\"", paramType, Converters.ToArray());
+                            executionParam = JsonConvert.DeserializeObject($"\"{providedParameter}\"", paramType, Converters);
                         }
                     }
 
-                    executionParameters.Add(executionParam);
+                    executionParameters[i] = executionParam;
                 }
 
-                for (int i = 0; i < missingParamsCount; i++)
+                for (int i = addedParams; i < missingParamsCount; i++)
                 {
-                    executionParameters.Add(Type.Missing);
+                    executionParameters[i] = Type.Missing;
                 }
 
-                return executionParameters.ToArray();
+                return executionParameters;
             }
             catch (Exception e)
             {
@@ -279,7 +287,7 @@ namespace Nethermind.JsonRpc
             return GetErrorResponse(errorType, message, 0, null);
         }
 
-        public IList<JsonConverter> Converters { get; } = new List<JsonConverter>();
+        public JsonConverter[] Converters { get; }
 
         private JsonRpcErrorResponse GetErrorResponse(ErrorType errorType, string message, UInt256 id, string methodName, object result = null)
         {

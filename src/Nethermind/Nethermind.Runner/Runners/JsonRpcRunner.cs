@@ -72,6 +72,7 @@ namespace Nethermind.Runner.Runners
                     s.AddSingleton(_jsonRpcProcessor);
                     s.AddSingleton(_webSocketsManager);
                 })
+                .UseLinuxTransport()
                 .UseStartup<Startup>()
                 .UseUrls(host)
                 .ConfigureLogging(logging =>

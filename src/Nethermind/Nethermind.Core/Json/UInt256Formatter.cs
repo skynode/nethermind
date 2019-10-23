@@ -18,30 +18,30 @@
 
 using System;
 using System.Globalization;
+using Nethermind.Core.Extensions;
 using Nethermind.Dirichlet.Numerics;
-using Newtonsoft.Json;
+using Utf8Json;
 
 namespace Nethermind.Core.Json
 {
-    public class UInt256Converter : JsonConverter<UInt256>
+    public class UInt256Formatter : IJsonFormatter<UInt256>
     {
         private readonly NumberConversion _conversion;
 
-        public UInt256Converter()
-            : this(NumberConversion.Hex)
+        public UInt256Formatter() : this(NumberConversion.Hex)
         {
         }
 
-        public UInt256Converter(NumberConversion conversion)
+        public UInt256Formatter(NumberConversion conversion)
         {
             _conversion = conversion;
         }
 
-        public override void WriteJson(JsonWriter writer, UInt256 value, Newtonsoft.Json.JsonSerializer serializer)
+        public void Serialize(ref JsonWriter writer, UInt256 value, IJsonFormatterResolver formatterResolver)
         {
             if (value.IsZero)
             {
-                writer.WriteValue("0x0");
+                writer.WriteRaw(Extensions.Bytes0X0);
                 return;
             }
 
@@ -52,53 +52,44 @@ namespace Nethermind.Core.Json
             switch (usedConversion)
             {
                 case NumberConversion.PaddedHex:
-                    writer.WriteValue(string.Concat("0x", value.ToString("x64").TrimStart('0')));
+                    writer.WriteRaw(Extensions.Bytes0X);
+                    writer.WriteRaw(value.ToString("x64").TrimStart('0').GetUtf8Bytes());
                     break;
                 case NumberConversion.Hex:
-                    writer.WriteValue(string.Concat("0x", value.ToString("x").TrimStart('0')));
+                    writer.WriteRaw(Extensions.Bytes0X);
+                    writer.WriteRaw(value.ToString("x").TrimStart('0').GetUtf8Bytes());
                     break;
                 case NumberConversion.Decimal:
-                    writer.WriteValue((int) value);
+                    writer.WriteInt32((int) value);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
         }
 
-        public override UInt256 ReadJson(JsonReader reader, Type objectType, UInt256 existingValue, bool hasExistingValue, Newtonsoft.Json.JsonSerializer serializer)
+        public UInt256 Deserialize(ref JsonReader reader, IJsonFormatterResolver formatterResolver)
         {
-            if (reader.Value is long || reader.Value is int)
+            var (isString, isHex, segment) = reader.GetHexStringSegment();
+            if (isString || isHex)
             {
-                return new UInt256((long) reader.Value);
+                return ParseString(isHex, segment);
+            }
+            
+            reader.AdvanceOffset(-segment.Count);
+            
+            return new UInt256(reader.ReadInt64());
+        }
+        
+        private static UInt256 ParseString(bool isHex, ArraySegment<byte> utf8String)
+        {
+            if (!isHex)
+            {
+                return UInt256.Parse(System.Text.Encoding.UTF8.GetString(utf8String), NumberStyles.Integer);
             }
 
-            string s = (string) reader.Value;
-            if (s == "0x0")
-            {
-                return UInt256.Zero;
-            }
-
-            if (s.StartsWith("0x0"))
-            {
-                return UInt256.Parse(s.AsSpan(2), NumberStyles.AllowHexSpecifier);
-            }
-
-            if (s.StartsWith("0x"))
-            {
-                Span<char> withZero = new Span<char>(new char[s.Length - 1]);
-                withZero[0] = '0';
-                s.AsSpan(2).CopyTo(withZero.Slice(1));
-                return UInt256.Parse(withZero, NumberStyles.AllowHexSpecifier);
-            }
-
-            try
-            {
-                return UInt256.Parse(s, NumberStyles.Integer);
-            }
-            catch (Exception)
-            {
-                return UInt256.Parse(s, NumberStyles.AllowHexSpecifier);
-            }
+            return utf8String.IsHexZero()
+                ? UInt256.Zero
+                : UInt256.Parse(utf8String.ParseSegmentHexString(), NumberStyles.AllowHexSpecifier);
         }
     }
 }

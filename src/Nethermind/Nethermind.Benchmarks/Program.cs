@@ -22,6 +22,7 @@ using Nethermind.Benchmarks.Evm;
 using Nethermind.Benchmarks.Mining;
 using Nethermind.Benchmarks.Rlp;
 using Nethermind.Benchmarks.Store;
+using Nethermind.Core.Json;
 
 namespace Nethermind.Benchmarks
 {
@@ -61,7 +62,7 @@ namespace Nethermind.Benchmarks
 //            BenchmarkRunner.Run<RlpDecodeAccount>();
 //            BenchmarkRunner.Run<RlpEncodeAccount>();
 //            BenchmarkRunner.Run<RlpDecodeBlock>();
-            BenchmarkRunner.Run<RlpEncodeBlockBenchmark>();
+//            BenchmarkRunner.Run<RlpEncodeBlockBenchmark>();
 //            BenchmarkRunner.Run<RlpEncodeHeader>();
 //            BenchmarkRunner.Run<RlpEncodeTransaction>();
 //              BenchmarkRunner.Run<RlpEncodeLong>();

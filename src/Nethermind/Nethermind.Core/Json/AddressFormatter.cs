@@ -16,28 +16,40 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
-using Nethermind.Core.Extensions;
-using Newtonsoft.Json;
+using Utf8Json;
 
 namespace Nethermind.Core.Json
 {
-    public class ByteArrayConverter : JsonConverter<byte[]>
+    public class AddressFormatter : IJsonFormatter<Address>
     {
-        public override void WriteJson(JsonWriter writer, byte[] value, Newtonsoft.Json.JsonSerializer serializer)
+        public void Serialize(ref JsonWriter writer, Address value, IJsonFormatterResolver formatterResolver)
         {
-            writer.WriteValue(value.ToHexString(true));
+            if (value is null)
+            {
+                writer.WriteNull();
+                return;
+            }
+            
+            writer.WriteRaw(value.Bytes);
         }
 
-        public override byte[] ReadJson(JsonReader reader, Type objectType, byte[] existingValue, bool hasExistingValue, Newtonsoft.Json.JsonSerializer serializer)
+        public Address Deserialize(ref JsonReader reader, IJsonFormatterResolver formatterResolver)
         {
-            if (reader.TokenType == JsonToken.Null)
+            if (reader.ReadIsNull())
             {
                 return null;
             }
             
-            string s = (string) reader.Value;
-            return Bytes.FromHexString(s);
+            var (isString, isHex, segment) = reader.GetHexStringSegment();
+            if (isString || isHex)
+            {
+                var address = System.Text.Encoding.UTF8.GetString(segment);
+                return string.IsNullOrWhiteSpace(address) ? null : new Address(address);
+            }
+            
+            reader.AdvanceOffset(-segment.Count);
+
+            return null;
         }
     }
 }

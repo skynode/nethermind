@@ -61,7 +61,7 @@ namespace Nethermind.KeyStore.Test
             _wrongPasswordSecured.MakeReadOnly();
 
             ILogManager logger = NullLogManager.Instance;
-            _serializer = new EthereumJsonSerializer();
+            _serializer = new Utf8EthereumJsonSerializer();
             _cryptoRandom = new CryptoRandom();
             _store = new FileKeyStore(_keyStoreConfig, _serializer, new AesEncrypter(_keyStoreConfig, logger), _cryptoRandom, logger);
         }
@@ -72,7 +72,7 @@ namespace Nethermind.KeyStore.Test
         [TestCase("{\"address\":\"25dead29c683c5db3e0fabcf8f3757cdb0abe549\",\"crypto\":{\"cipher\":\"aes-128-ctr\",\"ciphertext\":\"4fd59f3a3fa1bed32774b29a40886d5489c0c06a8da014cb44b25792f6c32cb2\",\"cipherparams\":{\"iv\":\"6b850162043a0a879726839cfca55220\"},\"kdf\":\"scrypt\",\"kdfparams\":{\"dklen\":32,\"n\":262144,\"p\":1,\"r\":8,\"salt\":\"cafbe520e0d711cf32d9a2e6b2ecbd231cc7aed09018c5032c637436e02754d1\"},\"mac\":\"379f51c673f1f355a6ffc92b31b37381670eea2e0e23604a2572f5df650d148e\"},\"id\":\"fc7ff6bf-c51e-4e02-bb7c-0c91a3eeab4c\",\"version\":3}")]
         public void Can_unlock_test_accounts(string keyJson)
         {
-            EthereumJsonSerializer serializer = new EthereumJsonSerializer();
+            Utf8EthereumJsonSerializer serializer = new Utf8EthereumJsonSerializer();
             KeyStoreItem item = serializer.Deserialize<KeyStoreItem>(keyJson);
 
             SecureString securePassword = new SecureString();
@@ -103,7 +103,7 @@ namespace Nethermind.KeyStore.Test
         [TestCase("{\"address\":\"25dead29c683c5db3e0fabcf8f3757cdb0abe549\",\"crypto\":{\"cipher\":\"aes-128-ctr\",\"ciphertext\":\"4fd59f3a3fa1bed32774b29a40886d5489c0c06a8da014cb44b25792f6c32cb2\",\"cipherparams\":{\"iv\":\"6b850162043a0a879726839cfca55220\"},\"kdf\":\"scrypt\",\"kdfparams\":{\"dklen\":32,\"n\":262144,\"p\":1,\"r\":8,\"salt\":\"cafbe520e0d711cf32d9a2e6b2ecbd231cc7aed09018c5032c637436e02754d1\"},\"mac\":\"379f51c673f1f355a6ffc92b31b37381670eea2e0e23604a2572f5df650d148e\"},\"id\":\"fc7ff6bf-c51e-4e02-bb7c-0c91a3eeab4c\",\"version\":3}", Ignore="Order of fields changed from geth to mycryptowallet.")]
         public void Same_storage_format_as_in_geth(string keyJson)
         {
-            EthereumJsonSerializer serializer = new EthereumJsonSerializer();
+            Utf8EthereumJsonSerializer serializer = new Utf8EthereumJsonSerializer();
             KeyStoreItem item = serializer.Deserialize<KeyStoreItem>(keyJson);
 
             SecureString securePassword = new SecureString();

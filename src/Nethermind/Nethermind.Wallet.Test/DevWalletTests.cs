@@ -71,7 +71,7 @@ namespace Nethermind.Wallet.Test
                     config.KeyStoreDirectory = _keyStorePath;
                     ISymmetricEncrypter encrypter = new AesEncrypter(config, LimboLogs.Instance);
                     return new DevKeyStoreWallet(
-                        new FileKeyStore(config, new EthereumJsonSerializer(), encrypter, new CryptoRandom(), LimboLogs.Instance),
+                        new FileKeyStore(config, new Utf8EthereumJsonSerializer(), encrypter, new CryptoRandom(), LimboLogs.Instance),
                         LimboLogs.Instance);
                 case DevWalletType.Memory:
                     return new DevWallet(new WalletConfig(), LimboLogs.Instance);

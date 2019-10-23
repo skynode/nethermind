@@ -24,9 +24,7 @@ namespace Nethermind.LoadTest
         {
             var scenarios = new JsonRpcScenarios();
             NBomberRunner.RegisterScenarios(
-                    scenarios.eth_blockNumber,
-                    scenarios.eth_getBalance,
-                    scenarios.eth_getBlockByNumber)
+                    scenarios.eth_blockNumber)
                 .RunInConsole();
         }
     }

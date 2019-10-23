@@ -16,12 +16,14 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
+using System.Runtime.Serialization;
 using Nethermind.Dirichlet.Numerics;
 
 namespace Nethermind.Core.Specs.GenesisFileStyle.Json
 {
     internal class AllocationJson
     {
+        [DataMember(Name = "builtin")]
         public object BuiltIn { get; set; }
         
         public UInt256 Balance { get; set; }

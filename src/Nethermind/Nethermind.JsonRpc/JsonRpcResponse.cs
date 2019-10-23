@@ -30,7 +30,7 @@ namespace Nethermind.JsonRpc
         [JsonProperty(PropertyName = "result", NullValueHandling = NullValueHandling.Include, Order = 2)]
         public object Result { get; set; }
 
-        [JsonConverter(typeof(UInt256Converter), NumberConversion.Decimal)]
+        [JsonConverter(typeof(UInt256Formatter), NumberConversion.Decimal)]
         [JsonProperty(PropertyName = "id", Order = 0)]
         public UInt256 Id { get; set; }
     }
@@ -55,7 +55,7 @@ namespace Nethermind.JsonRpc
         [JsonProperty(PropertyName = "error", NullValueHandling = NullValueHandling.Ignore, Order = 3)]
         public Error Error { get; set; }
 
-        [JsonConverter(typeof(UInt256Converter), NumberConversion.Decimal)]
+        [JsonConverter(typeof(UInt256Formatter), NumberConversion.Decimal)]
         [JsonProperty(PropertyName = "id", Order = 0)]
         public UInt256 Id { get; set; }
     }

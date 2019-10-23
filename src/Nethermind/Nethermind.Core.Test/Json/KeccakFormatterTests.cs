@@ -16,25 +16,33 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System.IO;
+using Nethermind.Core.Crypto;
+using Nethermind.Core.Extensions;
 using Nethermind.Core.Json;
-using Nethermind.Core.Test.Builders;
-using Newtonsoft.Json;
 using NUnit.Framework;
+using Utf8Json;
 
 namespace Nethermind.Core.Test.Json
 {
     [TestFixture]
-    public class AddressConverterTests
+    public class KeccakFormatterTests
     {
-        [Test]
+        [TestCase]
         public void Can_read_null()
         {
-            AddressConverter converter = new AddressConverter();
-            JsonReader reader = new JsonTextReader(new StringReader(""));
-            reader.ReadAsString();
-            Address result = converter.ReadJson(reader, typeof(Address), null, false, JsonSerializer.CreateDefault());
+            KeccakFormatter formatter = new KeccakFormatter();
+            JsonReader reader = new JsonReader("".GetUtf8Bytes());
+            Keccak result = formatter.Deserialize(ref reader, EthereumFormatterResolver.Instance);
             Assert.AreEqual(null, result);
+        }
+        
+        [Test]
+        public void Can_read_0()
+        {
+            KeccakFormatter formatter = new KeccakFormatter();
+            JsonReader reader = new JsonReader("0x0000000000000000000000000000000000000000000000000000000000000000".GetUtf8Bytes());
+            Keccak result = formatter.Deserialize(ref reader, EthereumFormatterResolver.Instance);
+            Assert.AreEqual(Keccak.Zero, result);
         }
     }
 }

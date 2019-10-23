@@ -16,27 +16,25 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
 using System.Numerics;
-using Newtonsoft.Json;
+using Utf8Json;
 
 namespace Nethermind.Core.Json
 {
-    public class NullableBigIntegerConverter : JsonConverter<BigInteger?>
+    public class NullableBigIntegerFormatter : IJsonFormatter<BigInteger?>
     {
-        private BigIntegerConverter _bigIntegerConverter;
+        private readonly BigIntegerFormatter _bigIntegerFormatter;
         
-        public NullableBigIntegerConverter()
-            : this(NumberConversion.Hex)
+        public NullableBigIntegerFormatter() : this(NumberConversion.Hex)
         {
         }
 
-        public NullableBigIntegerConverter(NumberConversion conversion)
+        public NullableBigIntegerFormatter(NumberConversion conversion)
         {
-            _bigIntegerConverter = new BigIntegerConverter(conversion);
+            _bigIntegerFormatter = new BigIntegerFormatter(conversion);
         }
 
-        public override void WriteJson(JsonWriter writer, BigInteger? value, Newtonsoft.Json.JsonSerializer serializer)
+        public void Serialize(ref JsonWriter writer, BigInteger? value, IJsonFormatterResolver formatterResolver)
         {
             if (!value.HasValue)
             {
@@ -44,17 +42,17 @@ namespace Nethermind.Core.Json
                 return;
             }
             
-            _bigIntegerConverter.WriteJson(writer, value.Value, serializer);
+            _bigIntegerFormatter.Serialize(ref writer, value.Value, formatterResolver);
         }
 
-        public override BigInteger? ReadJson(JsonReader reader, Type objectType, BigInteger? existingValue, bool hasExistingValue, Newtonsoft.Json.JsonSerializer serializer)
+        public BigInteger? Deserialize(ref JsonReader reader, IJsonFormatterResolver formatterResolver)
         {
-            if (reader.TokenType == JsonToken.Null)
+            if (reader.ReadIsNull())
             {
                 return null;
             }
             
-            return _bigIntegerConverter.ReadJson(reader, objectType, existingValue ?? 0, hasExistingValue, serializer);
+            return _bigIntegerFormatter.Deserialize(ref reader, formatterResolver);
         }
     }
 }

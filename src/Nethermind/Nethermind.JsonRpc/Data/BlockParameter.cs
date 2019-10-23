@@ -66,7 +66,7 @@ namespace Nethermind.JsonRpc.Data
                     return;
                 default:
                     Type = BlockParameterType.BlockNumber;
-                    BlockNumber = LongConverter.FromString(jsonValue.Trim('"'));
+                    BlockNumber = LongFormatter.FromString(jsonValue.Trim('"'));
                     return;
             }
         }

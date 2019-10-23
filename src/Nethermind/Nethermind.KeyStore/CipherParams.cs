@@ -16,13 +16,13 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
-using Newtonsoft.Json;
+using System.Runtime.Serialization;
 
 namespace Nethermind.KeyStore
 {
     public class CipherParams
     {
-        [JsonProperty(PropertyName = "iv")]
+        [DataMember(Name = "iv")]
         public string IV { get; set; }
     }
 }

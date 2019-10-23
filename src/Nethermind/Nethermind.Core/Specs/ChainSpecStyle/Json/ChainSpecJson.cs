@@ -19,8 +19,12 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.Serialization;
+using Nethermind.Core.Json;
 using Nethermind.Core.Specs.GenesisFileStyle.Json;
 using Nethermind.Dirichlet.Numerics;
+using Newtonsoft.Json;
+using Utf8Json;
 
 namespace Nethermind.Core.Specs.ChainSpecStyle.Json
 {
@@ -56,12 +60,18 @@ namespace Nethermind.Core.Specs.ChainSpecStyle.Json
         internal class EthashEngineParamsJson
         {
             public UInt256? MinimumDifficulty { get; set; }
+            
+            [JsonFormatter(typeof(NullableLongFormatter))]
             public long? DifficultyBoundDivisor { get; set; }
+            [JsonFormatter(typeof(NullableLongFormatter))]
             public long? DurationLimit { get; set; }
+            [JsonFormatter(typeof(LongFormatter))]
             public long HomesteadTransition { get; set; }
+            [JsonFormatter(typeof(NullableLongFormatter))]
             public long? DaoHardforkTransition { get; set; }
             public Address DaoHardforkBeneficiary { get; set; }
             public Address[] DaoHardforkAccounts { get; set; }
+            [JsonFormatter(typeof(LongFormatter))]
             public long Eip100bTransition { get; set; }
             public Dictionary<string, UInt256> BlockReward { get; set; }
             public Dictionary<string, long> DifficultyBombDelays { get; set; }
@@ -88,12 +98,14 @@ namespace Nethermind.Core.Specs.ChainSpecStyle.Json
 
             public UInt256 BlockReward { get; set; }
 
+            [JsonFormatter(typeof(LongFormatter))]
             public long MaximumUncleCountTransition { get; set; }
         
             public int MaximumUncleCount { get; set; }
             
             public Address BlockRewardContractAddress { get; set; }
             
+            [JsonFormatter(typeof(LongFormatter))]
             public long BlockRewardContractTransition { get; set; }
             
             public AuRaValidatorJson Validators { get; set; }
@@ -156,9 +168,11 @@ namespace Nethermind.Core.Specs.ChainSpecStyle.Json
     
         internal class EngineJson
         {
+            [DataMember(Name= "Ethash")]
             public EthashEngineJson Ethash { get; set; }
             public CliqueEngineJson Clique { get; set; }
             public AuraEngineJson AuthorityRound { get; set; }
+            [DataMember(Name= "NethDev")]
             public NethDevJson NethDev { get; set; }
         }
     }

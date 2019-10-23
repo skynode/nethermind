@@ -34,7 +34,7 @@ namespace Nethermind.Cli
 {
     static class Program
     {
-        private static readonly IJsonSerializer Serializer = new EthereumJsonSerializer();
+        private static readonly IJsonSerializer Serializer = new Utf8EthereumJsonSerializer();
         private static INodeManager _nodeManager;
         private static ILogManager _logManager;
         private static ICliEngine _engine;

@@ -25,7 +25,7 @@ namespace Nethermind.EvmPlayground
         private readonly IJsonRpcClient _jsonRpcClient;
         private readonly ILogger _logger;
 
-        private IJsonSerializer _serializer = new EthereumJsonSerializer();
+        private IJsonSerializer _serializer = new Utf8EthereumJsonSerializer();
 
         public Client()
             : this(new Uri("http://127.0.0.1:8545"))

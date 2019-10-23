@@ -19,12 +19,9 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Numerics;
 using Nethermind.Core.Crypto;
-using Nethermind.Core.Extensions;
 using Nethermind.Core.Json;
 using Nethermind.Core.Specs.ChainSpecStyle.Json;
 using Nethermind.Core.Specs.GenesisFileStyle.Json;
@@ -192,13 +189,13 @@ namespace Nethermind.Core.Specs.ChainSpecStyle
 
                 foreach (KeyValuePair<string, UInt256> reward in chainSpecJson.Engine.Ethash.BlockReward)
                 {
-                    chainSpec.Ethash.BlockRewards.Add(LongConverter.FromString(reward.Key), reward.Value);
+                    chainSpec.Ethash.BlockRewards.Add(LongFormatter.FromString(reward.Key), reward.Value);
                 }
 
                 chainSpec.Ethash.DifficultyBombDelays = new Dictionary<long, long>();
                 foreach (KeyValuePair<string, long> reward in chainSpecJson.Engine.Ethash.DifficultyBombDelays)
                 {
-                    chainSpec.Ethash.DifficultyBombDelays.Add(LongConverter.FromString(reward.Key), reward.Value);
+                    chainSpec.Ethash.DifficultyBombDelays.Add(LongFormatter.FromString(reward.Key), reward.Value);
                 }
             }
             else if (chainSpecJson.Engine?.NethDev != null)

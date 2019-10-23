@@ -171,7 +171,7 @@ namespace Nethermind.Blockchain
         private void LoadLowestInsertedHeader()
         {
             long left = 0L;
-            long right = LongConverter.FromString(_syncConfig.PivotNumber ?? "0x0");
+            long right = LongFormatter.FromString(_syncConfig.PivotNumber ?? "0x0");
 
             ChainLevelInfo lowestInsertedLevel = null;
             while (left != right)
@@ -206,7 +206,7 @@ namespace Nethermind.Blockchain
         private void LoadLowestInsertedBody()
         {
             long left = 0L;
-            long right = LongConverter.FromString(_syncConfig.PivotNumber ?? "0x0");
+            long right = LongFormatter.FromString(_syncConfig.PivotNumber ?? "0x0");
 
             Block lowestInsertedBlock = null;
             while (left != right)
@@ -461,7 +461,7 @@ namespace Nethermind.Blockchain
             Rlp newRlp = _blockDecoder.Encode(block);
             _blockDb.Set(block.Hash, newRlp.Bytes);
 
-            long expectedNumber = (LowestInsertedBody?.Number - 1 ?? LongConverter.FromString(_syncConfig.PivotNumber ?? "0"));
+            long expectedNumber = (LowestInsertedBody?.Number - 1 ?? LongFormatter.FromString(_syncConfig.PivotNumber ?? "0"));
             if (block.Number != expectedNumber)
             {
                 throw new InvalidOperationException($"Trying to insert out of order block {block.Number} when expected number was {expectedNumber}");

@@ -18,59 +18,75 @@
 
 using System;
 using System.Globalization;
-using Newtonsoft.Json;
+using Nethermind.Core.Extensions;
+using Utf8Json;
 
 namespace Nethermind.Core.Json
 {
-    public class LongConverter : JsonConverter<long>
+    public class LongFormatter : IJsonFormatter<long>
     {
         private readonly NumberConversion _conversion;
 
-        public LongConverter()
-            : this(NumberConversion.Hex)
+        public LongFormatter() : this(NumberConversion.Hex)
         {
         }
 
-        public LongConverter(NumberConversion conversion)
+        public LongFormatter(NumberConversion conversion)
         {
             _conversion = conversion;
         }
 
-        public override void WriteJson(JsonWriter writer, long value, Newtonsoft.Json.JsonSerializer serializer)
+        public void Serialize(ref JsonWriter writer, long value, IJsonFormatterResolver formatterResolver)
         {
             if (value == 0L)
             {
-                writer.WriteValue("0x0");
+                writer.WriteRaw(Extensions.Bytes0X0);
                 return;
             }
-            
+
             switch (_conversion)
             {
                 case NumberConversion.PaddedHex:
-                    writer.WriteValue(string.Concat("0x", value.ToString("x64").TrimStart('0')));
+                    writer.WriteRaw(Extensions.Bytes0X);
+                    writer.WriteRaw(value.ToString("x64").TrimStart('0').GetUtf8Bytes());
                     break;
                 case NumberConversion.Hex:
-                    writer.WriteValue(string.Concat("0x", value.ToString("x").TrimStart('0')));
+                    writer.WriteRaw(Extensions.Bytes0X);
+                    writer.WriteRaw(value.ToString("x").TrimStart('0').GetUtf8Bytes());
                     break;
                 case NumberConversion.Decimal:
-                    writer.WriteValue(value.ToString());
+                    writer.WriteRaw(value.ToString().GetUtf8Bytes());
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
         }
 
-        public override long ReadJson(JsonReader reader, Type objectType, long existingValue, bool hasExistingValue, Newtonsoft.Json.JsonSerializer serializer)
+        public long Deserialize(ref JsonReader reader, IJsonFormatterResolver formatterResolver)
         {
-            if (reader.Value is long || reader.Value is int)
+            var (isString, isHex, segment) = reader.GetHexStringSegment();
+            if (isString || isHex)
             {
-                return (long)reader.Value;
+                return ParseString(isHex, segment);
             }
+            
+            reader.AdvanceOffset(-segment.Count);
 
-            string s = (string) reader.Value;
-            return FromString(s);
+            return reader.ReadInt64();
         }
 
+        private static long ParseString(bool isHex, ArraySegment<byte> utf8String)
+        {
+            if (!isHex)
+            {
+                return long.Parse(System.Text.Encoding.UTF8.GetString(utf8String), NumberStyles.Integer);
+            }
+
+            return utf8String.IsHexZero()
+                ? 0L
+                : long.Parse(utf8String.ParseSegmentHexString(), NumberStyles.AllowHexSpecifier);
+        }
+        
         public static long FromString(string s)
         {
             if (s == "0x0")

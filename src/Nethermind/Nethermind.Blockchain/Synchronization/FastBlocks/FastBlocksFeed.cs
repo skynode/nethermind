@@ -669,7 +669,7 @@ namespace Nethermind.Blockchain.Synchronization.FastBlocks
 
             if (validResponses.Any())
             {
-                long expectedNumber = _blockTree.LowestInsertedBody?.Number - 1 ?? LongConverter.FromString(_syncConfig.PivotNumber ?? "0");
+                long expectedNumber = _blockTree.LowestInsertedBody?.Number - 1 ?? LongFormatter.FromString(_syncConfig.PivotNumber ?? "0");
                 if (validResponses.Last().Number != expectedNumber)
                 {
                     _bodiesDependencies.TryAdd(validResponses.Last().Number, validResponses);
@@ -699,7 +699,7 @@ namespace Nethermind.Blockchain.Synchronization.FastBlocks
 
         public void StartNewRound()
         {
-            _pivotNumber = LongConverter.FromString(_syncConfig.PivotNumber ?? "0x0");
+            _pivotNumber = LongFormatter.FromString(_syncConfig.PivotNumber ?? "0x0");
             _pivotHash = _syncConfig.PivotHash == null ? null : new Keccak(_syncConfig.PivotHash);
             _pivotDifficulty = UInt256.Parse(_syncConfig.PivotTotalDifficulty ?? "0x0");
 

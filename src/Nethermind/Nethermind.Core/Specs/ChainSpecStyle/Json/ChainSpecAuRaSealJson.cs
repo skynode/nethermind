@@ -16,10 +16,14 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
+using Nethermind.Core.Json;
+using Utf8Json;
+
 namespace Nethermind.Core.Specs.ChainSpecStyle.Json
 {
     internal class ChainSpecAuRaSealJson
     {
+        [JsonFormatter(typeof(LongFormatter))]
         public long Step { get; set; }
         public byte[] Signature { get; set; }
     }

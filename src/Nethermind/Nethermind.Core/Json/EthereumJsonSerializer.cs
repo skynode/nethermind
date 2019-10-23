@@ -32,32 +32,32 @@ namespace Nethermind.Core.Json
 
         public static IList<JsonConverter> BasicConverters { get; } = new List<JsonConverter>
         {
-            new AddressConverter(),
-            new KeccakConverter(),
-            new BloomConverter(),
-            new ByteArrayConverter(),
-            new LongConverter(),
-            new NullableLongConverter(),
-            new UInt256Converter(),
-            new NullableUInt256Converter(),
-            new BigIntegerConverter(),
-            new NullableBigIntegerConverter(),
-            new PublicKeyConverter()
+////            new AddressFormatter(),
+//            new KeccakFormatter(),
+////            new BloomFormatter(),
+//            new ByteArrayConverter(),
+//            new LongFormatter(),
+//            new NullableLongConverter(),
+//            new UInt256Formatter(),
+//            new NullableUInt256Formatter(),
+////            new BigIntegerFormatter(),
+////            new NullableBigIntegerFormatter(),
+//            new PublicKeyFormatter()
         };
         
         private static IList<JsonConverter> ReadableConverters { get; } = new List<JsonConverter>
         {
-            new AddressConverter(),
-            new KeccakConverter(),
-            new BloomConverter(),
-            new ByteArrayConverter(),
-            new LongConverter(NumberConversion.Decimal),
-            new NullableLongConverter(NumberConversion.Decimal),
-            new UInt256Converter(NumberConversion.Decimal),
-            new NullableUInt256Converter(NumberConversion.Decimal),
-            new BigIntegerConverter(NumberConversion.Decimal),
-            new NullableBigIntegerConverter(NumberConversion.Decimal),
-            new PublicKeyConverter()
+////            new AddressFormatter(),
+//            new KeccakFormatter(),
+////            new BloomFormatter(),
+//            new ByteArrayConverter(),
+//            new LongFormatter(NumberConversion.Decimal),
+//            new NullableLongConverter(NumberConversion.Decimal),
+//            new UInt256Formatter(NumberConversion.Decimal),
+//            new NullableUInt256Formatter(NumberConversion.Decimal),
+////            new BigIntegerFormatter(NumberConversion.Decimal),
+////            new NullableBigIntegerFormatter(NumberConversion.Decimal),
+//            new PublicKeyFormatter()
         };
         
         private static JsonSerializerSettings _settings = new JsonSerializerSettings

@@ -16,45 +16,40 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
-using Nethermind.Dirichlet.Numerics;
-using Newtonsoft.Json;
+using Nethermind.Core.Extensions;
+using Utf8Json;
 
 namespace Nethermind.Core.Json
 {
-    public class NullableUInt256Converter : JsonConverter<UInt256?>
+    public class Bytes32Formatter : IJsonFormatter<byte[]>
     {
-        private UInt256Converter _uInt256Converter;
-        
-        public NullableUInt256Converter()
-            : this(NumberConversion.Hex)
+        public void Serialize(ref JsonWriter writer, byte[] value, IJsonFormatterResolver formatterResolver)
         {
-        }
-
-        public NullableUInt256Converter(NumberConversion conversion)
-        {
-            _uInt256Converter = new UInt256Converter(conversion);
-        }
-
-        public override void WriteJson(JsonWriter writer, UInt256? value, Newtonsoft.Json.JsonSerializer serializer)
-        {
-            if (!value.HasValue)
+            if (value is null)
             {
                 writer.WriteNull();
                 return;
             }
             
-            _uInt256Converter.WriteJson(writer, value.Value, serializer);
+            writer.WriteRaw(string.Concat("0x", value.ToHexString(false).PadLeft(64, '0')).GetUtf8Bytes());
         }
 
-        public override UInt256? ReadJson(JsonReader reader, Type objectType, UInt256? existingValue, bool hasExistingValue, Newtonsoft.Json.JsonSerializer serializer)
+        public byte[] Deserialize(ref JsonReader reader, IJsonFormatterResolver formatterResolver)
         {
-            if (reader.TokenType == JsonToken.Null)
+            if (reader.ReadIsNull())
             {
                 return null;
             }
             
-            return _uInt256Converter.ReadJson(reader, objectType, existingValue ?? 0, hasExistingValue, serializer);
+            var (isString, isHex, segment) = reader.GetHexStringSegment();
+            if (isString || isHex)
+            {
+                return Bytes.FromHexString(System.Text.Encoding.UTF8.GetString(segment));
+            }
+            
+            reader.AdvanceOffset(-segment.Count);
+
+            return null;
         }
     }
 }

@@ -16,26 +16,31 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System.IO;
-using Nethermind.Core.Crypto;
+using Nethermind.Core.Extensions;
 using Nethermind.Core.Json;
 using Nethermind.Dirichlet.Numerics;
-using Newtonsoft.Json;
 using NUnit.Framework;
+using Utf8Json;
 
 namespace Nethermind.Core.Test.Json
 {
     [TestFixture]
-    public class KeccakConverterTests
+    public class UInt256FormatterTests
     {
-        [Test]
-        public void Can_read_null()
+        [TestCase("0xa00000", "10485760")]
+        [TestCase("\"0xa00000\"", "10485760")]
+        [TestCase("0x", "0")]
+        [TestCase("0x0", "0")]
+        [TestCase("0", "0")]
+        [TestCase("1", "1")]
+        [TestCase("\"1\"", "1")]
+        [TestCase("0x20000", "131072")]
+        public void Should_deserialize(string value, string expected)
         {
-            KeccakConverter converter = new KeccakConverter();
-            JsonReader reader = new JsonTextReader(new StringReader(""));
-            reader.ReadAsString();
-            Keccak result = converter.ReadJson(reader, typeof(Keccak), null, false, JsonSerializer.CreateDefault());
-            Assert.AreEqual(null, result);
+            UInt256Formatter formatter = new UInt256Formatter();
+            JsonReader reader = new JsonReader(value.GetUtf8Bytes());
+            UInt256 result = formatter.Deserialize(ref reader, EthereumFormatterResolver.Instance);
+            Assert.AreEqual(UInt256.Parse(expected), result);
         }
     }
 }

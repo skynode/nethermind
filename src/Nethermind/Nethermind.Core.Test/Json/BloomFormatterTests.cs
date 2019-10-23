@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2018 Demerzel Solutions Limited
  * This file is part of the Nethermind library.
  *
@@ -16,24 +16,23 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
+using Nethermind.Core.Extensions;
+using Nethermind.Core.Json;
+using NUnit.Framework;
+using Utf8Json;
 
-using System;
-using Nethermind.Core.Crypto;
-using Newtonsoft.Json;
-
-namespace Nethermind.Core.Json
+namespace Nethermind.Core.Test.Json
 {
-    public class PublicKeyConverter : JsonConverter<PublicKey>
+    [TestFixture]
+    public class BloomFormatterTests
     {
-        public override void WriteJson(JsonWriter writer, PublicKey value, JsonSerializer serializer)
+        [Test]
+        public void Can_read_null()
         {
-            writer.WriteValue(value.ToString());
-        }
-
-        public override PublicKey ReadJson(JsonReader reader, Type objectType, PublicKey existingValue, bool hasExistingValue, JsonSerializer serializer)
-        {
-            string s = (string)reader.Value;
-            return s == null ? null : new PublicKey(s);
+            BloomFormatter formatter = new BloomFormatter();
+            JsonReader reader = new JsonReader("".GetUtf8Bytes());
+            Bloom result = formatter.Deserialize(ref reader, EthereumFormatterResolver.Instance);
+            Assert.AreEqual(null, result);
         }
     }
 }

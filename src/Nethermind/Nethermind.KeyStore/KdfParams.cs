@@ -16,31 +16,30 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
-using Newtonsoft.Json;
+using System.Runtime.Serialization;
 
 namespace Nethermind.KeyStore
 {
     public class KdfParams
     {
-        [JsonProperty(PropertyName = "dklen", Order = 0)]
+        [DataMember(Name = "dklen")]
         public int DkLen { get; set; }
         
-        [JsonProperty(PropertyName = "salt", Order = 1)]
+        [DataMember(Name = "salt")]
         public string Salt { get; set; }
         
-        [JsonProperty(PropertyName = "n", Order = 2)]
+        [DataMember(Name = "n")]
         public int? N { get; set; }
-        
-        [JsonProperty(PropertyName = "p", Order = 4)]
-        public int? P { get; set; }
-        
-        [JsonProperty(PropertyName = "r", Order = 3)]
+        [DataMember(Name = "r")]
         public int? R { get; set; }
+        
+        [DataMember(Name = "p")]
+        public int? P { get; set; }
 
-        [JsonProperty(PropertyName = "c")]
+        [DataMember(Name = "c")]
         public int? C { get; set; }
         
-        [JsonProperty(PropertyName = "prf")]
+        [DataMember(Name = "prf")]
         public string Prf { get; set; }
     }
 }

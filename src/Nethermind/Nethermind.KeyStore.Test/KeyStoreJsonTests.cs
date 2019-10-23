@@ -18,17 +18,14 @@
 
 using System.IO;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Security;
-using Nethermind.Config;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
-using Nethermind.Core.Extensions;
 using Nethermind.Core.Json;
 using Nethermind.Core.Model;
-using Nethermind.Core.Test.Builders;
 using Nethermind.KeyStore.Config;
 using Nethermind.Logging;
-using Newtonsoft.Json;
 using NUnit.Framework;
 
 namespace Nethermind.KeyStore.Test
@@ -54,7 +51,7 @@ namespace Nethermind.KeyStore.Test
             }
 
             ILogManager logManager = NullLogManager.Instance;
-            _serializer = new EthereumJsonSerializer();
+            _serializer = new Utf8EthereumJsonSerializer();
             _cryptoRandom = new CryptoRandom();
             _store = new FileKeyStore(_config, _serializer, new AesEncrypter(_config, logManager), _cryptoRandom, logManager);
 
@@ -117,19 +114,18 @@ namespace Nethermind.KeyStore.Test
         {
             public KeyStoreTestModel Test1 { get; set; }
             public KeyStoreTestModel Test2 { get; set; }
+            [DataMember(Name = "python_generated_test_with_odd_iv")]
             public KeyStoreTestModel Python_generated_test_with_odd_iv { get; set; }
+            [DataMember(Name = "evilnonce")]
             public KeyStoreTestModel EvilNonce { get; set; }
-            
-            public KeyStoreTestModel Sealer0 { get; set; }
         }
 
         private class KeyStoreTestModel
         {
-            [JsonProperty(PropertyName = "Json")]
+            [DataMember(Name = "json")]
             public KeyStoreItem KeyData { get; set; }
             public string Password { get; set; }
             public string Priv { get; set; }
-            
             public string Address { get; set; }
         }
     } 
