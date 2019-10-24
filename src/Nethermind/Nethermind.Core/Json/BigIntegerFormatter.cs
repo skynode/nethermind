@@ -19,7 +19,6 @@
 using System;
 using System.Globalization;
 using System.Numerics;
-using Nethermind.Core.Extensions;
 using Utf8Json;
 
 namespace Nethermind.Core.Json
@@ -41,22 +40,26 @@ namespace Nethermind.Core.Json
         {
             if (value.IsZero)
             {
-                writer.WriteRaw(Extensions.Bytes0X0);
+                writer.WriteString("0x0");
                 return;
             }
 
             switch (_conversion)
             {
                 case NumberConversion.PaddedHex:
-                    writer.WriteRaw(Extensions.Bytes0X);
-                    writer.WriteRaw(value.ToString("x64").TrimStart('0').GetUtf8Bytes());
+                    writer.WriteString("\"0x");
+                    writer.WriteString(value.ToString("x64").TrimStart('0'));
+                    writer.WriteString("\"");
+                    writer.WriteString("");
                     break;
                 case NumberConversion.Hex:
-                    writer.WriteRaw(Extensions.Bytes0X);
-                    writer.WriteRaw(value.ToString("x").TrimStart('0').GetUtf8Bytes());
+                    writer.WriteString("\"0x");
+                    writer.WriteString(value.ToString("x").TrimStart('0'));
+                    writer.WriteString("\"");
+                    writer.WriteString("");
                     break;
                 case NumberConversion.Decimal:
-                    writer.WriteRaw(value.ToString().GetUtf8Bytes());
+                    writer.WriteString(value.ToString());
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();

@@ -20,7 +20,7 @@ namespace Nethermind.Network.Test
         {
             var path = "test-static-nodes.json";
             var logManager = NullLogManager.Instance;
-            _staticNodesManager = new StaticNodesManager(path, new Utf8EthereumJsonSerializer(), logManager);
+            _staticNodesManager = new StaticNodesManager(path, new EthereumJsonSerializer(), logManager);
         }
 
         [Test]

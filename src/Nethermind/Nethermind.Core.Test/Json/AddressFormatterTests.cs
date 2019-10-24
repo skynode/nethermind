@@ -43,7 +43,7 @@ namespace Nethermind.Core.Test.Json
             JsonWriter writer = new JsonWriter();
             formatter.Serialize(ref writer, TestItem.AddressA,  EthereumFormatterResolver.Instance);
             var bytes = writer.ToUtf8ByteArray();
-            Assert.AreEqual(System.Text.Encoding.UTF8.GetString(bytes), TestItem.AddressA.ToString());
+            Assert.AreEqual(System.Text.Encoding.UTF8.GetString(bytes), $"\"{TestItem.AddressA}\"");
         }
     }
 }

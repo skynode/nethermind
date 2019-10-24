@@ -95,17 +95,17 @@ namespace Nethermind.JsonRpc.Eip1186
                 for (int ip = 0; ip < value.StorageProofs[ip].Proof.Length; ip++)
                 {
                     writer.WriteString(value.StorageProofs[i].Proof[ip].ToHexString(true));
-                    writer.WriteValueSeparator();
-                    if (i < value.StorageProofs[ip].Proof.Length - 1)
+                    if (ip < value.StorageProofs[ip].Proof.Length - 1)
                     {
                         writer.WriteValueSeparator();
                     }
                 }
                 writer.WriteEndArray();
-                writer.WriteProperty("value", value.StorageProofs[i].Value, formatterResolver);
-                writer.WriteEndObject();
                 writer.WriteValueSeparator();
-                if (i < value.StorageProofs.Length- 1)
+                var writeSeparator = i < value.StorageProofs.Length - 1;
+                writer.WriteProperty("value", value.StorageProofs[i].Value, formatterResolver, false);
+                writer.WriteEndObject();
+                if (writeSeparator)
                 {
                     writer.WriteValueSeparator();
                 }

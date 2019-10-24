@@ -17,29 +17,23 @@
  */
 
 using System;
-using Nethermind.JsonRpc.Modules.Trace;
+using Nethermind.Core.Extensions;
+using Nethermind.Evm.Tracing;
 using Utf8Json;
 
-namespace Nethermind.JsonRpc.Modules.Eth
+namespace Nethermind.JsonRpc.Modules.Trace
 {
-    public class SyncingResultConverter : IJsonFormatter<SyncingResult>
+    public class ParityVmTraceFormatter : IJsonFormatter<ParityVmTrace>
     {
-        public void Serialize(ref JsonWriter writer, SyncingResult value, IJsonFormatterResolver formatterResolver)
+        public void Serialize(ref JsonWriter writer, ParityVmTrace value, IJsonFormatterResolver formatterResolver)
         {
-            if (!value.IsSyncing)
-            {
-                writer.WriteBoolean(false);
-                return;
-            }
-
             writer.WriteBeginObject();
-            writer.WriteProperty("startingBlock", value.StartingBlock, formatterResolver);
-            writer.WriteProperty("currentBlock", value.CurrentBlock, formatterResolver);
-            writer.WriteProperty("highestBlock", value.HighestBlock, formatterResolver);
+            writer.WriteProperty("code", value.Code ?? Bytes.Empty, formatterResolver);
+            writer.WriteProperty("ops", value.Operations, formatterResolver, false);
             writer.WriteEndObject();
         }
 
-        public SyncingResult Deserialize(ref Utf8Json.JsonReader reader, IJsonFormatterResolver formatterResolver)
+        public ParityVmTrace Deserialize(ref JsonReader reader, IJsonFormatterResolver formatterResolver)
         {
             throw new NotImplementedException();
         }

@@ -31,7 +31,7 @@ namespace Nethermind.JsonRpc.Test
     {
         public static JsonRpcResponse TestRequest<T>(T module, string method, params string[] parameters) where T : class, IModule
         {
-            IJsonRpcService service = BuildRpcService<T>(module);
+            IJsonRpcService service = BuildRpcService(module);
             JsonRpcRequest request = GetJsonRequest(method, parameters);
             return service.SendRequestAsync(request).Result;
         }
@@ -41,7 +41,7 @@ namespace Nethermind.JsonRpc.Test
             IJsonRpcService service = BuildRpcService(module);
             JsonRpcRequest request = GetJsonRequest(method, parameters);
             JsonRpcResponse response = service.SendRequestAsync(request).Result;
-            Utf8EthereumJsonSerializer serializer = new Utf8EthereumJsonSerializer();
+            EthereumJsonSerializer serializer = new EthereumJsonSerializer();
             foreach (var formatter in formatters)
             {
                 serializer.RegisterFormatter(formatter);
@@ -72,7 +72,7 @@ namespace Nethermind.JsonRpc.Test
         //}
         public static JsonRpcRequest GetJsonRequest(string method, params string[] parameters)
         {
-            var request = new JsonRpcRequest()
+            var request = new JsonRpcRequest
             {
                 JsonRpc = "2.0",
                 Method = method,

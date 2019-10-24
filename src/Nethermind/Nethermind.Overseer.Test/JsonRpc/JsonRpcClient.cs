@@ -80,7 +80,7 @@ namespace Nethermind.Overseer.Test.JsonRpc
         }
 
         private StringContent GetPayload(JsonRpcRequest request)
-            => new StringContent(new Utf8EthereumJsonSerializer().Serialize(request), Encoding.UTF8, "application/json");
+            => new StringContent(new EthereumJsonSerializer().Serialize(request), Encoding.UTF8, "application/json");
 
         private class JsonRpcRequest
         {

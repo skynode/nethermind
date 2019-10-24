@@ -22,12 +22,16 @@ namespace Nethermind.JsonRpc.Modules.Trace
 {
     public static class JsonWriterExtensions
     {
-        public static void WriteProperty<T>(this JsonWriter jsonWriter, string propertyName, T propertyValue,
-            IJsonFormatterResolver formatterResolver)
+        public static void WriteProperty<T>(this ref JsonWriter writer, string propertyName, T propertyValue,
+            IJsonFormatterResolver formatterResolver, bool writeSeparator = true)
         {
-            jsonWriter.WritePropertyName(propertyName);
+            writer.WritePropertyName(propertyName);
             var formatter = formatterResolver.GetFormatter<T>();
-            formatter.Serialize(ref jsonWriter, propertyValue, formatterResolver);
+            formatter.Serialize(ref writer, propertyValue, formatterResolver);
+            if (writeSeparator)
+            {
+                writer.WriteValueSeparator();
+            }
         }
     }
 }

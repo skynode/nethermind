@@ -44,18 +44,18 @@ namespace Nethermind.Core.Test.Json
             Assert.AreEqual(expected, result);
         }
         
-        [TestCase(0, "0x0")]
-        [TestCase(1, "0x1")]
-        [TestCase(10485760, "0xa00000")]
-        [TestCase(131072, "0x20000")]
-        [TestCase(1150000, "0x118c30")]
+        [TestCase(0, "\"0x0\"")]
+        [TestCase(1, "\"0x1\"")]
+        [TestCase(10485760, "\"0xa00000\"")]
+        [TestCase(131072, "\"0x20000\"")]
+        [TestCase(1150000, "\"0x118c30\"")]
         public void Should_serialize(long value, string expected)
         {
             LongFormatter formatter = new LongFormatter();
             JsonWriter writer = new JsonWriter();
             formatter.Serialize(ref writer, value,  EthereumFormatterResolver.Instance);
             var bytes = writer.ToUtf8ByteArray();
-            Assert.AreEqual(System.Text.Encoding.UTF8.GetString(bytes), expected);
+            Assert.AreEqual(expected, System.Text.Encoding.UTF8.GetString(bytes));
         }
     }
 }

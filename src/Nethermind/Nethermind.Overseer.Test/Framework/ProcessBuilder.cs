@@ -52,7 +52,7 @@ namespace Nethermind.Overseer.Test.Framework
             process.StartInfo.CreateNoWindow = false;
             process.StartInfo.WindowStyle = ProcessWindowStyle.Normal;
             
-            return new NethermindProcessWrapper(name, process, httpPort, new PrivateKey(nodeKey).Address,  $"enode://{new PrivateKey(nodeKey).PublicKey.ToString(false)}@127.0.0.1:{p2pPort}",new JsonRpcClient($"http://localhost:{httpPort}", new Utf8EthereumJsonSerializer()));
+            return new NethermindProcessWrapper(name, process, httpPort, new PrivateKey(nodeKey).Address,  $"enode://{new PrivateKey(nodeKey).PublicKey.ToString(false)}@127.0.0.1:{p2pPort}",new JsonRpcClient($"http://localhost:{httpPort}", new EthereumJsonSerializer()));
         }
 
         private static void ProcessOnExited(object sender, EventArgs eventArgs)

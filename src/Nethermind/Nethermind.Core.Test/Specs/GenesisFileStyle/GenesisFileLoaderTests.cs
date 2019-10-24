@@ -35,7 +35,7 @@ namespace Nethermind.Core.Test.Specs.GenesisFileStyle
         public void Can_load_a_private_network_file()
         {
             byte[] data = File.ReadAllBytes(Path.Combine(TestContext.CurrentContext.WorkDirectory, "Specs/genesis_test.json"));
-            GenesisFileLoader loader = new GenesisFileLoader(new Utf8EthereumJsonSerializer());
+            GenesisFileLoader loader = new GenesisFileLoader(new EthereumJsonSerializer());
             ChainSpec chainSpec = loader.Load(data);
             Assert.AreEqual(22082, chainSpec.ChainId, $"{nameof(chainSpec.ChainId)}");
             Assert.AreEqual(null, chainSpec.Name, $"{nameof(chainSpec.Name)}");

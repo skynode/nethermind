@@ -32,7 +32,7 @@ namespace Nethermind.Core.Json
                 return;
             }
             
-            writer.WriteRaw(value.Bytes.ToHexString(true).GetUtf8Bytes());
+            writer.WriteString(value.Bytes.ToHexString(true));
         }
 
         public Bloom Deserialize(ref JsonReader reader, IJsonFormatterResolver formatterResolver)

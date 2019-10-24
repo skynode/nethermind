@@ -32,7 +32,7 @@ namespace Nethermind.JsonRpc.Modules.Trace
      *    "value": "0x2707377c7552d8000"
      * },
      */
-    public class ParityTraceActionConverter : IJsonFormatter<ParityTraceAction>
+    public class ParityTraceActionFormatter : IJsonFormatter<ParityTraceAction>
     {
         public void Serialize(ref JsonWriter writer, ParityTraceAction value, IJsonFormatterResolver formatterResolver)
         {
@@ -61,7 +61,7 @@ namespace Nethermind.JsonRpc.Modules.Trace
                 writer.WriteProperty("to", value.To, formatterResolver);
             }
 
-            writer.WriteProperty("value", value.Value, formatterResolver);
+            writer.WriteProperty("value", value.Value, formatterResolver, false);
             writer.WriteEndObject();
         }
 
@@ -71,12 +71,12 @@ namespace Nethermind.JsonRpc.Modules.Trace
             writer.WriteBeginObject();
             writer.WriteProperty("address", value.From, formatterResolver);
             writer.WriteProperty("balance", value.Value, formatterResolver);
-            writer.WriteProperty("refundAddress", value.To, formatterResolver);
+            writer.WriteProperty("refundAddress", value.To, formatterResolver, false);
             writer.WriteEndObject();
         }
 
 
-        public ParityTraceAction Deserialize(ref Utf8Json.JsonReader reader, IJsonFormatterResolver formatterResolver)
+        public ParityTraceAction Deserialize(ref JsonReader reader, IJsonFormatterResolver formatterResolver)
         {
             throw new NotImplementedException();
         }

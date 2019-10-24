@@ -58,7 +58,7 @@ namespace Nethermind.JsonRpc.Test.Modules
         {
             Rlp.RegisterDecoders(typeof(ParityTraceDecoder).Assembly);
 
-            _ethSerializer = new Utf8EthereumJsonSerializer();
+            _ethSerializer = new EthereumJsonSerializer();
             ISpecProvider specProvider = MainNetSpecProvider.Instance;
             IEthereumEcdsa ethereumEcdsa = new EthereumEcdsa(specProvider, LimboLogs.Instance);
             ITxStorage txStorage = new InMemoryTxStorage();

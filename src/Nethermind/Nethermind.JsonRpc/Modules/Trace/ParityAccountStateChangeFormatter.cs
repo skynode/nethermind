@@ -40,30 +40,36 @@ namespace Nethermind.JsonRpc.Modules.Trace
             if (value.Balance == null)
             {
                 writer.WriteString("=");
+                writer.WriteValueSeparator();
             }
             else
             {
-                WriteChange(writer, value.Balance, formatterResolver);
+                WriteChange(ref writer, value.Balance, formatterResolver);
+                writer.WriteValueSeparator();
             }
 
             writer.WritePropertyName("code");
             if (value.Code == null)
             {
                 writer.WriteString("=");
+                writer.WriteValueSeparator();
             }
             else
             {
-                WriteChange(writer, value.Code, formatterResolver);
+                WriteChange(ref writer, value.Code, formatterResolver);
+                writer.WriteValueSeparator();
             }
 
             writer.WritePropertyName("nonce");
             if (value.Nonce == null)
             {
                 writer.WriteString("=");
+                writer.WriteValueSeparator();
             }
             else
             {
-                WriteChange(writer, value.Nonce, formatterResolver);
+                WriteChange(ref writer, value.Nonce, formatterResolver);
+                writer.WriteValueSeparator();
             }
 
             writer.WritePropertyName("storage");
@@ -77,7 +83,7 @@ namespace Nethermind.JsonRpc.Modules.Trace
                     trimmedKey = trimmedKey.Substring(trimmedKey.Length - 64, 64);
 
                     writer.WritePropertyName(string.Concat("0x", trimmedKey));
-                    WriteStorageChange(writer, pair.Value,
+                    WriteStorageChange(ref writer, pair.Value,
                         value.Balance?.Before == null && value.Balance?.After != null, formatterResolver);
                 }
             }
@@ -87,7 +93,7 @@ namespace Nethermind.JsonRpc.Modules.Trace
             writer.WriteEndObject();
         }
 
-        private void WriteChange(JsonWriter writer, ParityStateChange<byte[]> change,
+        private void WriteChange(ref JsonWriter writer, ParityStateChange<byte[]> change,
             IJsonFormatterResolver formatterResolver)
         {
             if (change == null)
@@ -110,6 +116,7 @@ namespace Nethermind.JsonRpc.Modules.Trace
                     writer.WriteBeginObject();
                     writer.WritePropertyName("from");
                     _bytesFormatter.Serialize(ref writer, change.Before, formatterResolver);
+                    writer.WriteValueSeparator();
                     writer.WritePropertyName("to");
                     _bytesFormatter.Serialize(ref writer, change.After, formatterResolver);
                     writer.WriteEndObject();
@@ -118,7 +125,7 @@ namespace Nethermind.JsonRpc.Modules.Trace
             }
         }
 
-        private void WriteChange(JsonWriter writer, ParityStateChange<UInt256?> change,
+        private void WriteChange(ref JsonWriter writer, ParityStateChange<UInt256?> change,
             IJsonFormatterResolver formatterResolver)
         {
             if (change == null)
@@ -141,6 +148,7 @@ namespace Nethermind.JsonRpc.Modules.Trace
                     writer.WriteBeginObject();
                     writer.WritePropertyName("from");
                     _intFormatter.Serialize(ref writer, change.Before, formatterResolver);
+                    writer.WriteValueSeparator();
                     writer.WritePropertyName("to");
                     _intFormatter.Serialize(ref writer, change.After, formatterResolver);
                     writer.WriteEndObject();
@@ -149,7 +157,7 @@ namespace Nethermind.JsonRpc.Modules.Trace
             }
         }
 
-        private void WriteStorageChange(JsonWriter writer, ParityStateChange<byte[]> change, bool isNew,
+        private void WriteStorageChange(ref JsonWriter writer, ParityStateChange<byte[]> change, bool isNew,
             IJsonFormatterResolver formatterResolver)
         {
             if (change == null)
@@ -172,6 +180,7 @@ namespace Nethermind.JsonRpc.Modules.Trace
                     writer.WriteBeginObject();
                     writer.WritePropertyName("from");
                     _32BytesFormatter.Serialize(ref writer, change.Before, formatterResolver);
+                    writer.WriteValueSeparator();
                     writer.WritePropertyName("to");
                     _32BytesFormatter.Serialize(ref writer, change.After, formatterResolver);
                     writer.WriteEndObject();

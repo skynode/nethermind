@@ -16,28 +16,37 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
-using Nethermind.Core.Extensions;
-using Nethermind.Evm.Tracing;
-using Utf8Json;
+using Nethermind.JsonRpc.Modules.Trace;
+using Nethermind.JsonRpc.Test.Data;
+using NUnit.Framework;
 
-namespace Nethermind.JsonRpc.Modules.Trace
+namespace Nethermind.JsonRpc.Test.Modules.Trace
 {
-    public class ParityVmTraceConverter : IJsonFormatter<ParityVmTrace>
+    [TestFixture]
+    public class ParityTraceAddressFormatterTests : SerializationTestBase
     {
-        public void Serialize(ref Utf8Json.JsonWriter writer, ParityVmTrace value, IJsonFormatterResolver formatterResolver)
+        [Test]
+        public void Can_do_roundtrip()
         {
-            writer.WriteBeginObject();
+            bool Comparer(int[] a, int[] b)
+            {
+                if (a.Length != b.Length)
+                {
+                    return false;
+                }
 
-            writer.WriteProperty("code", value.Code ?? Bytes.Empty, formatterResolver);
-            writer.WriteProperty("ops", value.Operations, formatterResolver);
-            
-            writer.WriteEndObject();
-        }
+                for (int i = 0; i < a.Length; i++)
+                {
+                    if (a[i] != b[i])
+                    {
+                        return false;
+                    }
+                }
 
-        public ParityVmTrace Deserialize(ref Utf8Json.JsonReader reader, IJsonFormatterResolver formatterResolver)
-        {
-            throw new NotImplementedException();
+                return true;
+            }
+
+            TestFormatter(new[] {1, 2, 3, 1000, 10000}, Comparer, new ParityTraceAddressFormatter());
         }
     }
 }

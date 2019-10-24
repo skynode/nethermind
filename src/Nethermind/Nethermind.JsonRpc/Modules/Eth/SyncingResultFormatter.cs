@@ -16,37 +16,32 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
+using System;
 using Nethermind.JsonRpc.Modules.Trace;
-using Nethermind.JsonRpc.Test.Data;
-using NUnit.Framework;
+using Utf8Json;
 
-namespace Nethermind.JsonRpc.Test.Modules.Trace
+namespace Nethermind.JsonRpc.Modules.Eth
 {
-    [TestFixture]
-    public class ParityTraceAddressConverterTests : SerializationTestBase
+    public class SyncingResultFormatter : IJsonFormatter<SyncingResult>
     {
-        [Test]
-        public void Can_do_roundtrip()
+        public void Serialize(ref JsonWriter writer, SyncingResult value, IJsonFormatterResolver formatterResolver)
         {
-            bool Comparer(int[] a, int[] b)
+            if (!value.IsSyncing)
             {
-                if (a.Length != b.Length)
-                {
-                    return false;
-                }
-
-                for (int i = 0; i < a.Length; i++)
-                {
-                    if (a[i] != b[i])
-                    {
-                        return false;
-                    }
-                }
-
-                return true;
+                writer.WriteBoolean(false);
+                return;
             }
 
-            TestFormatter(new[] {1, 2, 3, 1000, 10000}, Comparer, new ParityTraceAddressFormatter());
+            writer.WriteBeginObject();
+            writer.WriteProperty("startingBlock", value.StartingBlock, formatterResolver);
+            writer.WriteProperty("currentBlock", value.CurrentBlock, formatterResolver);
+            writer.WriteProperty("highestBlock", value.HighestBlock, formatterResolver);
+            writer.WriteEndObject();
+        }
+
+        public SyncingResult Deserialize(ref Utf8Json.JsonReader reader, IJsonFormatterResolver formatterResolver)
+        {
+            throw new NotImplementedException();
         }
     }
 }

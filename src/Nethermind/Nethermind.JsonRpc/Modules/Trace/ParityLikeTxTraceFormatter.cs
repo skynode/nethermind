@@ -24,7 +24,7 @@ using Utf8Json;
 
 namespace Nethermind.JsonRpc.Modules.Trace
 {
-    public class ParityLikeTxTraceConverter : IJsonFormatter<ParityLikeTxTrace>
+    public class ParityLikeTxTraceFormatter : IJsonFormatter<ParityLikeTxTrace>
     {
         private readonly ParityTraceAddressFormatter _traceAddressFormatter = new ParityTraceAddressFormatter();
 
@@ -54,7 +54,7 @@ namespace Nethermind.JsonRpc.Modules.Trace
             writer.WriteBeginArray();
             if (value.Action != null)
             {
-                Serialize(writer, value.Action, formatterResolver);
+                Serialize(ref writer, value.Action, formatterResolver);
             }
 
             writer.WriteEndArray();
@@ -90,7 +90,7 @@ namespace Nethermind.JsonRpc.Modules.Trace
          *    "transactionPosition": 42,
          *    "type": "call"
          */
-        private void Serialize(JsonWriter writer, ParityTraceAction traceAction,
+        private void Serialize(ref JsonWriter writer, ParityTraceAction traceAction,
             IJsonFormatterResolver formatterResolver)
         {
             if (!traceAction.IncludeInTrace)
@@ -116,7 +116,9 @@ namespace Nethermind.JsonRpc.Modules.Trace
             writer.WriteProperty("type", traceAction.Type, formatterResolver);
             writer.WriteEndObject();
             foreach (ParityTraceAction subtrace in traceAction.Subtraces)
-                Serialize(writer, subtrace, formatterResolver);
+            {
+                Serialize(ref writer, subtrace, formatterResolver);
+            }
         }
 
         public ParityLikeTxTrace Deserialize(ref JsonReader reader, IJsonFormatterResolver formatterResolver)

@@ -23,7 +23,7 @@ using Utf8Json;
 
 namespace Nethermind.JsonRpc.Modules.Trace
 {
-    public class ParityVmOperationTraceConverter : IJsonFormatter<ParityVmOperationTrace>
+    public class ParityVmOperationTraceFormatter : IJsonFormatter<ParityVmOperationTrace>
     {
         //{
         //  "cost": 0.0,
@@ -89,11 +89,11 @@ namespace Nethermind.JsonRpc.Modules.Trace
                 writer.WriteNull();
             }
 
-            writer.WriteProperty("used", value.Used, formatterResolver);
+            writer.WriteProperty("used", value.Used, formatterResolver, false);
             writer.WriteEndObject();
 
             writer.WriteProperty("pc", value.Pc, formatterResolver);
-            writer.WriteProperty("sub", value.Sub, formatterResolver);
+            writer.WriteProperty("sub", value.Sub, formatterResolver, false);
             writer.WriteEndObject();
         }
 

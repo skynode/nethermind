@@ -34,7 +34,7 @@ namespace Nethermind.Cli
 {
     static class Program
     {
-        private static readonly IJsonSerializer Serializer = new Utf8EthereumJsonSerializer();
+        private static readonly IJsonSerializer Serializer = new EthereumJsonSerializer();
         private static INodeManager _nodeManager;
         private static ILogManager _logManager;
         private static ICliEngine _engine;
@@ -268,12 +268,12 @@ namespace Nethermind.Cli
 
         private static void Setup()
         {
-            Serializer.RegisterFormatter(new ParityLikeTxTraceConverter());
+            Serializer.RegisterFormatter(new ParityLikeTxTraceFormatter());
             Serializer.RegisterFormatter(new ParityAccountStateChangeFormatter());
-            Serializer.RegisterFormatter(new ParityTraceActionConverter());
+            Serializer.RegisterFormatter(new ParityTraceActionFormatter());
             Serializer.RegisterFormatter(new ParityTraceResultFormatter());
-            Serializer.RegisterFormatter(new ParityVmOperationTraceConverter());
-            Serializer.RegisterFormatter(new ParityVmTraceConverter());
+            Serializer.RegisterFormatter(new ParityVmOperationTraceFormatter());
+            Serializer.RegisterFormatter(new ParityVmTraceFormatter());
 
             _engine = new CliEngine();
             _engine.JintEngine.SetValue("serialize", new Action<JsValue>(v =>
@@ -291,6 +291,7 @@ namespace Nethermind.Cli
         private static void LoadModules()
         {
             ModuleLoader = new CliModuleLoader(_engine, _nodeManager);
+            ModuleLoader.LoadModule(typeof(AdminCliModule));
             ModuleLoader.LoadModule(typeof(CliqueCliModule));
             ModuleLoader.LoadModule(typeof(DebugCliModule));
             ModuleLoader.LoadModule(typeof(EthCliModule));

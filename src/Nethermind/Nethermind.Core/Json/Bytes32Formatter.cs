@@ -31,7 +31,7 @@ namespace Nethermind.Core.Json
                 return;
             }
             
-            writer.WriteRaw(string.Concat("0x", value.ToHexString(false).PadLeft(64, '0')).GetUtf8Bytes());
+            writer.WriteString(string.Concat("0x", value.ToHexString(false).PadLeft(64, '0')));
         }
 
         public byte[] Deserialize(ref JsonReader reader, IJsonFormatterResolver formatterResolver)

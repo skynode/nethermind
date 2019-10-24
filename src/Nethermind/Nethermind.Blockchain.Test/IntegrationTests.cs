@@ -97,7 +97,7 @@ namespace Nethermind.Blockchain.Test
             BlockchainProcessor blockchainProcessor = new BlockchainProcessor(blockTree, blockProcessor, new TxSignaturesRecoveryStep(ecdsa, NullTxPool.Instance, LimboLogs.Instance), logManager, false, false);
 
             /* load ChainSpec and init */
-            ChainSpecLoader loader = new ChainSpecLoader(new Utf8EthereumJsonSerializer());
+            ChainSpecLoader loader = new ChainSpecLoader(new EthereumJsonSerializer());
             string path = "chainspec.json";
             logManager.GetClassLogger().Info($"Loading ChainSpec from {path}");
             ChainSpec chainSpec = loader.Load(File.ReadAllBytes(path));

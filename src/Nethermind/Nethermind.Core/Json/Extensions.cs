@@ -22,10 +22,6 @@ namespace Nethermind.Core.Json
     internal static class Extensions
     {
         private const int ZeroDigit = 48;
-        private const int XChar = 120;
-
-        public static readonly byte[] Bytes0X = {ZeroDigit, XChar};
-        public static readonly byte[] Bytes0X0 = {ZeroDigit, XChar, ZeroDigit};
 
         internal static string ParseSegmentHexString(this ArraySegment<byte> utf8String)
         {

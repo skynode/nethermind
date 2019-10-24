@@ -51,7 +51,7 @@ namespace Nethermind.KeyStore.Test
             }
 
             ILogManager logManager = NullLogManager.Instance;
-            _serializer = new Utf8EthereumJsonSerializer();
+            _serializer = new EthereumJsonSerializer();
             _cryptoRandom = new CryptoRandom();
             _store = new FileKeyStore(_config, _serializer, new AesEncrypter(_config, logManager), _cryptoRandom, logManager);
 

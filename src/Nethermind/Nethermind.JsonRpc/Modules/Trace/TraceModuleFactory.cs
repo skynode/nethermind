@@ -100,12 +100,12 @@ namespace Nethermind.JsonRpc.Modules.Trace
         
         public static IJsonFormatter[] Formatters = 
         {
-            new ParityLikeTxTraceConverter(),
+            new ParityLikeTxTraceFormatter(),
             new ParityAccountStateChangeFormatter(),
-            new ParityTraceActionConverter(),
+            new ParityTraceActionFormatter(),
             new ParityTraceResultFormatter(),
-            new ParityVmOperationTraceConverter(),
-            new ParityVmTraceConverter()
+            new ParityVmOperationTraceFormatter(),
+            new ParityVmTraceFormatter()
         };
 
         public override IReadOnlyCollection<IJsonFormatter> GetFormatters() => Formatters;

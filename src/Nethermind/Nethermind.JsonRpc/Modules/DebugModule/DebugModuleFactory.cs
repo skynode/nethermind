@@ -78,7 +78,7 @@ namespace Nethermind.JsonRpc.Modules.DebugModule
             return new DebugModule(_logManager, debugBridge);
         }
 
-        public static IJsonFormatter[] Formatters = {new GethLikeTxTraceConverter()};
+        public static IJsonFormatter[] Formatters = {new GethLikeTxTraceFormatter()};
 
         public override IReadOnlyCollection<IJsonFormatter> GetFormatters() => Formatters;
     }

@@ -45,7 +45,7 @@ namespace Nethermind.JsonRpc.Test
         {
             Assembly jConfig = typeof(JsonRpcConfig).Assembly;
             _configurationProvider = new ConfigProvider();
-            _serializer = new Utf8EthereumJsonSerializer();
+            _serializer = new EthereumJsonSerializer();
             _logManager = NullLogManager.Instance;
         }
 
@@ -86,7 +86,7 @@ namespace Nethermind.JsonRpc.Test
         [Test]
         public void CanHandleOptionalArguments()
         {
-            Utf8EthereumJsonSerializer serializer = new Utf8EthereumJsonSerializer();
+            EthereumJsonSerializer serializer = new EthereumJsonSerializer();
             string serialized = serializer.Serialize(new TransactionForRpc());
             IEthModule ethModule = Substitute.For<IEthModule>();
             ethModule.eth_call(Arg.Any<TransactionForRpc>()).ReturnsForAnyArgs(x => ResultWrapper<byte[]>.Success(new byte[] {1}));

@@ -55,7 +55,7 @@ namespace Nethermind.JsonRpc
         {
             _logger = logManager.GetClassLogger();
             _rpcModuleProvider = rpcModuleProvider;
-            _serializer = new Utf8EthereumJsonSerializer();
+            _serializer = new EthereumJsonSerializer();
 
             foreach (var formatter in rpcModuleProvider.Formatters)
             {

@@ -24,7 +24,7 @@ using Utf8Json;
 
 namespace Nethermind.JsonRpc.Modules.DebugModule
 {
-    public class GethLikeTxTraceConverter : IJsonFormatter<GethLikeTxTrace>
+    public class GethLikeTxTraceFormatter : IJsonFormatter<GethLikeTxTrace>
     {
         public void Serialize(ref Utf8Json.JsonWriter writer, GethLikeTxTrace value,
             IJsonFormatterResolver formatterResolver)

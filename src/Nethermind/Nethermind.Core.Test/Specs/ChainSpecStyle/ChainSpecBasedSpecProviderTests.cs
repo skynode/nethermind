@@ -34,7 +34,7 @@ namespace Nethermind.Core.Test.Specs.ChainSpecStyle
         [Test]
         public void Rinkeby_loads_properly()
         {
-            ChainSpecLoader loader = new ChainSpecLoader(new Utf8EthereumJsonSerializer());
+            ChainSpecLoader loader = new ChainSpecLoader(new EthereumJsonSerializer());
             string path = Path.Combine(TestContext.CurrentContext.WorkDirectory, "../../../../Chains/rinkeby.json");
             ChainSpec chainSpec = loader.Load(File.ReadAllBytes(path));
             ChainSpecBasedSpecProvider provider = new ChainSpecBasedSpecProvider(chainSpec);
@@ -61,7 +61,7 @@ namespace Nethermind.Core.Test.Specs.ChainSpecStyle
         [Test]
         public void Mainnet_loads_properly()
         {
-            ChainSpecLoader loader = new ChainSpecLoader(new Utf8EthereumJsonSerializer());
+            ChainSpecLoader loader = new ChainSpecLoader(new EthereumJsonSerializer());
             string path = Path.Combine(TestContext.CurrentContext.WorkDirectory, "../../../../Chains/foundation.json");
             ChainSpec chainSpec = loader.Load(File.ReadAllBytes(path));
             ChainSpecBasedSpecProvider provider = new ChainSpecBasedSpecProvider(chainSpec);

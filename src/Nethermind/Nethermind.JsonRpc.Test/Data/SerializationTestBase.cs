@@ -45,16 +45,16 @@ namespace Nethermind.JsonRpc.Test.Data
 
         protected void TestSerialization<T>(T item, Func<T, T, bool> equalityComparer)
         {
-            Utf8EthereumJsonSerializer serializer = BuildSerializer<T>();
+            EthereumJsonSerializer serializer = BuildSerializer<T>();
             string result = serializer.Serialize(item);
             T deserialized = serializer.Deserialize<T>(result);
 
             Assert.True(equalityComparer(item, deserialized));
         }
 
-        private static Utf8EthereumJsonSerializer BuildSerializer<T>()
+        private static EthereumJsonSerializer BuildSerializer<T>()
         {
-            Utf8EthereumJsonSerializer serializer = new Utf8EthereumJsonSerializer();
+            EthereumJsonSerializer serializer = new EthereumJsonSerializer();
             foreach (var formatter in EthModuleFactory.Formatters)
             {
                 serializer.RegisterFormatter(formatter);
@@ -70,7 +70,7 @@ namespace Nethermind.JsonRpc.Test.Data
 
         protected void TestOneWaySerialization<T>(T item, string expectedResult)
         {
-            Utf8EthereumJsonSerializer serializer = BuildSerializer<T>();
+            EthereumJsonSerializer serializer = BuildSerializer<T>();
             string result = serializer.Serialize(item);
             Assert.AreEqual(expectedResult, result, result.Replace("\"", "\\\""));
         }

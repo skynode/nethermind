@@ -17,7 +17,6 @@
  */
 
 using Nethermind.Core.Crypto;
-using Nethermind.Core.Extensions;
 using Utf8Json;
 
 namespace Nethermind.Core.Json
@@ -32,7 +31,7 @@ namespace Nethermind.Core.Json
                 return;
             }
             
-            writer.WriteRaw(value.ToString().GetUtf8Bytes());
+            writer.WriteString(value.ToString());
         }
 
         public PublicKey Deserialize(ref JsonReader reader, IJsonFormatterResolver formatterResolver)

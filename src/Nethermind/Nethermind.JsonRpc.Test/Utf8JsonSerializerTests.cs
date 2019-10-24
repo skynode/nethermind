@@ -24,7 +24,7 @@ namespace Nethermind.JsonRpc.Test
 {
     public class Utf8JsonSerializerTests
     {
-        private readonly IJsonSerializer _serializer = new Utf8EthereumJsonSerializer();
+        private readonly IJsonSerializer _serializer = new EthereumJsonSerializer();
 
         [Test]
         public void Test1()

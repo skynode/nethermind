@@ -95,7 +95,7 @@ namespace Nethermind.JsonRpc.Modules.Eth
         
         public static List<IJsonFormatter> Formatters = new List<IJsonFormatter>
         {
-            new SyncingResultConverter(),
+            new SyncingResultFormatter(),
             new ProofFormatter()
         };
 

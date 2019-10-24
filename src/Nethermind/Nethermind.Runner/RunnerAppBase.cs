@@ -143,7 +143,7 @@ namespace Nethermind.Runner
             IRpcModuleProvider rpcModuleProvider = jsonRpcConfig.Enabled
                 ? new RpcModuleProvider(configProvider.GetConfig<IJsonRpcConfig>(), logManager)
                 : (IRpcModuleProvider) NullModuleProvider.Instance;
-            var jsonSerializer = new Utf8EthereumJsonSerializer();
+            var jsonSerializer = new EthereumJsonSerializer();
             var webSocketsManager = new WebSocketsManager();
 
             INdmDataPublisher ndmDataPublisher = null;

@@ -30,15 +30,16 @@ namespace Nethermind.JsonRpc.Modules.Trace
 
             if (value.Address != null)
             {
-                writer.WriteProperty("address", value.Address, formatterResolver);    
+                writer.WriteProperty("address", value.Address, formatterResolver);
                 writer.WriteProperty("code", value.Code, formatterResolver);
             }
-            
-            writer.WriteProperty("gasUsed", string.Concat("0x", value.GasUsed.ToString("x")), formatterResolver);
+
+            writer.WriteProperty("gasUsed", string.Concat("0x", value.GasUsed.ToString("x")), formatterResolver,
+                value.Address == null);
             
             if(value.Address == null)
             {
-                writer.WriteProperty("output", value.Output, formatterResolver);    
+                writer.WriteProperty("output", value.Output, formatterResolver, false);    
             }
             
             writer.WriteEndObject();
