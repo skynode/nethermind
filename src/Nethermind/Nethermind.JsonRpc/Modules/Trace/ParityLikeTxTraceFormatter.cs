@@ -36,11 +36,14 @@ namespace Nethermind.JsonRpc.Modules.Trace
             writer.WritePropertyName("stateDiff");
             if (value.StateChanges != null)
             {
+                var counter = 0;
                 writer.WriteBeginObject();
                 foreach ((Address address, ParityAccountStateChange stateChange) in value.StateChanges
                     .OrderBy(sc => sc.Key, AddressComparer.Instance))
                 {
-                    writer.WriteProperty(address.ToString(), stateChange, formatterResolver);
+                    counter++;
+                    writer.WriteProperty(address.ToString(), stateChange, formatterResolver,
+                        counter < value.StateChanges.Count - 1);
                 }
 
                 writer.WriteEndObject();
@@ -50,6 +53,7 @@ namespace Nethermind.JsonRpc.Modules.Trace
                 writer.WriteNull();
             }
 
+            writer.WriteValueSeparator();
             writer.WritePropertyName("trace");
             writer.WriteBeginArray();
             if (value.Action != null)
@@ -58,13 +62,14 @@ namespace Nethermind.JsonRpc.Modules.Trace
             }
 
             writer.WriteEndArray();
+            writer.WriteValueSeparator();
 
             if (value.TransactionHash != null)
             {
                 writer.WriteProperty("transactionHash", value.TransactionHash, formatterResolver);
             }
 
-            writer.WriteProperty("vmTrace", value.VmTrace, formatterResolver);
+            writer.WriteProperty("vmTrace", value.VmTrace, formatterResolver, false);
 
             writer.WriteEndObject();
         }
@@ -112,9 +117,14 @@ namespace Nethermind.JsonRpc.Modules.Trace
             writer.WriteProperty("subtraces", traceAction.Subtraces.Count(s => s.IncludeInTrace), formatterResolver);
             writer.WritePropertyName("traceAddress");
             _traceAddressFormatter.Serialize(ref writer, traceAction.TraceAddress, formatterResolver);
-
-            writer.WriteProperty("type", traceAction.Type, formatterResolver);
+            writer.WriteValueSeparator();
+            writer.WriteProperty("type", traceAction.Type, formatterResolver, false);
             writer.WriteEndObject();
+            if (traceAction.Subtraces.Count > 0)
+            {
+                writer.WriteValueSeparator();
+            }
+
             foreach (ParityTraceAction subtrace in traceAction.Subtraces)
             {
                 Serialize(ref writer, subtrace, formatterResolver);

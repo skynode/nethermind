@@ -31,10 +31,16 @@ namespace Nethermind.JsonRpc.Modules.Trace
             }
             else
             {
+                var counter = 0;
                 writer.WriteBeginArray();
                 foreach (int i in value)
                 {
+                    counter++;
                     writer.WriteInt32(i);
+                    if (counter < value.Length)
+                    {
+                        writer.WriteValueSeparator();
+                    }
                 }
 
                 writer.WriteEndArray();
@@ -44,12 +50,21 @@ namespace Nethermind.JsonRpc.Modules.Trace
         public int[] Deserialize(ref JsonReader reader, IJsonFormatterResolver formatterResolver)
         {
             List<int> result = new List<int>();
+            JsonToken token;
 
             do
             {
+                token = reader.GetCurrentJsonToken();
+                if (token != JsonToken.Number)
+                {
+                    reader.AdvanceOffset(1);
+                    continue;
+                }
+
                 result.Add(reader.ReadInt32());
-            } while (!reader.ReadIsNull());
-            
+
+            } while (!reader.ReadIsNull() && token != JsonToken.None);
+
             return result.ToArray();
         }
     }

@@ -27,6 +27,12 @@ namespace Nethermind.JsonRpc.Modules.Trace
     {
         public void Serialize(ref JsonWriter writer, ParityVmTrace value, IJsonFormatterResolver formatterResolver)
         {
+            if (value is null)
+            {
+                writer.WriteNull();
+                return;
+            }
+            
             writer.WriteBeginObject();
             writer.WriteProperty("code", value.Code ?? Bytes.Empty, formatterResolver);
             writer.WriteProperty("ops", value.Operations, formatterResolver, false);
