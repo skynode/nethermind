@@ -20,16 +20,12 @@ using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Utf8Json;
 
 namespace Nethermind.Core.Json
 {
     public class UnforgivingJsonSerializer : IJsonSerializer
     {
-        public T DeserializeAnonymousType<T>(string json, T definition)
-        {
-            return JsonConvert.DeserializeAnonymousType(json, definition);
-        }
-
         public T Deserialize<T>(string json)
         {
             return JsonConvert.DeserializeObject<T>(json);
@@ -100,7 +96,12 @@ namespace Nethermind.Core.Json
             });
         }
 
-        public void RegisterConverter(JsonConverter converter)
+        public void RegisterFormatter(IJsonFormatter formatter)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void RegisterFormatter(JsonConverter converter)
         {
             throw new NotImplementedException();
         }

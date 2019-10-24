@@ -21,7 +21,6 @@ using System.Runtime.Serialization;
 using Nethermind.Core.Crypto;
 using Nethermind.Core.Json;
 using Nethermind.Dirichlet.Numerics;
-using Newtonsoft.Json;
 using Utf8Json;
 
 namespace Nethermind.Core.Specs.ChainSpecStyle.Json

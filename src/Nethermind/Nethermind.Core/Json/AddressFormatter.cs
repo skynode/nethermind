@@ -16,6 +16,7 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
+using Nethermind.Core.Extensions;
 using Utf8Json;
 
 namespace Nethermind.Core.Json
@@ -30,7 +31,7 @@ namespace Nethermind.Core.Json
                 return;
             }
             
-            writer.WriteRaw(value.Bytes);
+            writer.WriteRaw(value.ToString().GetUtf8Bytes());
         }
 
         public Address Deserialize(ref JsonReader reader, IJsonFormatterResolver formatterResolver)

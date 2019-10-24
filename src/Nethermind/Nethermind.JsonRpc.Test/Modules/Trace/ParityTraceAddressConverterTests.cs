@@ -46,7 +46,7 @@ namespace Nethermind.JsonRpc.Test.Modules.Trace
                 return true;
             }
 
-            TestConverter(new[] {1, 2, 3, 1000, 10000}, Comparer, new ParityTraceAddressConverter());
+            TestFormatter(new[] {1, 2, 3, 1000, 10000}, Comparer, new ParityTraceAddressFormatter());
         }
     }
 }

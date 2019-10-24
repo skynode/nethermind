@@ -17,7 +17,6 @@
  */
 
 using Nethermind.Dirichlet.Numerics;
-using Newtonsoft.Json;
 
 namespace Nethermind.JsonRpc
 {
@@ -25,8 +24,6 @@ namespace Nethermind.JsonRpc
     {
         public string JsonRpc { get; set; }
         public string Method { get; set; }
-        
-        [JsonProperty(Required = Required.Default)]
         public string[] Params { get; set; } = new string[0];
         public UInt256 Id { get; set; }
 

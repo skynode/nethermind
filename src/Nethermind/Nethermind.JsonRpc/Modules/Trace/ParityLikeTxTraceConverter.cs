@@ -19,26 +19,29 @@
 using System;
 using System.Linq;
 using Nethermind.Core;
-using Nethermind.Evm.Precompiles;
 using Nethermind.Evm.Tracing;
-using Newtonsoft.Json;
+using Utf8Json;
 
 namespace Nethermind.JsonRpc.Modules.Trace
 {
-    public class ParityLikeTxTraceConverter : JsonConverter<ParityLikeTxTrace>
+    public class ParityLikeTxTraceConverter : IJsonFormatter<ParityLikeTxTrace>
     {
-        private ParityTraceAddressConverter _traceAddressConverter = new ParityTraceAddressConverter();
+        private readonly ParityTraceAddressFormatter _traceAddressFormatter = new ParityTraceAddressFormatter();
 
-        public override void WriteJson(JsonWriter writer, ParityLikeTxTrace value, JsonSerializer serializer)
+        public void Serialize(ref JsonWriter writer, ParityLikeTxTrace value, IJsonFormatterResolver formatterResolver)
         {
-            writer.WriteStartObject();
+            writer.WriteBeginObject();
 
-            writer.WriteProperty("output", value.Output, serializer);
+            writer.WriteProperty("output", value.Output, formatterResolver);
             writer.WritePropertyName("stateDiff");
             if (value.StateChanges != null)
             {
-                writer.WriteStartObject();
-                foreach ((Address address, ParityAccountStateChange stateChange) in value.StateChanges.OrderBy(sc => sc.Key, AddressComparer.Instance)) writer.WriteProperty(address.ToString(), stateChange, serializer);
+                writer.WriteBeginObject();
+                foreach ((Address address, ParityAccountStateChange stateChange) in value.StateChanges
+                    .OrderBy(sc => sc.Key, AddressComparer.Instance))
+                {
+                    writer.WriteProperty(address.ToString(), stateChange, formatterResolver);
+                }
 
                 writer.WriteEndObject();
             }
@@ -48,19 +51,20 @@ namespace Nethermind.JsonRpc.Modules.Trace
             }
 
             writer.WritePropertyName("trace");
-            writer.WriteStartArray();
+            writer.WriteBeginArray();
             if (value.Action != null)
             {
-                WriteJson(writer, value.Action, serializer);
+                Serialize(writer, value.Action, formatterResolver);
             }
+
             writer.WriteEndArray();
 
             if (value.TransactionHash != null)
             {
-                writer.WriteProperty("transactionHash", value.TransactionHash, serializer);
+                writer.WriteProperty("transactionHash", value.TransactionHash, formatterResolver);
             }
-            
-            writer.WriteProperty("vmTrace", value.VmTrace, serializer);
+
+            writer.WriteProperty("vmTrace", value.VmTrace, formatterResolver);
 
             writer.WriteEndObject();
         }
@@ -86,34 +90,36 @@ namespace Nethermind.JsonRpc.Modules.Trace
          *    "transactionPosition": 42,
          *    "type": "call"
          */
-        private void WriteJson(JsonWriter writer, ParityTraceAction traceAction, JsonSerializer serializer)
+        private void Serialize(JsonWriter writer, ParityTraceAction traceAction,
+            IJsonFormatterResolver formatterResolver)
         {
             if (!traceAction.IncludeInTrace)
             {
                 return;
             }
-            
-            writer.WriteStartObject();
-            writer.WriteProperty("action", traceAction, serializer);
+
+            writer.WriteBeginObject();
+            writer.WriteProperty("action", traceAction, formatterResolver);
             if (traceAction.Error == null)
             {
-                writer.WriteProperty("result", traceAction.Result, serializer);
+                writer.WriteProperty("result", traceAction.Result, formatterResolver);
             }
             else
             {
-                writer.WriteProperty("error", traceAction.Error, serializer);
+                writer.WriteProperty("error", traceAction.Error, formatterResolver);
             }
 
-            writer.WriteProperty("subtraces", traceAction.Subtraces.Count(s => s.IncludeInTrace));
+            writer.WriteProperty("subtraces", traceAction.Subtraces.Count(s => s.IncludeInTrace), formatterResolver);
             writer.WritePropertyName("traceAddress");
-            _traceAddressConverter.WriteJson(writer, traceAction.TraceAddress, serializer);
+            _traceAddressFormatter.Serialize(ref writer, traceAction.TraceAddress, formatterResolver);
 
-            writer.WriteProperty("type", traceAction.Type);
+            writer.WriteProperty("type", traceAction.Type, formatterResolver);
             writer.WriteEndObject();
-            foreach (ParityTraceAction subtrace in traceAction.Subtraces) WriteJson(writer, subtrace, serializer);
+            foreach (ParityTraceAction subtrace in traceAction.Subtraces)
+                Serialize(writer, subtrace, formatterResolver);
         }
 
-        public override ParityLikeTxTrace ReadJson(JsonReader reader, Type objectType, ParityLikeTxTrace existingValue, bool hasExistingValue, JsonSerializer serializer)
+        public ParityLikeTxTrace Deserialize(ref JsonReader reader, IJsonFormatterResolver formatterResolver)
         {
             throw new NotImplementedException();
         }

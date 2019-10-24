@@ -22,7 +22,7 @@ using Utf8Json.Resolvers;
 
 namespace Nethermind.Core.Json
 {
-    public class EthereumFormatterResolver : IJsonFormatterResolver
+    public class EthereumReadableFormatterResolver : IJsonFormatterResolver
     {
         public static readonly IJsonFormatterResolver Instance = new EthereumFormatterResolver();
 
@@ -38,17 +38,17 @@ namespace Nethermind.Core.Json
         public static IList<IJsonFormatter> Formatters { get; } = new List<IJsonFormatter>
         {
             new AddressFormatter(),
-            new BigIntegerFormatter(),
             new BloomFormatter(),
             new ByteArrayFormatter(),
             new Bytes32Formatter(),
             new KeccakFormatter(),
-            new LongFormatter(),
-            new NullableBigIntegerFormatter(),
-            new NullableLongFormatter(),
-            new NullableUInt256Formatter(),
+            new LongFormatter(NumberConversion.Decimal),
+            new NullableBigIntegerFormatter(NumberConversion.Decimal),
+            new NullableLongFormatter(NumberConversion.Decimal),
+            new NullableUInt256Formatter(NumberConversion.Decimal),
+            new BigIntegerFormatter(NumberConversion.Decimal),
+            new UInt256Formatter(NumberConversion.Decimal),
             new PublicKeyFormatter(),
-            new UInt256Formatter(),
             new Utf8Json.Formatters.GenericDictionaryFormatter<long, ChainSpecJson.AuRaValidatorJson,
                 Dictionary<long, ChainSpecJson.AuRaValidatorJson>>()
         };

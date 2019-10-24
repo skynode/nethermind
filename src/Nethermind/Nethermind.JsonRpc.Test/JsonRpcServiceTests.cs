@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Nethermind.Config;
+using Nethermind.Core;
 using Nethermind.Core.Crypto;
 using Nethermind.Core.Extensions;
 using Nethermind.Core.Json;
@@ -31,7 +32,6 @@ using Nethermind.JsonRpc.Modules.Eth;
 using Nethermind.JsonRpc.Modules.Net;
 using Nethermind.JsonRpc.Modules.Web3;
 using Nethermind.Logging;
-using Newtonsoft.Json;
 using NSubstitute;
 using NUnit.Framework;
 
@@ -45,11 +45,13 @@ namespace Nethermind.JsonRpc.Test
         {
             Assembly jConfig = typeof(JsonRpcConfig).Assembly;
             _configurationProvider = new ConfigProvider();
+            _serializer = new Utf8EthereumJsonSerializer();
             _logManager = NullLogManager.Instance;
         }
 
         private IJsonRpcService _jsonRpcService;
         private IConfigProvider _configurationProvider;
+        private IJsonSerializer _serializer;
         private ILogManager _logManager;
 
         private JsonRpcResponse TestRequest<T>(T module, string method, params string[] parameters) where T : IModule
@@ -114,7 +116,7 @@ namespace Nethermind.JsonRpc.Test
                 }
             };
 
-            JsonRpcResponse response = TestRequest<IEthModule>(ethModule, "eth_newFilter", JsonConvert.SerializeObject(parameters));
+            JsonRpcResponse response = TestRequest<IEthModule>(ethModule, "eth_newFilter", _serializer.Serialize(parameters));
             Assert.AreEqual(UInt256.One, response.Result);
         }
 

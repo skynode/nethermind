@@ -29,7 +29,7 @@ using Nethermind.JsonRpc.Eip1186;
 using Nethermind.Logging;
 using Nethermind.Store;
 using Nethermind.Wallet;
-using Newtonsoft.Json;
+using Utf8Json;
 
 namespace Nethermind.JsonRpc.Modules.Eth
 {
@@ -93,12 +93,12 @@ namespace Nethermind.JsonRpc.Modules.Eth
         }
         
         
-        public static List<JsonConverter> Converters = new List<JsonConverter>
+        public static List<IJsonFormatter> Formatters = new List<IJsonFormatter>
         {
             new SyncingResultConverter(),
-            new ProofConverter()
+            new ProofFormatter()
         };
 
-        public override IReadOnlyCollection<JsonConverter> GetConverters() => Converters;
+        public override IReadOnlyCollection<IJsonFormatter> GetFormatters() => Formatters;
     }
 }

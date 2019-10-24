@@ -18,26 +18,22 @@
 
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Nethermind.Core;
 using Nethermind.Logging;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 using Websocket.Client;
 
 namespace Nethermind.EthStats.Senders
 {
     public class MessageSender : IMessageSender
     {
-        private static readonly JsonSerializerSettings SerializerSettings = new JsonSerializerSettings
-        {
-            ContractResolver = new CamelCasePropertyNamesContractResolver()
-        };
-
         private readonly string _instanceId;
+        private readonly IJsonSerializer _jsonSerializer;
         private readonly ILogger _logger;
 
-        public MessageSender(string instanceId, ILogManager logManager)
+        public MessageSender(string instanceId, IJsonSerializer jsonSerializer, ILogManager logManager)
         {
             _instanceId = instanceId;
+            _jsonSerializer = jsonSerializer;
             _logger = logManager.GetClassLogger();
         }
 
@@ -49,7 +45,7 @@ namespace Nethermind.EthStats.Senders
             }
             
             var (emitMessage, messageType) = CreateMessage(message, type);
-            var payload = JsonConvert.SerializeObject(emitMessage, SerializerSettings);
+            var payload = _jsonSerializer.Serialize(emitMessage);
             if (_logger.IsTrace) _logger.Trace($"Sending ETH stats message '{messageType}': {payload}");
 
             return client.Send(payload);

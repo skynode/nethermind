@@ -23,7 +23,6 @@ using System.Runtime.Serialization;
 using Nethermind.Core.Json;
 using Nethermind.Core.Specs.GenesisFileStyle.Json;
 using Nethermind.Dirichlet.Numerics;
-using Newtonsoft.Json;
 using Utf8Json;
 
 namespace Nethermind.Core.Specs.ChainSpecStyle.Json

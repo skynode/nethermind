@@ -19,6 +19,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using FluentAssertions;
 using Nethermind.Abi;
 using Nethermind.AuRa.Contracts;
@@ -36,10 +37,9 @@ using Nethermind.Evm;
 using Nethermind.Evm.Tracing;
 using Nethermind.Logging;
 using Nethermind.Store;
-using Newtonsoft.Json;
 using NSubstitute;
-using NSubstitute.ReceivedExtensions;
 using NUnit.Framework;
+using Utf8Json;
 
 namespace Nethermind.AuRa.Test.Validators
 {
@@ -580,7 +580,7 @@ namespace Nethermind.AuRa.Test.Validators
             
             public IDictionary<long, ChainInfo> Reorganisations { get; set; }
             
-            public override string ToString() => JsonConvert.SerializeObject(this);
+            public override string ToString() => Encoding.UTF8.GetString(JsonSerializer.Serialize(this));
 
             public bool TryDoReorganisations(int blockNumber, out ChainInfo last)
             {

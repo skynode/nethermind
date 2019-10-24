@@ -21,13 +21,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Nethermind.Logging;
-using Newtonsoft.Json;
+using Utf8Json;
 
 namespace Nethermind.JsonRpc.Modules
 {
     public class RpcModuleProvider : IRpcModuleProvider
     {
-        public IReadOnlyCollection<JsonConverter> Converters { get; } = new List<JsonConverter>();
+        public IReadOnlyCollection<IJsonFormatter> Formatters { get; } = new List<IJsonFormatter>();
         
         private ILogger _logger;
         private IJsonRpcConfig _jsonRpcConfig;
@@ -56,7 +56,7 @@ namespace Nethermind.JsonRpc.Modules
             _pools[moduleType] = (() => pool.GetModule(), (m) => pool.ReturnModule((T)m));
             _modules.Add(moduleType);
             
-            ((List<JsonConverter>)Converters).AddRange(pool.Factory.GetConverters());
+            ((List<IJsonFormatter>)Formatters).AddRange(pool.Factory.GetFormatters());
 
             foreach ((string name, MethodInfo info) in GetMethodDict(typeof(T)))
             {

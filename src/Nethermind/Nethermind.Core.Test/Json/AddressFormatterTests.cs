@@ -18,6 +18,7 @@
 
 using Nethermind.Core.Extensions;
 using Nethermind.Core.Json;
+using Nethermind.Core.Test.Builders;
 using NUnit.Framework;
 using Utf8Json;
 
@@ -27,12 +28,22 @@ namespace Nethermind.Core.Test.Json
     public class AddressFormatterTests
     {
         [Test]
-        public void Can_read_null()
+        public void Should_deserialize()
         {
             AddressFormatter formatter = new AddressFormatter();
             JsonReader reader = new JsonReader("".GetUtf8Bytes());
             Address result = formatter.Deserialize(ref reader, EthereumFormatterResolver.Instance);
             Assert.AreEqual(null, result);
+        }
+        
+        [Test]
+        public void Should_serialize()
+        {
+            AddressFormatter formatter = new AddressFormatter();
+            JsonWriter writer = new JsonWriter();
+            formatter.Serialize(ref writer, TestItem.AddressA,  EthereumFormatterResolver.Instance);
+            var bytes = writer.ToUtf8ByteArray();
+            Assert.AreEqual(System.Text.Encoding.UTF8.GetString(bytes), TestItem.AddressA.ToString());
         }
     }
 }

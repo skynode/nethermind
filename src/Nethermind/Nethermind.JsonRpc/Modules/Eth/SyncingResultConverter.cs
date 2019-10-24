@@ -18,30 +18,30 @@
 
 using System;
 using Nethermind.JsonRpc.Modules.Trace;
-using Newtonsoft.Json;
+using Utf8Json;
 
 namespace Nethermind.JsonRpc.Modules.Eth
 {
-    public class SyncingResultConverter : JsonConverter<SyncingResult>
+    public class SyncingResultConverter : IJsonFormatter<SyncingResult>
     {
-        public override void WriteJson(JsonWriter writer, SyncingResult value, JsonSerializer serializer)
+        public void Serialize(ref JsonWriter writer, SyncingResult value, IJsonFormatterResolver formatterResolver)
         {
             if (!value.IsSyncing)
             {
-                writer.WriteValue(false);
+                writer.WriteBoolean(false);
                 return;
             }
 
-            writer.WriteStartObject();
-            writer.WriteProperty("startingBlock", value.StartingBlock, serializer);
-            writer.WriteProperty("currentBlock", value.CurrentBlock, serializer);
-            writer.WriteProperty("highestBlock", value.HighestBlock, serializer);
+            writer.WriteBeginObject();
+            writer.WriteProperty("startingBlock", value.StartingBlock, formatterResolver);
+            writer.WriteProperty("currentBlock", value.CurrentBlock, formatterResolver);
+            writer.WriteProperty("highestBlock", value.HighestBlock, formatterResolver);
             writer.WriteEndObject();
         }
 
-        public override SyncingResult ReadJson(JsonReader reader, Type objectType, SyncingResult existingValue, bool hasExistingValue, JsonSerializer serializer)
+        public SyncingResult Deserialize(ref Utf8Json.JsonReader reader, IJsonFormatterResolver formatterResolver)
         {
-            throw new NotSupportedException();
+            throw new NotImplementedException();
         }
     }
 }

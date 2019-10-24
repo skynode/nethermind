@@ -20,6 +20,8 @@ using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Utf8Json;
+using JsonSerializer = Newtonsoft.Json.JsonSerializer;
 
 namespace Nethermind.Core.Json
 {
@@ -73,11 +75,6 @@ namespace Nethermind.Core.Json
             Formatting = Formatting.Indented,
             Converters = ReadableConverters
         };
-        
-        public T DeserializeAnonymousType<T>(string json, T definition)
-        {
-            throw new NotSupportedException();
-        }
 
         public T Deserialize<T>(string json)
         {
@@ -147,7 +144,12 @@ namespace Nethermind.Core.Json
             return JsonConvert.SerializeObject(value, indented ? _readableSettings : _settings);
         }
 
-        public void RegisterConverter(JsonConverter converter)
+        public void RegisterFormatter(IJsonFormatter formatter)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void RegisterFormatter(JsonConverter converter)
         {
             BasicConverters.Add(converter);
             ReadableConverters.Add(converter);

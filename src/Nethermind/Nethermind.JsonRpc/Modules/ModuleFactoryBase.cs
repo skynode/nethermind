@@ -19,7 +19,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using Newtonsoft.Json;
+using Utf8Json;
 
 namespace Nethermind.JsonRpc.Modules
 {
@@ -46,15 +46,15 @@ namespace Nethermind.JsonRpc.Modules
         }
 
         // ReSharper disable once StaticMemberInGenericType
-        private static IReadOnlyCollection<JsonConverter> _noConverters = new List<JsonConverter>();
+        private static IReadOnlyCollection<IJsonFormatter> _noFormatters = new List<IJsonFormatter>();
 
         public abstract T Create();
 
         public ModuleType ModuleType { get; }
 
-        public virtual IReadOnlyCollection<JsonConverter> GetConverters()
+        public virtual IReadOnlyCollection<IJsonFormatter> GetFormatters()
         {
-            return _noConverters;
+            return _noFormatters;
         }
     }
 

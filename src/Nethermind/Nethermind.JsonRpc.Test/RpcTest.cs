@@ -18,12 +18,12 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using Nethermind.Core.Json;
 using Nethermind.JsonRpc.Modules;
 using Nethermind.JsonRpc.Test.Modules;
 using Nethermind.Logging;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 using NUnit.Framework;
+using Utf8Json;
 
 namespace Nethermind.JsonRpc.Test
 {
@@ -36,22 +36,24 @@ namespace Nethermind.JsonRpc.Test
             return service.SendRequestAsync(request).Result;
         }
         
-        public static string TestSerializedRequest<T>(IReadOnlyCollection<JsonConverter> converters, T module, string method, params string[] parameters) where T : class, IModule
+        public static string TestSerializedRequest<T>(IReadOnlyCollection<IJsonFormatter> formatters, T module, string method, params string[] parameters) where T : class, IModule
         {
             IJsonRpcService service = BuildRpcService(module);
             JsonRpcRequest request = GetJsonRequest(method, parameters);
             JsonRpcResponse response = service.SendRequestAsync(request).Result;
-            JsonSerializerSettings settings = new JsonSerializerSettings();
-            settings.ContractResolver = new CamelCasePropertyNamesContractResolver();
-            settings.Converters = service.Converters.Union(converters).ToArray();
-            string serialized = JsonConvert.SerializeObject(response, settings);
+            Utf8EthereumJsonSerializer serializer = new Utf8EthereumJsonSerializer();
+            foreach (var formatter in formatters)
+            {
+                serializer.RegisterFormatter(formatter);
+            }
+            string serialized = serializer.Serialize(response);
             TestContext.WriteLine(serialized.Replace("\"", "\\\""));
             return serialized;
         }
         
         public static string TestSerializedRequest<T>(T module, string method, params string[] parameters) where T : class, IModule
         {
-            return TestSerializedRequest(new JsonConverter[0], module, method, parameters);
+            return TestSerializedRequest(new IJsonFormatter[0], module, method, parameters);
         }
         
         public static IJsonRpcService BuildRpcService<T>(T module) where T : class, IModule

@@ -20,9 +20,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Nethermind.Core;
@@ -59,7 +57,7 @@ namespace Nethermind.JsonRpc
                 ContractResolver = new CamelCasePropertyNamesContractResolver()
             };
 
-            foreach (JsonConverter converter in _jsonRpcService.Converters)
+            foreach (JsonConverter converter in _jsonRpcService.Formatters)
             {
                 jsonSettings.Converters.Add(converter);
             }

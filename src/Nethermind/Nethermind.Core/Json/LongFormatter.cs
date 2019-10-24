@@ -23,7 +23,7 @@ using Utf8Json;
 
 namespace Nethermind.Core.Json
 {
-    public class LongFormatter : IJsonFormatter<long>
+    public class LongFormatter : IJsonFormatter<long>, IObjectPropertyNameFormatter<long>
     {
         private readonly NumberConversion _conversion;
 
@@ -108,6 +108,16 @@ namespace Nethermind.Core.Json
             }
 
             return long.Parse(s, NumberStyles.Integer);
+        }
+
+        public void SerializeToPropertyName(ref JsonWriter writer, long value, IJsonFormatterResolver formatterResolver)
+        {
+            Serialize(ref writer, value, formatterResolver);
+        }
+
+        public long DeserializeFromPropertyName(ref JsonReader reader, IJsonFormatterResolver formatterResolver)
+        {
+            return Deserialize(ref reader, formatterResolver);
         }
     }
 }

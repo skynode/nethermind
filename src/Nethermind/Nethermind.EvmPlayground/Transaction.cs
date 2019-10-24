@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+﻿using System.Runtime.Serialization;
 
 namespace Nethermind.EvmPlayground
 {
@@ -10,19 +10,19 @@ namespace Nethermind.EvmPlayground
             Data = data.ToHexString(true);
         }
        
-        [JsonProperty("from", Order = 0)]
+        [DataMember(Name = "from")]
         public string From { get; }
 
-        [JsonProperty("gas", Order = 1)]
+        [DataMember(Name = "gas")]
         public string Gas { get; } = "0xF4240";
 
-        [JsonProperty("gasPrice", Order = 2)]
+        [DataMember(Name = "gasPrice")]
         public string GasPrice { get; } = "0x4A817C800";
 
-        [JsonProperty("to", Order = 3)]
+        [DataMember(Name = "to")]
         public string To { get; }
 
-        [JsonProperty("data", Order = 4)]
+        [DataMember(Name = "data")]
         public string Data { get; }
     }
 }

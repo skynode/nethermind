@@ -16,17 +16,17 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
-using Newtonsoft.Json;
+using System.Runtime.Serialization;
 
 namespace Nethermind.JsonRpc
 {
     public class Error
     {
-        [JsonProperty(PropertyName = "code")]
+        [DataMember(Name = "code")]
         public int Code { get; set; }
-        [JsonProperty(PropertyName = "message")]
+        [DataMember(Name = "message")]
         public string Message { get; set; }
-        [JsonProperty(PropertyName = "data")]
+        [DataMember(Name = "data")]
         public string Data { get; set; }
     }
 }

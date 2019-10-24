@@ -16,48 +16,39 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using Newtonsoft.Json;
-using JsonSerializer = Newtonsoft.Json.JsonSerializer;
+using Utf8Json;
 
 namespace Nethermind.JsonRpc.Modules.Trace
 {
-    public class ParityTraceAddressConverter : JsonConverter<int[]>
+    public class ParityTraceAddressFormatter : IJsonFormatter<int[]>
     {
-        public override void WriteJson(JsonWriter writer, int[] value, JsonSerializer serializer)
+        public void Serialize(ref JsonWriter writer, int[] value, IJsonFormatterResolver formatterResolver)
         {
-            if (value == null)
+            if (value is null)
             {
                 writer.WriteNull();
             }
             else
             {
-                writer.WriteStartArray();
+                writer.WriteBeginArray();
                 foreach (int i in value)
                 {
-                    writer.WriteValue(i);
+                    writer.WriteInt32(i);
                 }
 
                 writer.WriteEndArray();
             }
         }
 
-        public override int[] ReadJson(JsonReader reader, Type objectType, int[] existingValue, bool hasExistingValue, JsonSerializer serializer)
+        public int[] Deserialize(ref JsonReader reader, IJsonFormatterResolver formatterResolver)
         {
             List<int> result = new List<int>();
-            int? pathPart;
 
             do
             {
-                pathPart = reader.ReadAsInt32();
-                if (pathPart.HasValue)
-                {
-                    result.Add(pathPart.Value);
-                }
-            } while (pathPart != null);
+                result.Add(reader.ReadInt32());
+            } while (!reader.ReadIsNull());
             
             return result.ToArray();
         }

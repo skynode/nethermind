@@ -17,71 +17,52 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Text;
-using Nethermind.Blockchain;
+using Nethermind.Core.Extensions;
 using Nethermind.Core.Json;
-using Nethermind.Facade;
-using Nethermind.JsonRpc.Modules;
 using Nethermind.JsonRpc.Modules.Eth;
 using Nethermind.JsonRpc.Modules.Trace;
-using Nethermind.Logging;
-using Newtonsoft.Json;
-using NSubstitute;
 using NUnit.Framework;
-using JsonSerializer = Newtonsoft.Json.JsonSerializer;
+using Utf8Json;
+using Utf8Json.Resolvers;
 
 namespace Nethermind.JsonRpc.Test.Data
 {
     public class SerializationTestBase
     {
-        protected void TestConverter<T>(T item, Func<T, T, bool> equalityComparer, JsonConverter<T> converter)
+        protected void TestFormatter<T>(T item, Func<T, T, bool> equalityComparer, IJsonFormatter<T> formatter)
         {
-            JsonSerializer serializer = new JsonSerializer();
-            serializer.Converters.Add(converter);
-            StringBuilder builder = new StringBuilder();
-            StringWriter writer = new StringWriter(builder);
-            serializer.Serialize(writer, item);
-            string result = builder.ToString();
-            JsonReader reader = new JsonTextReader(new StringReader(result));
-            T deserialized = serializer.Deserialize<T>(reader);
+            CompositeResolver.RegisterAndSetAsDefault(formatter);
+            var resolver = CompositeResolver.Instance;
+            JsonWriter writer = new JsonWriter();
+            formatter.Serialize(ref writer, item, resolver);
+            string result = Encoding.UTF8.GetString(writer.ToUtf8ByteArray());
+            JsonReader reader = new JsonReader(result.GetUtf8Bytes());
+            T deserialized = formatter.Deserialize(ref reader, resolver);
 
             Assert.True(equalityComparer(item, deserialized));
         }
 
         protected void TestSerialization<T>(T item, Func<T, T, bool> equalityComparer)
         {
-            JsonSerializer serializer = BuildSerializer<T>();
-
-            StringBuilder builder = new StringBuilder();
-            StringWriter writer = new StringWriter(builder);
-            serializer.Serialize(writer, item);
-            string result = builder.ToString();
-            JsonReader reader = new JsonTextReader(new StringReader(result));
-            T deserialized = serializer.Deserialize<T>(reader);
+            Utf8EthereumJsonSerializer serializer = BuildSerializer<T>();
+            string result = serializer.Serialize(item);
+            T deserialized = serializer.Deserialize<T>(result);
 
             Assert.True(equalityComparer(item, deserialized));
         }
 
-        private static JsonSerializer BuildSerializer<T>()
+        private static Utf8EthereumJsonSerializer BuildSerializer<T>()
         {
-            TraceModule module = new TraceModule(Substitute.For<IBlockchainBridge>(), NullLogManager.Instance, Substitute.For<ITracer>());
-
-            JsonSerializer serializer = new JsonSerializer();
-            foreach (JsonConverter converter in EthModuleFactory.Converters)
+            Utf8EthereumJsonSerializer serializer = new Utf8EthereumJsonSerializer();
+            foreach (var formatter in EthModuleFactory.Formatters)
             {
-                serializer.Converters.Add(converter);
+                serializer.RegisterFormatter(formatter);
             }            
             
-            foreach (JsonConverter converter in TraceModuleFactory.Converters)
+            foreach (var converter in TraceModuleFactory.Formatters)
             {
-                serializer.Converters.Add(converter);
-            }
-
-            foreach (JsonConverter converter in EthereumJsonSerializer.BasicConverters)
-            {
-                serializer.Converters.Add(converter);
+                serializer.RegisterFormatter(converter);
             }
 
             return serializer;
@@ -89,12 +70,8 @@ namespace Nethermind.JsonRpc.Test.Data
 
         protected void TestOneWaySerialization<T>(T item, string expectedResult)
         {
-            JsonSerializer serializer = BuildSerializer<T>();
-
-            StringBuilder builder = new StringBuilder();
-            StringWriter writer = new StringWriter(builder);
-            serializer.Serialize(writer, item);
-            string result = builder.ToString();
+            Utf8EthereumJsonSerializer serializer = BuildSerializer<T>();
+            string result = serializer.Serialize(item);
             Assert.AreEqual(expectedResult, result, result.Replace("\"", "\\\""));
         }
     }

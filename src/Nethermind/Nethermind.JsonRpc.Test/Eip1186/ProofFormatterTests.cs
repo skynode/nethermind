@@ -24,16 +24,14 @@ using Nethermind.Core.Crypto;
 using Nethermind.Core.Encoding;
 using Nethermind.Core.Extensions;
 using Nethermind.Core.Test.Builders;
-using Nethermind.Dirichlet.Numerics;
 using Nethermind.JsonRpc.Eip1186;
 using Nethermind.JsonRpc.Test.Data;
 using Nethermind.Store;
-using Newtonsoft.Json;
 using NUnit.Framework;
 
 namespace Nethermind.JsonRpc.Test.Eip1186
 {
-    public class ProofConverterTests : SerializationTestBase
+    public class ProofFormatterTests : SerializationTestBase
     {
         [Test]
         public void Storage_proofs_have_values_set_complex_3_setup()

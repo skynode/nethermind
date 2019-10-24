@@ -17,25 +17,26 @@
  */
 
 using System;
-using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using DotNetty.Common.Utilities;
+using Nethermind.Core;
 using Nethermind.Core.Json;
-using Newtonsoft.Json;
 
 namespace Nethermind.Overseer.Test.JsonRpc
 {
     public class JsonRpcClient : IJsonRpcClient
     {
         private readonly string _host;
+        private readonly IJsonSerializer _jsonSerializer;
         private readonly string _methodPrefix = "ndm_";
         private readonly HttpClient _client;
 
-        public JsonRpcClient(string host)
+        public JsonRpcClient(string host, IJsonSerializer jsonSerializer)
         {
             _host = host;
+            _jsonSerializer = jsonSerializer;
             _client = new HttpClient
             {
                 BaseAddress = new Uri(host)
@@ -75,7 +76,7 @@ namespace Nethermind.Overseer.Test.JsonRpc
             }
 
             return await response.Content.ReadAsStringAsync()
-                .ContinueWith(t => JsonConvert.DeserializeObject<JsonRpcResponse<T>>(t.Result));
+                .ContinueWith(t => _jsonSerializer.Deserialize<JsonRpcResponse<T>>(t.Result));
         }
 
         private StringContent GetPayload(JsonRpcRequest request)

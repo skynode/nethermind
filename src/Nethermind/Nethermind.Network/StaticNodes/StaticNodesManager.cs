@@ -25,7 +25,6 @@ using System.Threading.Tasks;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
 using Nethermind.Logging;
-using Newtonsoft.Json;
 
 namespace Nethermind.Network.StaticNodes
 {
@@ -35,11 +34,13 @@ namespace Nethermind.Network.StaticNodes
             new ConcurrentDictionary<PublicKey, NetworkNode>();
 
         private readonly string _staticNodesPath;
+        private readonly IJsonSerializer _jsonSerializer;
         private readonly ILogger _logger;
 
-        public StaticNodesManager(string staticNodesPath, ILogManager logManager)
+        public StaticNodesManager(string staticNodesPath, IJsonSerializer jsonSerializer, ILogManager logManager)
         {
             _staticNodesPath = staticNodesPath;
+            _jsonSerializer = jsonSerializer;
             _logger = logManager.GetClassLogger();
         }
 
@@ -58,7 +59,7 @@ namespace Nethermind.Network.StaticNodes
 
             if (_logger.IsInfo) _logger.Info($"Loading static nodes from file: {_staticNodesPath}");
             var data = await File.ReadAllTextAsync(_staticNodesPath);
-            var nodes = JsonConvert.DeserializeObject<string[]>(data);
+            var nodes = _jsonSerializer.Deserialize<string[]>(data);
             if (_logger.IsInfo) _logger.Info($"Loaded {nodes.Length} static nodes.");
             if (nodes.Length != 0)
             {
@@ -109,6 +110,6 @@ namespace Nethermind.Network.StaticNodes
 
         private Task SaveFileAsync()
             => File.WriteAllTextAsync(_staticNodesPath,
-                JsonConvert.SerializeObject(_nodes.Select(n => n.Value.ToString()), Formatting.Indented));
+                _jsonSerializer.Serialize(_nodes.Select(n => n.Value.ToString()), true));
     }
 }

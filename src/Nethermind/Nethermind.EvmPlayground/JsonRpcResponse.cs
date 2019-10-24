@@ -1,33 +1,36 @@
-﻿using System.Numerics;
+﻿using System.Runtime.Serialization;
 using Nethermind.Dirichlet.Numerics;
-using Newtonsoft.Json;
 
 namespace Nethermind.EvmPlayground
 {
     public class JsonRpcResponse
-    {
-        [JsonProperty(PropertyName = "jsonrpc", Order = 1)]
+    {        
+        [DataMember(Name= "id")]
+        public UInt256 Id { get; set; }
+        
+        [DataMember(Name= "jsonrpc")]
         public string Jsonrpc { get; set; }
 
-        [JsonProperty(PropertyName = "result", Order = 2)]
+        [DataMember(Name= "result")]
         public string Result { get; set; }
 
-        [JsonProperty(PropertyName = "error", NullValueHandling = NullValueHandling.Ignore, Order = 3)]
+        [DataMember(Name= "error")]
         public string Error { get; set; }
-
-        [JsonProperty(PropertyName = "id", Order = 0)]
-        public UInt256 Id { get; set; }
     }
     
     public class JsonRpcResponse<T>
     {
-        [JsonProperty(PropertyName = "jsonrpc", Order = 1)]
-        public string Jsonrpc { get; set; }
-        [JsonProperty(PropertyName = "result", Order = 2)]
-        public T Result { get; set; }
-        [JsonProperty(PropertyName = "error", NullValueHandling = NullValueHandling.Ignore, Order = 3)]
-        public string Error { get; set; }
-        [JsonProperty(PropertyName = "id", Order = 0)]
+        [DataMember(Name= "id")]
         public UInt256 Id { get; set; }
+        
+        [DataMember(Name= "jsonrpc")]
+        public string Jsonrpc { get; set; }
+        
+        [DataMember(Name= "result")]
+        public T Result { get; set; }
+        
+        [DataMember(Name= "error")]
+        public string Error { get; set; }
+
     }
 }

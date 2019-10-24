@@ -18,7 +18,7 @@
 
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
+using Utf8Json;
 
 namespace Nethermind.JsonRpc
 {
@@ -26,6 +26,6 @@ namespace Nethermind.JsonRpc
     {
         Task<JsonRpcResponse> SendRequestAsync(JsonRpcRequest request);
         JsonRpcErrorResponse GetErrorResponse(ErrorType errorType, string message);
-        IList<JsonConverter> Converters { get; }
+        IList<IJsonFormatter> Formatters { get; }
     }
 }

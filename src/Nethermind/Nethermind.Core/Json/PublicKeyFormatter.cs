@@ -32,7 +32,7 @@ namespace Nethermind.Core.Json
                 return;
             }
             
-            writer.WriteRaw(value.Bytes);
+            writer.WriteRaw(value.ToString().GetUtf8Bytes());
         }
 
         public PublicKey Deserialize(ref JsonReader reader, IJsonFormatterResolver formatterResolver)

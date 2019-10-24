@@ -19,23 +19,23 @@
 using System;
 using Nethermind.Core.Extensions;
 using Nethermind.Evm.Tracing;
-using Newtonsoft.Json;
+using Utf8Json;
 
 namespace Nethermind.JsonRpc.Modules.Trace
 {
-    public class ParityVmTraceConverter : JsonConverter<ParityVmTrace>
+    public class ParityVmTraceConverter : IJsonFormatter<ParityVmTrace>
     {
-        public override void WriteJson(JsonWriter writer, ParityVmTrace value, JsonSerializer serializer)
+        public void Serialize(ref Utf8Json.JsonWriter writer, ParityVmTrace value, IJsonFormatterResolver formatterResolver)
         {
-            writer.WriteStartObject();
+            writer.WriteBeginObject();
 
-            writer.WriteProperty("code", value.Code ?? Bytes.Empty, serializer);
-            writer.WriteProperty("ops", value.Operations, serializer);
+            writer.WriteProperty("code", value.Code ?? Bytes.Empty, formatterResolver);
+            writer.WriteProperty("ops", value.Operations, formatterResolver);
             
             writer.WriteEndObject();
         }
 
-        public override ParityVmTrace ReadJson(JsonReader reader, Type objectType, ParityVmTrace existingValue, bool hasExistingValue, JsonSerializer serializer)
+        public ParityVmTrace Deserialize(ref Utf8Json.JsonReader reader, IJsonFormatterResolver formatterResolver)
         {
             throw new NotImplementedException();
         }

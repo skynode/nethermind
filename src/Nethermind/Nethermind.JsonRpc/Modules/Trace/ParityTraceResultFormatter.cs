@@ -18,35 +18,35 @@
 
 using System;
 using Nethermind.Evm.Tracing;
-using Newtonsoft.Json;
+using Utf8Json;
 
 namespace Nethermind.JsonRpc.Modules.Trace
 {
-    public class ParityTraceResultConverter : JsonConverter<ParityTraceResult>
+    public class ParityTraceResultFormatter : IJsonFormatter<ParityTraceResult>
     {
-        public override void WriteJson(JsonWriter writer, ParityTraceResult value, JsonSerializer serializer)
+        public void Serialize(ref JsonWriter writer, ParityTraceResult value, IJsonFormatterResolver formatterResolver)
         {
-            writer.WriteStartObject();
+            writer.WriteBeginObject();
 
             if (value.Address != null)
             {
-                writer.WriteProperty("address", value.Address, serializer);    
-                writer.WriteProperty("code", value.Code, serializer);
+                writer.WriteProperty("address", value.Address, formatterResolver);    
+                writer.WriteProperty("code", value.Code, formatterResolver);
             }
             
-            writer.WriteProperty("gasUsed", string.Concat("0x", value.GasUsed.ToString("x")));
+            writer.WriteProperty("gasUsed", string.Concat("0x", value.GasUsed.ToString("x")), formatterResolver);
             
             if(value.Address == null)
             {
-                writer.WriteProperty("output", value.Output, serializer);    
+                writer.WriteProperty("output", value.Output, formatterResolver);    
             }
             
             writer.WriteEndObject();
         }
 
-        public override ParityTraceResult ReadJson(JsonReader reader, Type objectType, ParityTraceResult existingValue, bool hasExistingValue, JsonSerializer serializer)
+        public ParityTraceResult Deserialize(ref JsonReader reader, IJsonFormatterResolver formatterResolver)
         {
-            throw new NotSupportedException();
+            throw new NotImplementedException();
         }
     }
 }

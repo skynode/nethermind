@@ -16,22 +16,18 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
-using Newtonsoft.Json;
+using Utf8Json;
 
 namespace Nethermind.JsonRpc.Modules.Trace
 {
     public static class JsonWriterExtensions
     {
-        public static void WriteProperty<T>(this JsonWriter jsonWriter, string propertyName, T propertyValue)
+        public static void WriteProperty<T>(this JsonWriter jsonWriter, string propertyName, T propertyValue,
+            IJsonFormatterResolver formatterResolver)
         {
             jsonWriter.WritePropertyName(propertyName);
-            jsonWriter.WriteValue(propertyValue);
-        }
-        
-        public static void WriteProperty<T>(this JsonWriter jsonWriter, string propertyName, T propertyValue, JsonSerializer serializer)
-        {
-            jsonWriter.WritePropertyName(propertyName);
-            serializer.Serialize(jsonWriter, propertyValue);
+            var formatter = formatterResolver.GetFormatter<T>();
+            formatter.Serialize(ref jsonWriter, propertyValue, formatterResolver);
         }
     }
 }

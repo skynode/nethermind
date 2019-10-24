@@ -268,12 +268,12 @@ namespace Nethermind.Cli
 
         private static void Setup()
         {
-            Serializer.RegisterConverter(new ParityLikeTxTraceConverter());
-            Serializer.RegisterConverter(new ParityAccountStateChangeConverter());
-            Serializer.RegisterConverter(new ParityTraceActionConverter());
-            Serializer.RegisterConverter(new ParityTraceResultConverter());
-            Serializer.RegisterConverter(new ParityVmOperationTraceConverter());
-            Serializer.RegisterConverter(new ParityVmTraceConverter());
+            Serializer.RegisterFormatter(new ParityLikeTxTraceConverter());
+            Serializer.RegisterFormatter(new ParityAccountStateChangeFormatter());
+            Serializer.RegisterFormatter(new ParityTraceActionConverter());
+            Serializer.RegisterFormatter(new ParityTraceResultFormatter());
+            Serializer.RegisterFormatter(new ParityVmOperationTraceConverter());
+            Serializer.RegisterFormatter(new ParityVmTraceConverter());
 
             _engine = new CliEngine();
             _engine.JintEngine.SetValue("serialize", new Action<JsValue>(v =>

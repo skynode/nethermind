@@ -26,8 +26,8 @@ using Nethermind.JsonRpc.Modules.Parity;
 using Nethermind.JsonRpc.Modules.Trace;
 using Nethermind.JsonRpc.Modules.Web3;
 using Nethermind.Logging;
-using Newtonsoft.Json;
 using NSubstitute;
+using Utf8Json;
 
 namespace Nethermind.JsonRpc.Test.Modules
 {
@@ -50,7 +50,7 @@ namespace Nethermind.JsonRpc.Test.Modules
             _provider.Register(pool);
         }
 
-        public IReadOnlyCollection<JsonConverter> Converters => _provider.Converters;
+        public IReadOnlyCollection<IJsonFormatter> Formatters => _provider.Formatters;
         public IReadOnlyCollection<ModuleType> Enabled => _provider.All;
         public IReadOnlyCollection<ModuleType> All => _provider.All;
         public ModuleResolution Check(string methodName)

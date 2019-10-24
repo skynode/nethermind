@@ -944,7 +944,7 @@ namespace Nethermind.Runner.Runners
 
             await _rlpxPeer.Init();
 
-            _staticNodesManager = new StaticNodesManager(_initConfig.StaticNodesPath, _logManager);
+            _staticNodesManager = new StaticNodesManager(_initConfig.StaticNodesPath, _jsonSerializer, _logManager);
             await _staticNodesManager.InitAsync();
 
             var peersDb = new SimpleFilePublicKeyDb("PeersDB", PeersDbPath.GetApplicationResourcePath(_initConfig.BaseDbPath), _logManager);
@@ -1100,7 +1100,7 @@ namespace Nethermind.Runner.Runners
 
             var instanceId = $"{config.Name}-{Keccak.Compute(_enode.Info)}";
             if (_logger.IsInfo) _logger.Info($"Initializing ETH Stats for the instance: {instanceId}, server: {config.Server}");
-            var sender = new MessageSender(instanceId, _logManager);
+            var sender = new MessageSender(instanceId, _jsonSerializer, _logManager);
             const int reconnectionInterval = 5000;
             const string api = "no";
             const string client = "0.1.1";

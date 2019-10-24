@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
+using Nethermind.Core.Json;
 using Nethermind.Logging;
 using Nethermind.Network.StaticNodes;
 using NUnit.Framework;
@@ -19,7 +20,7 @@ namespace Nethermind.Network.Test
         {
             var path = "test-static-nodes.json";
             var logManager = NullLogManager.Instance;
-            _staticNodesManager = new StaticNodesManager(path, logManager);
+            _staticNodesManager = new StaticNodesManager(path, new Utf8EthereumJsonSerializer(), logManager);
         }
 
         [Test]

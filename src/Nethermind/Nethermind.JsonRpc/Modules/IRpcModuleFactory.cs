@@ -17,7 +17,7 @@
  */
 
 using System.Collections.Generic;
-using Newtonsoft.Json;
+using Utf8Json;
 
 namespace Nethermind.JsonRpc.Modules
 {
@@ -25,6 +25,6 @@ namespace Nethermind.JsonRpc.Modules
     {
         T Create();
         
-        IReadOnlyCollection<JsonConverter> GetConverters();
+        IReadOnlyCollection<IJsonFormatter> GetFormatters();
     }
 }

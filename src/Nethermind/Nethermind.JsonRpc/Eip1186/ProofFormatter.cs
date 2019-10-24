@@ -19,7 +19,7 @@
 using System;
 using Nethermind.Core.Extensions;
 using Nethermind.JsonRpc.Modules.Trace;
-using Newtonsoft.Json;
+using Utf8Json;
 
 namespace Nethermind.JsonRpc.Eip1186
 {
@@ -63,46 +63,60 @@ namespace Nethermind.JsonRpc.Eip1186
     ///  }
     ///}
     /// </summary>
-    public class ProofConverter : JsonConverter<AccountProof>
+    public class ProofFormatter : IJsonFormatter<AccountProof>
     {
-        public override void WriteJson(JsonWriter writer, AccountProof value, JsonSerializer serializer)
+        public void Serialize(ref JsonWriter writer, AccountProof value, IJsonFormatterResolver formatterResolver)
         {
-            writer.WriteStartObject();
+            writer.WriteBeginObject();
             writer.WritePropertyName("accountProof");
-            writer.WriteStartArray();
+            writer.WriteBeginArray();
             for (int i = 0; i < value.Proof.Length; i++)
             {
-                writer.WriteValue(value.Proof[i].ToHexString(true));    
+                writer.WriteString(value.Proof[i].ToHexString(true));
+                if (i < value.Proof.Length - 1)
+                {
+                    writer.WriteValueSeparator();
+                }
             }
-            writer.WriteEnd();
-            writer.WriteProperty("balance", value.Balance, serializer);
-            writer.WriteProperty("codeHash", value.CodeHash, serializer);
-            writer.WriteProperty("nonce", value.Nonce, serializer);
-            writer.WriteProperty("storageHash", value.StorageRoot, serializer);
+            writer.WriteEndArray();
+            writer.WriteValueSeparator();
+            writer.WriteProperty("balance", value.Balance, formatterResolver);
+            writer.WriteProperty("codeHash", value.CodeHash, formatterResolver);
+            writer.WriteProperty("nonce", value.Nonce, formatterResolver);
+            writer.WriteProperty("storageHash", value.StorageRoot, formatterResolver);
             writer.WritePropertyName("storageProof");
-            writer.WriteStartArray();
+            writer.WriteBeginArray();
             for (int i = 0; i < value.StorageProofs.Length; i++)
             {
-                writer.WriteStartObject();
-                writer.WriteProperty("key", value.StorageProofs[i].Key, serializer);
+                writer.WriteBeginObject();
+                writer.WriteProperty("key", value.StorageProofs[i].Key, formatterResolver);
                 writer.WritePropertyName("proof");
-                writer.WriteStartArray();
+                writer.WriteBeginArray();
                 for (int ip = 0; ip < value.StorageProofs[ip].Proof.Length; ip++)
                 {
-                    writer.WriteValue(value.StorageProofs[i].Proof[ip].ToHexString(true));    
+                    writer.WriteString(value.StorageProofs[i].Proof[ip].ToHexString(true));
+                    writer.WriteValueSeparator();
+                    if (i < value.StorageProofs[ip].Proof.Length - 1)
+                    {
+                        writer.WriteValueSeparator();
+                    }
                 }
-                writer.WriteEnd();
-                writer.WriteProperty("value", value.StorageProofs[i].Value, serializer);
-                writer.WriteEnd();
+                writer.WriteEndArray();
+                writer.WriteProperty("value", value.StorageProofs[i].Value, formatterResolver);
+                writer.WriteEndObject();
+                writer.WriteValueSeparator();
+                if (i < value.StorageProofs.Length- 1)
+                {
+                    writer.WriteValueSeparator();
+                }
             }
-            writer.WriteEnd();
-            writer.WriteEnd();
-            
+            writer.WriteEndArray();
+            writer.WriteEndObject();
         }
 
-        public override AccountProof ReadJson(JsonReader reader, Type objectType, AccountProof existingValue, bool hasExistingValue, JsonSerializer serializer)
+        public AccountProof Deserialize(ref Utf8Json.JsonReader reader, IJsonFormatterResolver formatterResolver)
         {
-            throw new NotSupportedException();
+            throw new NotImplementedException();
         }
     }
 }

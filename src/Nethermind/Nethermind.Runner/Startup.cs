@@ -53,9 +53,9 @@ namespace Nethermind.Runner
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IJsonRpcProcessor jsonRpcProcessor,
             IJsonRpcService jsonRpcService)
         {
-            foreach (var converter in jsonRpcService.Converters)
+            foreach (var converter in jsonRpcService.Formatters)
             {
-                JsonSettings.Converters.Add(converter);
+//                JsonSettings.Converters.Add(converter);
             }
 
             if (env.IsDevelopment())

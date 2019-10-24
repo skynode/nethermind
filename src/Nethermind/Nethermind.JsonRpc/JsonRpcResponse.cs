@@ -16,47 +16,48 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
+using System.Runtime.Serialization;
 using Nethermind.Core.Json;
 using Nethermind.Dirichlet.Numerics;
-using Newtonsoft.Json;
+using Utf8Json;
 
 namespace Nethermind.JsonRpc
 {
     public class JsonRpcResponse
     {
-        [JsonProperty(PropertyName = "jsonrpc", Order = 1)]
+        [JsonFormatter(typeof(UInt256Formatter), NumberConversion.Decimal)]
+        [DataMember(Name = "id")]
+        public UInt256 Id { get; set; }
+        
+        [DataMember(Name = "jsonrpc")]
         public string JsonRpc { get; set; }
 
-        [JsonProperty(PropertyName = "result", NullValueHandling = NullValueHandling.Include, Order = 2)]
+        [DataMember(Name = "result")]
         public object Result { get; set; }
-
-        [JsonConverter(typeof(UInt256Formatter), NumberConversion.Decimal)]
-        [JsonProperty(PropertyName = "id", Order = 0)]
-        public UInt256 Id { get; set; }
     }
     
     public class JsonRpcErrorResponse : JsonRpcResponse
     {
-        [JsonProperty(PropertyName = "result", NullValueHandling = NullValueHandling.Ignore, Order = 2)]
+        [DataMember(Name = "result")]
         public new object Result { get; set; }
         
-        [JsonProperty(PropertyName = "error", NullValueHandling = NullValueHandling.Ignore, Order = 3)]
+        [DataMember(Name = "error")]
         public Error Error { get; set; }
     }
 
     public class JsonRpcResponse<T>
     {
-        [JsonProperty(PropertyName = "jsonrpc", Order = 1)]
+        [JsonFormatter(typeof(UInt256Formatter), NumberConversion.Decimal)]
+        [DataMember(Name = "id", Order = 0)]
+        public UInt256 Id { get; set; }
+        
+        [DataMember(Name = "jsonrpc", Order = 1)]
         public string JsonRpc { get; set; }
 
-        [JsonProperty(PropertyName = "result", NullValueHandling = NullValueHandling.Ignore, Order = 2)]
+        [DataMember(Name = "result")]
         public T Result { get; set; }
 
-        [JsonProperty(PropertyName = "error", NullValueHandling = NullValueHandling.Ignore, Order = 3)]
+        [DataMember(Name = "error")]
         public Error Error { get; set; }
-
-        [JsonConverter(typeof(UInt256Formatter), NumberConversion.Decimal)]
-        [JsonProperty(PropertyName = "id", Order = 0)]
-        public UInt256 Id { get; set; }
     }
 }

@@ -18,7 +18,7 @@
 
 using System;
 using Nethermind.Evm.Tracing;
-using Newtonsoft.Json;
+using Utf8Json;
 
 namespace Nethermind.JsonRpc.Modules.Trace
 {
@@ -32,51 +32,53 @@ namespace Nethermind.JsonRpc.Modules.Trace
      *    "value": "0x2707377c7552d8000"
      * },
      */
-    public class ParityTraceActionConverter : JsonConverter<ParityTraceAction>
+    public class ParityTraceActionConverter : IJsonFormatter<ParityTraceAction>
     {
-        public override void WriteJson(JsonWriter writer, ParityTraceAction value, JsonSerializer serializer)
+        public void Serialize(ref JsonWriter writer, ParityTraceAction value, IJsonFormatterResolver formatterResolver)
         {
             if (value.Type == "suicide")
             {
-                WriteSelfDestructJson(writer, value, serializer);
+                WriteSelfDestructJson(writer, value, formatterResolver);
                 return;
             }
-            
-            writer.WriteStartObject();
+
+            writer.WriteBeginObject();
             if (value.CallType != "create")
             {
-                writer.WriteProperty("callType", value.CallType);
+                writer.WriteProperty("callType", value.CallType, formatterResolver);
             }
 
-            writer.WriteProperty("from", value.From, serializer);
-            writer.WriteProperty("gas", value.Gas, serializer);
+            writer.WriteProperty("from", value.From, formatterResolver);
+            writer.WriteProperty("gas", value.Gas, formatterResolver);
 
             if (value.CallType == "create")
             {
-                writer.WriteProperty("init", value.Input, serializer);
+                writer.WriteProperty("init", value.Input, formatterResolver);
             }
             else
             {
-                writer.WriteProperty("input", value.Input, serializer);
-                writer.WriteProperty("to", value.To, serializer);    
+                writer.WriteProperty("input", value.Input, formatterResolver);
+                writer.WriteProperty("to", value.To, formatterResolver);
             }
-            
-            writer.WriteProperty("value", value.Value, serializer);
+
+            writer.WriteProperty("value", value.Value, formatterResolver);
             writer.WriteEndObject();
         }
 
-        private void WriteSelfDestructJson(JsonWriter writer, ParityTraceAction value, JsonSerializer serializer)
+        private void WriteSelfDestructJson(JsonWriter writer, ParityTraceAction value,
+            IJsonFormatterResolver formatterResolver)
         {
-            writer.WriteStartObject();
-            writer.WriteProperty("address", value.From, serializer);
-            writer.WriteProperty("balance", value.Value, serializer);
-            writer.WriteProperty("refundAddress", value.To, serializer);
+            writer.WriteBeginObject();
+            writer.WriteProperty("address", value.From, formatterResolver);
+            writer.WriteProperty("balance", value.Value, formatterResolver);
+            writer.WriteProperty("refundAddress", value.To, formatterResolver);
             writer.WriteEndObject();
         }
 
-        public override ParityTraceAction ReadJson(JsonReader reader, Type objectType, ParityTraceAction existingValue, bool hasExistingValue, JsonSerializer serializer)
+
+        public ParityTraceAction Deserialize(ref Utf8Json.JsonReader reader, IJsonFormatterResolver formatterResolver)
         {
-            throw new NotSupportedException();
+            throw new NotImplementedException();
         }
     }
 }

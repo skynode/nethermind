@@ -18,7 +18,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
-using Newtonsoft.Json;
+using System.Runtime.Serialization;
 
 namespace Nethermind.Evm.Tracing
 {
@@ -32,7 +32,7 @@ namespace Nethermind.Evm.Tracing
 
         public long Pc { get; set; }
 
-        [JsonProperty(PropertyName = "op")]
+        [DataMember(Name = "op")]
         public string Operation { get; set; }
 
         public long Gas { get; set; }

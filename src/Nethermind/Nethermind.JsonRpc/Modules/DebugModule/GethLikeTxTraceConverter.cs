@@ -20,13 +20,14 @@ using System;
 using System.Collections.Generic;
 using Nethermind.Evm.Tracing;
 using Nethermind.JsonRpc.Modules.Trace;
-using Newtonsoft.Json;
+using Utf8Json;
 
 namespace Nethermind.JsonRpc.Modules.DebugModule
 {
-    public class GethLikeTxTraceConverter : JsonConverter<GethLikeTxTrace>
+    public class GethLikeTxTraceConverter : IJsonFormatter<GethLikeTxTrace>
     {
-        public override void WriteJson(JsonWriter writer, GethLikeTxTrace value, JsonSerializer serializer)
+        public void Serialize(ref Utf8Json.JsonWriter writer, GethLikeTxTrace value,
+            IJsonFormatterResolver formatterResolver)
         {
             if (value == null)
             {
@@ -34,65 +35,67 @@ namespace Nethermind.JsonRpc.Modules.DebugModule
                 return;
             }
 
-            writer.WriteStartObject();
+            writer.WriteBeginObject();
 
-            writer.WriteProperty("gas", value.Gas, serializer);
-            writer.WriteProperty("failed", value.Failed);
-            writer.WriteProperty("returnValue", value.ReturnValue, serializer);
+            writer.WriteProperty("gas", value.Gas, formatterResolver);
+            writer.WriteProperty("failed", value.Failed, formatterResolver);
+            writer.WriteProperty("returnValue", value.ReturnValue, formatterResolver);
 
             writer.WritePropertyName("structLogs");
-            WriteEntries(writer, value.Entries, serializer);
+            WriteEntries(writer, value.Entries, formatterResolver);
 
             writer.WriteEndObject();
         }
 
-        private static void WriteEntries(JsonWriter writer, List<GethTxTraceEntry> entries, JsonSerializer serializer)
+        private static void WriteEntries(JsonWriter writer, List<GethTxTraceEntry> entries,
+            IJsonFormatterResolver formatterResolver)
         {
-            writer.WriteStartArray();
+            writer.WriteBeginArray();
             foreach (GethTxTraceEntry entry in entries)
             {
-                writer.WriteStartObject();
-                writer.WriteProperty("pc", entry.Pc);
-                writer.WriteProperty("op", entry.Operation);
-                writer.WriteProperty("gas", entry.Gas);
-                writer.WriteProperty("gasCost", entry.GasCost);
-                writer.WriteProperty("depth", entry.Depth);
-                writer.WriteProperty("error", entry.Error);
+                writer.WriteBeginObject();
+                writer.WriteProperty("pc", entry.Pc, formatterResolver);
+                writer.WriteProperty("op", entry.Operation, formatterResolver);
+                writer.WriteProperty("gas", entry.Gas, formatterResolver);
+                writer.WriteProperty("gasCost", entry.GasCost, formatterResolver);
+                writer.WriteProperty("depth", entry.Depth, formatterResolver);
+                writer.WriteProperty("error", entry.Error, formatterResolver);
                 writer.WritePropertyName("stack");
-                writer.WriteStartArray();
+                writer.WriteBeginArray();
                 foreach (string stackItem in entry.Stack)
                 {
-                    writer.WriteValue(stackItem);    
+                    writer.WriteString(stackItem);
                 }
-                
+
                 writer.WriteEndArray();
-                
+
                 writer.WritePropertyName("memory");
-                writer.WriteStartArray();
+                writer.WriteBeginArray();
                 foreach (string memory in entry.Memory)
                 {
-                    writer.WriteValue(memory);    
+                    writer.WriteString(memory);
                 }
+
                 writer.WriteEndArray();
-                
+
                 writer.WritePropertyName("storage");
-                writer.WriteStartObject();
+                writer.WriteBeginObject();
                 foreach ((string storageIndex, string storageValue) in entry.SortedStorage)
                 {
-                    writer.WriteProperty(storageIndex, storageValue);
+                    writer.WriteProperty(storageIndex, storageValue, formatterResolver);
                 }
-                
+
                 writer.WriteEndObject();
-                
+
                 writer.WriteEndObject();
             }
 
             writer.WriteEndArray();
         }
 
-        public override GethLikeTxTrace ReadJson(JsonReader reader, Type objectType, GethLikeTxTrace existingValue, bool hasExistingValue, JsonSerializer serializer)
+        public GethLikeTxTrace Deserialize(ref Utf8Json.JsonReader reader, IJsonFormatterResolver formatterResolver)
         {
-            throw new NotSupportedException();
+            throw new NotImplementedException();
         }
     }
 }

@@ -15,16 +15,10 @@
 //  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
-using System.Collections.Generic;
 using System.Numerics;
-using System.Runtime.Serialization;
 using Nethermind.Core;
 using Nethermind.Core.Json;
-using Nethermind.Dirichlet.Numerics;
-using Newtonsoft.Json;
 using NUnit.Framework;
-using Utf8Json;
-using Utf8Json.Formatters;
 
 namespace Nethermind.JsonRpc.Test
 {

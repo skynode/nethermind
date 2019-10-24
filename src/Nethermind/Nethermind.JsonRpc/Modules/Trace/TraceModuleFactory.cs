@@ -30,7 +30,7 @@ using Nethermind.Facade;
 using Nethermind.Logging;
 using Nethermind.Store;
 using Nethermind.Wallet;
-using Newtonsoft.Json;
+using Utf8Json;
 
 namespace Nethermind.JsonRpc.Modules.Trace
 {
@@ -98,16 +98,16 @@ namespace Nethermind.JsonRpc.Modules.Trace
             return new TraceModule(blockchainBridge, _logManager, tracer);
         }
         
-        public static JsonConverter[] Converters = 
+        public static IJsonFormatter[] Formatters = 
         {
             new ParityLikeTxTraceConverter(),
-            new ParityAccountStateChangeConverter(),
+            new ParityAccountStateChangeFormatter(),
             new ParityTraceActionConverter(),
-            new ParityTraceResultConverter(),
+            new ParityTraceResultFormatter(),
             new ParityVmOperationTraceConverter(),
             new ParityVmTraceConverter()
         };
 
-        public override IReadOnlyCollection<JsonConverter> GetConverters() => Converters;
+        public override IReadOnlyCollection<IJsonFormatter> GetFormatters() => Formatters;
     }
 }

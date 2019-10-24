@@ -15,17 +15,12 @@
 //  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System.Collections.Generic;
-using Newtonsoft.Json;
-
+using Utf8Json;
+    
 namespace Nethermind.Core.Json
 {
     public class Utf8EthereumJsonSerializer : IJsonSerializer
     {
-        public T DeserializeAnonymousType<T>(string json, T definition)
-        {
-            throw new System.NotImplementedException();
-        }
-
         public (T Model, List<T> Collection) DeserializeObjectOrArray<T>(string json)
         {
             if (json.StartsWith("["))
@@ -38,18 +33,21 @@ namespace Nethermind.Core.Json
 
         public T Deserialize<T>(string json)
         {
-            return Utf8Json.JsonSerializer.Deserialize<T>(json, EthereumFormatterResolver.Instance);
+            return JsonSerializer.Deserialize<T>(json, EthereumFormatterResolver.Instance);
         }
 
         public string Serialize<T>(T value, bool indented = false)
         {
-            var bytes = Utf8Json.JsonSerializer.Serialize(value, EthereumFormatterResolver.Instance);
-            return indented ? Utf8Json.JsonSerializer.PrettyPrint(bytes) : System.Text.Encoding.UTF8.GetString(bytes);
+            var bytes = JsonSerializer.Serialize(value,
+                indented ? EthereumReadableFormatterResolver.Instance : EthereumFormatterResolver.Instance);
+            
+            return indented ? JsonSerializer.PrettyPrint(bytes) : System.Text.Encoding.UTF8.GetString(bytes);
         }
 
-        public void RegisterConverter(JsonConverter converter)
+        public void RegisterFormatter(IJsonFormatter formatter)
         {
-            throw new System.NotImplementedException();
+            EthereumFormatterResolver.AddFormatter(formatter);
+            EthereumReadableFormatterResolver.AddFormatter(formatter);
         }
     }
 }
