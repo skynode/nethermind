@@ -46,31 +46,21 @@ namespace Nethermind.JsonRpc
         };
 
         private const string JsonRpcVersion = "2.0";
-        private readonly Dictionary<Type, IJsonFormatter> _converterLookup = new Dictionary<Type, IJsonFormatter>();
         private readonly ILogger _logger;
         private readonly IRpcModuleProvider _rpcModuleProvider;
         private readonly IJsonSerializer _serializer;
 
-        public JsonRpcService(IRpcModuleProvider rpcModuleProvider, ILogManager logManager)
+        public JsonRpcService(IRpcModuleProvider rpcModuleProvider, IJsonSerializer serializer, ILogManager logManager)
         {
             _logger = logManager.GetClassLogger();
             _rpcModuleProvider = rpcModuleProvider;
-            _serializer = new EthereumJsonSerializer();
+            _serializer = serializer;
 
             foreach (var formatter in rpcModuleProvider.Formatters)
             {
                 if (_logger.IsDebug) _logger.Debug($"Registering {formatter.GetType().Name} inside {nameof(JsonRpcService)}");
                 _serializer.RegisterFormatter(formatter);
-                _converterLookup.Add(formatter.GetType().BaseType.GenericTypeArguments[0], formatter);
-                Formatters.Add(formatter);
             }
-
-//            foreach (var formatter in EthereumJsonSerializer.BasicConverters)
-//            {
-//                if (_logger.IsDebug) _logger.Debug($"Registering {formatter.GetType().Name} (default)");
-//                _serializer.RegisterFormatter(formatter);
-//                Formatters.Add(formatter.GetType().BaseType.GenericTypeArguments[0], formatter);
-//            }
         }
 
         public async Task<JsonRpcResponse> SendRequestAsync(JsonRpcRequest rpcRequest)
@@ -226,24 +216,21 @@ namespace Nethermind.JsonRpc
                     }
                     else if (paramType == typeof(string[]))
                     {
-//                        executionParam = _serializer.Deserialize<string[]>(new JsonTextReader(new StringReader(providedParameter)));
                         executionParam = _serializer.Deserialize<string[]>(providedParameter);
                     }
                     else
                     {
                         if (providedParameter.StartsWith('[') || providedParameter.StartsWith('{'))
                         {
-//                            executionParam = JsonConvert.DeserializeObject(providedParameter, paramType, Formatters.ToArray());
-//                            executionParam = _serializer.DeserializeObject(providedParameter, paramType, Formatters.ToArray());
+                            executionParam = _serializer.Deserialize(providedParameter, paramType);
                         }
                         else
                         {
-//                            executionParam = JsonConvert.DeserializeObject($"\"{providedParameter}\"", paramType, Formatters.ToArray());
-//                            executionParam = _serializer.DeserializeObject($"\"{providedParameter}\"", paramType, Formatters.ToArray());
+                            executionParam = _serializer.Deserialize($"\"{providedParameter}\"", paramType);
                         }
                     }
 
-//                    executionParameters.Add(executionParam);
+                    executionParameters.Add(executionParam);
                 }
 
                 for (int i = 0; i < missingParamsCount; i++)

@@ -16,6 +16,7 @@
  * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
  */
 
+using System;
 using System.Collections.Generic;
 using Utf8Json;
 
@@ -27,6 +28,7 @@ namespace Nethermind.Core
         (T Model, List<T> Collection) DeserializeObjectOrArray<T>(string json);
 
         T Deserialize<T>(string json);
+        object Deserialize(string json, Type type);
         string Serialize<T>(T value, bool indented = false); // TODO: support serializing to stream
         void RegisterFormatter(IJsonFormatter formatter);
     }

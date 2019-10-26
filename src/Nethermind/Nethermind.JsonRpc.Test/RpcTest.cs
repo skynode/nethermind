@@ -18,6 +18,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using Nethermind.Core;
 using Nethermind.Core.Json;
 using Nethermind.JsonRpc.Modules;
 using Nethermind.JsonRpc.Test.Modules;
@@ -31,36 +32,39 @@ namespace Nethermind.JsonRpc.Test
     {
         public static JsonRpcResponse TestRequest<T>(T module, string method, params string[] parameters) where T : class, IModule
         {
-            IJsonRpcService service = BuildRpcService(module);
+            EthereumJsonSerializer serializer = new EthereumJsonSerializer();
+            IJsonRpcService service = BuildRpcService(module, serializer);
             JsonRpcRequest request = GetJsonRequest(method, parameters);
             return service.SendRequestAsync(request).Result;
         }
-        
-        public static string TestSerializedRequest<T>(IReadOnlyCollection<IJsonFormatter> formatters, T module, string method, params string[] parameters) where T : class, IModule
+
+        public static string TestSerializedRequest<T>(IReadOnlyCollection<IJsonFormatter> formatters, T module,
+            string method, params string[] parameters) where T : class, IModule
         {
-            IJsonRpcService service = BuildRpcService(module);
-            JsonRpcRequest request = GetJsonRequest(method, parameters);
-            JsonRpcResponse response = service.SendRequestAsync(request).Result;
             EthereumJsonSerializer serializer = new EthereumJsonSerializer();
             foreach (var formatter in formatters)
             {
                 serializer.RegisterFormatter(formatter);
             }
+            
+            IJsonRpcService service = BuildRpcService(module, serializer);
+            JsonRpcRequest request = GetJsonRequest(method, parameters);
+            JsonRpcResponse response = service.SendRequestAsync(request).Result;
             string serialized = serializer.Serialize(response);
             TestContext.WriteLine(serialized.Replace("\"", "\\\""));
             return serialized;
         }
-        
+
         public static string TestSerializedRequest<T>(T module, string method, params string[] parameters) where T : class, IModule
         {
             return TestSerializedRequest(new IJsonFormatter[0], module, method, parameters);
         }
         
-        public static IJsonRpcService BuildRpcService<T>(T module) where T : class, IModule
+        public static IJsonRpcService BuildRpcService<T>(T module, IJsonSerializer serializer) where T : class, IModule
         {
             var moduleProvider = new TestRpcModuleProvider<T>(module);
             moduleProvider.Register(new SingletonModulePool<T>(new SingletonFactory<T>(module)));
-            IJsonRpcService service = new JsonRpcService(moduleProvider, NullLogManager.Instance);
+            IJsonRpcService service = new JsonRpcService(moduleProvider, serializer, NullLogManager.Instance);
             return service;
         }
         

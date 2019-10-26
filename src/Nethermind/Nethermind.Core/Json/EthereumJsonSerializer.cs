@@ -1,4 +1,4 @@
-//  Copyright (c) 2018 Demerzel Solutions Limited
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
 //  This file is part of the Nethermind library.
 // 
 //  The Nethermind library is free software: you can redistribute it and/or modify
@@ -14,6 +14,7 @@
 //  You should have received a copy of the GNU Lesser General Public License
 //  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
+using System;
 using System.Collections.Generic;
 using Utf8Json;
     
@@ -34,6 +35,11 @@ namespace Nethermind.Core.Json
         public T Deserialize<T>(string json)
         {
             return JsonSerializer.Deserialize<T>(json, EthereumFormatterResolver.Instance);
+        }
+
+        public object Deserialize(string json, Type type)
+        {
+            return JsonSerializer.NonGeneric.Deserialize(type, json, EthereumFormatterResolver.Instance);
         }
 
         public string Serialize<T>(T value, bool indented = false)

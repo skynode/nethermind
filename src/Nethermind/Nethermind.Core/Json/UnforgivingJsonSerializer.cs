@@ -31,6 +31,11 @@ namespace Nethermind.Core.Json
             return JsonConvert.DeserializeObject<T>(json);
         }
 
+        public object Deserialize(string json, Type type)
+        {
+            return JsonConvert.DeserializeObject(json, type);
+        }
+
         public (T Model, List<T> Collection) DeserializeObjectOrArray<T>(string json)
         {
             var token = JToken.Parse(json);
