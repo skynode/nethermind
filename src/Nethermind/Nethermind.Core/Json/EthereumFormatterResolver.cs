@@ -27,7 +27,7 @@ namespace Nethermind.Core.Json
         public static readonly IJsonFormatterResolver Instance = new EthereumFormatterResolver();
 
         private static readonly IJsonFormatterResolver[] Resolvers = {
-            StandardResolver.AllowPrivateExcludeNullCamelCase
+            StandardResolver.AllowPrivateCamelCase
         };
 
         public IJsonFormatter<T> GetFormatter<T>()
