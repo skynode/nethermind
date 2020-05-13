@@ -1,20 +1,18 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Linq;
@@ -51,10 +49,10 @@ namespace Nethermind.EthStats.Clients
             {
                 try
                 {
-                    using var httpClient = new HttpClient();
-                    var host = _webSocketsUrl.Split("://").Last();
-                    var response = await httpClient.GetAsync($"http://{host}");
-                    var requestedUrl = response.RequestMessage.RequestUri;
+                    using HttpClient httpClient = new HttpClient();
+                    string host = _webSocketsUrl.Split("://").Last();
+                    HttpResponseMessage response = await httpClient.GetAsync($"http://{host}");
+                    Uri requestedUrl = response.RequestMessage.RequestUri;
                     if (requestedUrl.Scheme.Equals("https"))
                     {
                         _webSocketsUrl = $"wss://{host}";
@@ -67,11 +65,11 @@ namespace Nethermind.EthStats.Clients
                 }
             }
 
-            var url = new Uri(_webSocketsUrl);
+            Uri url = new Uri(_webSocketsUrl);
             _client = new WebsocketClient(url)
             {
-                ErrorReconnectTimeoutMs = _reconnectionInterval,
-                ReconnectTimeoutMs = int.MaxValue
+                ErrorReconnectTimeout = TimeSpan.FromMilliseconds(_reconnectionInterval),
+                ReconnectTimeout = null
             };
             _client.MessageReceived.Subscribe(async message =>
             {
@@ -94,12 +92,12 @@ namespace Nethermind.EthStats.Clients
 
         private async Task HandlePingAsync(string message)
         {
-            var serverTime = long.Parse(message.Split("::").LastOrDefault()?.Replace("\"", string.Empty));
-            var clientTime = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
-            var latency = clientTime >= serverTime ? clientTime - serverTime : serverTime - clientTime;
-            var pong = $"\"primus::pong::{serverTime}\"";
+            long serverTime = long.Parse(message.Split("::").LastOrDefault()?.Replace("\"", string.Empty));
+            long clientTime = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+            long latency = clientTime >= serverTime ? clientTime - serverTime : serverTime - clientTime;
+            string pong = $"\"primus::pong::{serverTime}\"";
             if (_logger.IsDebug) _logger.Debug($"Sending 'pong' message to ETH stats...");
-            await _client.Send(pong);
+            _client.Send(pong);
             await _messageSender.SendAsync(_client, new LatencyMessage(latency));
         }
 

@@ -1,20 +1,18 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Net;
@@ -22,8 +20,8 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using DotNetty.Common.Utilities;
-using Nethermind.Core.Json;
-using Newtonsoft.Json;
+using Nethermind.JsonRpc;
+using Nethermind.Serialization.Json;
 
 namespace Nethermind.Overseer.Test.JsonRpc
 {
@@ -70,12 +68,12 @@ namespace Nethermind.Overseer.Test.JsonRpc
             if (!(response?.IsSuccessStatusCode ?? false))
             {
                 var result = new JsonRpcResponse<T>();
-                result.Error = new JsonRpcResponse<T>.ErrorResponse{Message = errorMessage};
+                result.Error = new JsonRpcResponse<T>.ErrorResponse(ErrorCodes.InternalError, errorMessage);
                 return result;
             }
 
             return await response.Content.ReadAsStringAsync()
-                .ContinueWith(t => JsonConvert.DeserializeObject<JsonRpcResponse<T>>(t.Result));
+                .ContinueWith(t => new EthereumJsonSerializer().Deserialize<JsonRpcResponse<T>>(t.Result));
         }
 
         private StringContent GetPayload(JsonRpcRequest request)

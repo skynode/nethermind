@@ -79,12 +79,25 @@ namespace Nethermind.DataMarketplace.Test.Services
         }
 
         [Test]
+        public void update_gas_price_should_fail_if_transaction_is_not_pending()
+        {
+            var transactionHash = TestItem.KeccakA;
+            var transaction = Build.A.Transaction.TestObject;
+            _blockchainBridge.GetTransactionAsync(transactionHash)
+                .Returns(new NdmTransaction(transaction, false, 1, TestItem.KeccakB, 1));
+            Func<Task> act = () => _transactionService.UpdateGasPriceAsync(transactionHash, 1);
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage($"Transaction with hash: '{transactionHash}' is not pending.");
+            _blockchainBridge.Received().GetTransactionAsync(transactionHash);
+        }
+
+        [Test]
         public void update_gas_price_should_fail_if_sending_new_transaction_fails()
         {
             var transactionHash = TestItem.KeccakA;
             var transaction = Build.A.Transaction.TestObject;
             _blockchainBridge.GetTransactionAsync(transactionHash)
-                .Returns(new NdmTransaction(transaction, 1, TestItem.KeccakB, 1));
+                .Returns(new NdmTransaction(transaction, true, 1, TestItem.KeccakB, 1));
             Func<Task> act = () => _transactionService.UpdateGasPriceAsync(transactionHash, 1);
             act.Should().Throw<InvalidOperationException>()
                 .WithMessage("Transaction was not sent (received an empty hash).");
@@ -101,7 +114,7 @@ namespace Nethermind.DataMarketplace.Test.Services
             var sentTransactionHash = TestItem.KeccakB;
             var gasPrice = 30.GWei();
             _blockchainBridge.GetTransactionAsync(transactionHash)
-                .Returns(new NdmTransaction(transaction, 1, TestItem.KeccakB, 1));
+                .Returns(new NdmTransaction(transaction, true, 1, TestItem.KeccakB, 1));
             _blockchainBridge.SendOwnTransactionAsync(transaction).Returns(sentTransactionHash);
             var hash = await _transactionService.UpdateGasPriceAsync(transactionHash, gasPrice);
             hash.Should().Be(sentTransactionHash);
@@ -119,7 +132,7 @@ namespace Nethermind.DataMarketplace.Test.Services
             var sentTransactionHash = TestItem.KeccakB;
             var value = 10.GWei();
             _blockchainBridge.GetTransactionAsync(transactionHash)
-                .Returns(new NdmTransaction(transaction, 1, TestItem.KeccakB, 1));
+                .Returns(new NdmTransaction(transaction, true, 1, TestItem.KeccakB, 1));
             _blockchainBridge.SendOwnTransactionAsync(transaction).Returns(sentTransactionHash);
             var hash = await _transactionService.UpdateValueAsync(transactionHash, value);
             hash.Should().Be(sentTransactionHash);
@@ -130,6 +143,30 @@ namespace Nethermind.DataMarketplace.Test.Services
         }
 
         [Test]
+        public void cancel_should_fail_if_gas_price_multiplier_is_0()
+        {
+            var transactionHash = TestItem.KeccakA;
+            _config.CancelTransactionGasPricePercentageMultiplier = 0;
+            Func<Task> act = () => _transactionService.CancelAsync(transactionHash);
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage("Multiplier for gas price when canceling transaction cannot be 0.");
+            _blockchainBridge.DidNotReceive().GetTransactionAsync(transactionHash);
+        }
+
+        [Test]
+        public void  cancel_should_fail_if_transaction_is_not_pending()
+        {
+            var transactionHash = TestItem.KeccakA;
+            var transaction = Build.A.Transaction.TestObject;
+            _blockchainBridge.GetTransactionAsync(transactionHash)
+                .Returns(new NdmTransaction(transaction, false, 1, TestItem.KeccakB, 1));
+            Func<Task> act = () => _transactionService.CancelAsync(transactionHash);
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage($"Transaction with hash: '{transactionHash}' is not pending.");
+            _blockchainBridge.Received().GetTransactionAsync(transactionHash);
+        }
+
+        [Test]
         public async Task cancel_should_succeed_if_sending_new_transaction_succeeds()
         {
             var gasPrice = 10.GWei();
@@ -137,11 +174,13 @@ namespace Nethermind.DataMarketplace.Test.Services
             var transaction = Build.A.Transaction.WithGasPrice(gasPrice).TestObject;
             var sentTransactionHash = TestItem.KeccakB;
             _blockchainBridge.GetTransactionAsync(transactionHash)
-                .Returns(new NdmTransaction(transaction, 1, TestItem.KeccakB, 1));
+                .Returns(new NdmTransaction(transaction, true, 1, TestItem.KeccakB, 1));
             _blockchainBridge.SendOwnTransactionAsync(transaction).Returns(sentTransactionHash);
-            var hash = await _transactionService.CancelAsync(transactionHash);
-            hash.Should().Be(sentTransactionHash);
+            var transactionInfo = await _transactionService.CancelAsync(transactionHash);
+            transactionInfo.Hash.Should().Be(sentTransactionHash);
+            transaction.GasLimit.Should().Be(21000);
             transaction.Value.Should().Be(0);
+            transaction.GasLimit.Should().Be(21000);
             var expectedGasPrice = _config.CancelTransactionGasPricePercentageMultiplier * (BigInteger) gasPrice / 100;
             transaction.GasPrice.Should().Be(new UInt256(expectedGasPrice));
             await _blockchainBridge.Received().GetTransactionAsync(transactionHash);

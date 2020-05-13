@@ -1,40 +1,36 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Buffers.Binary;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Runtime.Intrinsics;
-using System.Runtime.Intrinsics.X86;
 using System.Text;
 using Nethermind.Core.Crypto;
 using Nethermind.Dirichlet.Numerics;
 
 namespace Nethermind.Core.Extensions
 {
-    public static unsafe class Bytes
+    public static unsafe partial class Bytes
     {
         public static readonly IEqualityComparer<byte[]> EqualityComparer = new BytesEqualityComparer();
 
@@ -92,20 +88,19 @@ namespace Nethermind.Core.Extensions
 
         public static readonly byte[] Zero32 = new byte[32];
 
-        public static readonly byte[] Zero256 = new byte[256];
-
         public static readonly byte[] Empty = new byte[0];
-
-        public enum Endianness
-        {
-            Big,
-            Little
-        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool GetBit(this byte b, int bitNumber)
         {
             return (b & (1 << (7 - bitNumber))) != 0;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void SetBit(this ref byte b, int bitNumber)
+        {
+            byte mask = (byte) (1 << (7 - bitNumber));
+            b = b |= mask;
         }
 
         public static int GetHighestSetBitIndex(this byte b)
@@ -293,46 +288,14 @@ namespace Nethermind.Core.Extensions
             }
         }
 
-        public static BigInteger ToUnsignedBigInteger(this byte[] bytes, Endianness endianness = Endianness.Big)
+        public static BigInteger ToUnsignedBigInteger(this byte[] bytes)
         {
-            return ToUnsignedBigInteger(bytes.AsSpan(), endianness);
+            return ToUnsignedBigInteger(bytes.AsSpan());
         }
 
-        public static BigInteger ToUnsignedBigInteger(this Span<byte> bytes, Endianness endianness = Endianness.Big)
+        public static BigInteger ToUnsignedBigInteger(this Span<byte> bytes)
         {
-            return new BigInteger(bytes, true, endianness == Endianness.Big);
-        }
-
-        private static byte[] _reverseMask = {15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
-        private static Vector256<byte> _reverseMaskVec;
-
-        static Bytes()
-        {
-            if (Avx2.IsSupported)
-            {
-                unsafe
-                {
-                    fixed (byte* ptr_mask = _reverseMask)
-                    {
-                        _reverseMaskVec = Avx2.LoadVector256(ptr_mask);
-                    }
-                }
-            }
-        }
-
-        public static void Avx2Reverse256InPlace(Span<byte> bytes)
-        {
-            unsafe
-            {
-                fixed (byte* inputPointer = bytes)
-                {
-                    Vector256<byte> inputVector = Avx2.LoadVector256(inputPointer);
-                    Vector256<byte> resultVector = Avx2.Shuffle(inputVector, _reverseMaskVec);
-                    resultVector = Avx2.Permute4x64(resultVector.As<byte, ulong>(), 0b01001110).As<ulong, byte>();
-
-                    Avx2.Store(inputPointer, resultVector);
-                }
-            }
+            return new BigInteger(bytes, true, true);
         }
 
         public static uint ReadEthUInt32(this Span<byte> bytes)
@@ -346,11 +309,10 @@ namespace Nethermind.Core.Extensions
             {
                 return BinaryPrimitives.ReadUInt32BigEndian(bytes);
             }
-            
+
             Span<byte> fourBytes = stackalloc byte[4];
             bytes.CopyTo(fourBytes.Slice(4 - bytes.Length));
             return BinaryPrimitives.ReadUInt32BigEndian(fourBytes);
-
         }
 
         public static uint ReadEthUInt32LittleEndian(this Span<byte> bytes)
@@ -364,11 +326,10 @@ namespace Nethermind.Core.Extensions
             {
                 return BinaryPrimitives.ReadUInt32LittleEndian(bytes);
             }
-            
+
             Span<byte> fourBytes = stackalloc byte[4];
             bytes.CopyTo(fourBytes.Slice(4 - bytes.Length));
             return BinaryPrimitives.ReadUInt32LittleEndian(fourBytes);
-
         }
 
 
@@ -383,11 +344,10 @@ namespace Nethermind.Core.Extensions
             {
                 return BinaryPrimitives.ReadInt32BigEndian(bytes);
             }
-            
+
             Span<byte> fourBytes = stackalloc byte[4];
             bytes.CopyTo(fourBytes.Slice(4 - bytes.Length));
             return BinaryPrimitives.ReadInt32BigEndian(fourBytes);
-
         }
 
         public static ulong ReadEthUInt64(this Span<byte> bytes)
@@ -401,19 +361,17 @@ namespace Nethermind.Core.Extensions
             {
                 return BinaryPrimitives.ReadUInt64BigEndian(bytes);
             }
-            
+
             Span<byte> eightBytes = stackalloc byte[8];
             bytes.CopyTo(eightBytes.Slice(8 - bytes.Length));
             return BinaryPrimitives.ReadUInt64BigEndian(eightBytes);
-
         }
 
-        public static BigInteger ToSignedBigInteger(this byte[] bytes, int byteLength,
-            Endianness endianness = Endianness.Big)
+        public static BigInteger ToSignedBigInteger(this byte[] bytes, int byteLength)
         {
             if (bytes.Length == byteLength)
             {
-                return new BigInteger(bytes.AsSpan(), false, endianness == Endianness.Big);
+                return new BigInteger(bytes.AsSpan(), false, true);
             }
 
             Debug.Assert(bytes.Length <= byteLength,
@@ -425,50 +383,18 @@ namespace Nethermind.Core.Extensions
                 Buffer.BlockCopy(bytes, 0, bytesToUse, byteLength - bytes.Length, bytes.Length);
             }
 
-            if (BitConverter.IsLittleEndian && endianness == Endianness.Big ||
-                !BitConverter.IsLittleEndian && endianness == Endianness.Little)
+            byte[] signedResult = new byte[byteLength];
+            for (int i = 0; i < byteLength; i++)
             {
-                byte[] signedResult = new byte[byteLength];
-                for (int i = 0; i < byteLength; i++)
-                {
-                    signedResult[byteLength - i - 1] = bytesToUse[i];
-                }
-
-                return new BigInteger(signedResult);
+                signedResult[byteLength - i - 1] = bytesToUse[i];
             }
 
-            return new BigInteger(bytesToUse);
+            return new BigInteger(signedResult);
         }
 
-        public static BigInteger ToSignedBigInteger(this Span<byte> bytes, int byteLength, Endianness endianness = Endianness.Big)
+        public static UInt256 ToUInt256(this byte[] bytes)
         {
-            if (bytes.Length == byteLength)
-            {
-                return new BigInteger(bytes, false, endianness == Endianness.Big);
-            }
-
-            Span<byte> bytesToUse = new byte[byteLength].AsSpan();
-            bytes.CopyTo(bytesToUse.Slice(bytesToUse.Length - bytes.Length, bytes.Length));
-
-            if (BitConverter.IsLittleEndian && endianness == Endianness.Big ||
-                !BitConverter.IsLittleEndian && endianness == Endianness.Little)
-            {
-                bytesToUse.Reverse();
-                return new BigInteger(bytesToUse);
-            }
-
-            return new BigInteger(bytesToUse);
-        }
-
-        public static UInt256 ToUInt256(this byte[] bytes, Endianness endianness = Endianness.Big)
-        {
-            if (endianness == Endianness.Little)
-            {
-                throw new NotImplementedException();
-            }
-
             UInt256.CreateFromBigEndian(out UInt256 result, bytes);
-
             return result;
         }
 
@@ -522,18 +448,6 @@ namespace Nethermind.Core.Extensions
             return new BitArray(inverted);
         }
 
-        public static BitArray ToBigEndianBitArray2048(this Span<byte> bytes)
-        {
-            byte[] inverted = new byte[256];
-            int startIndex = 256 - bytes.Length;
-            for (int i = startIndex; i < inverted.Length; i++)
-            {
-                inverted[i] = Reverse(bytes[i - startIndex]);
-            }
-
-            return new BitArray(inverted);
-        }
-
         public static string ToHexString(this byte[] bytes)
         {
             return ToHexString(bytes, false, false, false);
@@ -571,11 +485,11 @@ namespace Nethermind.Core.Extensions
                 Bytes = bytes;
                 WithZeroX = withZeroX;
             }
-            
+
             public byte[] Bytes;
             public bool WithZeroX;
         }
-        
+
         private struct State
         {
             public State(byte[] bytes, int leadingZeros, bool withZeroX, bool withEip55Checksum)
@@ -599,29 +513,56 @@ namespace Nethermind.Core.Extensions
             {
                 return withZeroX ? "0x" : "";
             }
-            
+
             int length = bytes.Length * 2 + (withZeroX ? 2 : 0);
             StateSmall stateToPass = new StateSmall(bytes, withZeroX);
+
             return string.Create(length, stateToPass, (chars, state) =>
             {
-                int offset0x = 0;
+                ref var charsRef = ref MemoryMarshal.GetReference(chars);
+
                 if (state.WithZeroX)
                 {
-                    chars[0] = '0';
-                    chars[1] = 'x';
-                    offset0x += 2;
+                    charsRef = '0';
+                    Unsafe.Add(ref charsRef, 1) = 'x';
+                    charsRef = ref Unsafe.Add(ref charsRef, 2);
                 }
 
-                Span<uint> charsAsInts = MemoryMarshal.Cast<char, uint>(chars.Slice(offset0x));
-                int targetLength = state.Bytes.Length;
-                for (int i = 0; i < targetLength; i += 1)
+                ref var input = ref state.Bytes[0];
+                ref var output = ref Unsafe.As<char, uint>(ref charsRef);
+
+                int toProcess = state.Bytes.Length;
+
+                var lookup32 = Lookup32;
+                while (toProcess > 8)
                 {
-                    uint val = Lookup32[state.Bytes[i]];
-                    charsAsInts[i] = val;
+                    output = lookup32[input];
+                    Unsafe.Add(ref output, 1) = lookup32[Unsafe.Add(ref input, 1)];
+                    Unsafe.Add(ref output, 2) = lookup32[Unsafe.Add(ref input, 2)];
+                    Unsafe.Add(ref output, 3) = lookup32[Unsafe.Add(ref input, 3)];
+                    Unsafe.Add(ref output, 4) = lookup32[Unsafe.Add(ref input, 4)];
+                    Unsafe.Add(ref output, 5) = lookup32[Unsafe.Add(ref input, 5)];
+                    Unsafe.Add(ref output, 6) = lookup32[Unsafe.Add(ref input, 6)];
+                    Unsafe.Add(ref output, 7) = lookup32[Unsafe.Add(ref input, 7)];
+
+                    output = ref Unsafe.Add(ref output, 8);
+                    input = ref Unsafe.Add(ref input, 8);
+
+                    toProcess -= 8;
+                }
+
+                while (toProcess > 0)
+                {
+                    output = lookup32[input];
+
+                    output = ref Unsafe.Add(ref output, 1);
+                    input = ref Unsafe.Add(ref input, 1);
+
+                    toProcess -= 1;
                 }
             });
         }
-        
+
         [DebuggerStepThrough]
         private static string ByteArrayToHexViaLookup32(byte[] bytes, bool withZeroX, bool skipLeadingZeros,
             bool withEip55Checksum)
@@ -801,6 +742,32 @@ namespace Nethermind.Core.Extensions
             }
 
             return bytes;
+        }
+        
+        [SuppressMessage("ReSharper", "NonReadonlyMemberInGetHashCode")]
+        public static int GetSimplifiedHashCode(this byte[] bytes)
+        {
+            const int fnvPrime = 0x01000193;
+
+            if (bytes.Length == 0)
+            {
+                return 0;
+            }
+
+            return (fnvPrime * bytes.Length * (((fnvPrime * (bytes[0] + 7)) ^ (bytes[^1] + 23)) + 11)) ^ (bytes[(bytes.Length - 1) / 2] + 53);
+        }
+        
+        [SuppressMessage("ReSharper", "NonReadonlyMemberInGetHashCode")]
+        public static int GetSimplifiedHashCode(this Span<byte> bytes)
+        {
+            const int fnvPrime = 0x01000193;
+
+            if (bytes.Length == 0)
+            {
+                return 0;
+            }
+
+            return (fnvPrime * bytes.Length * (((fnvPrime * (bytes[0] + 7)) ^ (bytes[^1] + 23)) + 11)) ^ (bytes[(bytes.Length - 1) / 2] + 53);
         }
     }
 }

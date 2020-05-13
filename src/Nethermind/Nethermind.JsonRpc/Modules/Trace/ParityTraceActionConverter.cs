@@ -1,23 +1,21 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
-using Nethermind.Evm.Tracing;
+using Nethermind.Evm.Tracing.ParityStyle;
 using Newtonsoft.Json;
 
 namespace Nethermind.JsonRpc.Modules.Trace
@@ -36,6 +34,12 @@ namespace Nethermind.JsonRpc.Modules.Trace
     {
         public override void WriteJson(JsonWriter writer, ParityTraceAction value, JsonSerializer serializer)
         {
+            if (value.Type == "reward")
+            {
+                WriteRewardJson(writer, value, serializer);
+                return;
+            }
+            
             if (value.Type == "suicide")
             {
                 WriteSelfDestructJson(writer, value, serializer);
@@ -46,6 +50,10 @@ namespace Nethermind.JsonRpc.Modules.Trace
             if (value.CallType != "create")
             {
                 writer.WriteProperty("callType", value.CallType);
+            }
+            else
+            {
+                writer.WriteProperty("creationMethod", value.CreationMethod);
             }
 
             writer.WriteProperty("from", value.From, serializer);
@@ -71,6 +79,15 @@ namespace Nethermind.JsonRpc.Modules.Trace
             writer.WriteProperty("address", value.From, serializer);
             writer.WriteProperty("balance", value.Value, serializer);
             writer.WriteProperty("refundAddress", value.To, serializer);
+            writer.WriteEndObject();
+        }
+        
+        private void WriteRewardJson(JsonWriter writer, ParityTraceAction value, JsonSerializer serializer)
+        {
+            writer.WriteStartObject();
+            writer.WriteProperty("author", value.Author, serializer);
+            writer.WriteProperty("rewardType", value.RewardType, serializer);
+            writer.WriteProperty("value", value.Value, serializer);
             writer.WriteEndObject();
         }
 

@@ -1,28 +1,25 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
-using Nethermind.Core.Encoding;
-using Nethermind.Core.Extensions;
 using Nethermind.Core.Specs;
 using Nethermind.Logging;
+using Nethermind.State.Proofs;
 
 namespace Nethermind.Blockchain.Validators
 {
@@ -79,19 +76,19 @@ namespace Nethermind.Blockchain.Validators
 
             if (releaseSpec.MaximumUncleCount < block.Ommers.Length)
             {
-                _logger?.Debug($"Invalid block ({block.ToString(Block.Format.FullHashAndNumber)}) - uncle count is {block.Ommers.Length} (MAX: {releaseSpec.MaximumUncleCount})");
+                _logger.Debug($"Invalid block ({block.ToString(Block.Format.FullHashAndNumber)}) - uncle count is {block.Ommers.Length} (MAX: {releaseSpec.MaximumUncleCount})");
                 return false;
             }
 
-            if (block.Header.OmmersHash != block.CalculateOmmersHash())
+            if (block.Header.OmmersHash != OmmersHash.Calculate(block))
             {
-                _logger?.Debug($"Invalid block ({block.ToString(Block.Format.FullHashAndNumber)}) - invalid uncles hash");
+                _logger.Debug($"Invalid block ({block.ToString(Block.Format.FullHashAndNumber)}) - invalid uncles hash");
                 return false;
             }
             
             if (!_ommersValidator.Validate(block.Header, block.Ommers))
             {
-                _logger?.Debug($"Invalid block ({block.ToString(Block.Format.FullHashAndNumber)}) - invalid uncles");
+                _logger.Debug($"Invalid block ({block.ToString(Block.Format.FullHashAndNumber)}) - invalid uncles");
                 return false;
             }
             
@@ -102,7 +99,7 @@ namespace Nethermind.Blockchain.Validators
                 return false;
             }
 
-            Keccak txRoot = block.CalculateTxRoot();
+            Keccak txRoot = new TxTrie(block.Transactions).RootHash;
             if (txRoot != block.Header.TxRoot)
             {
                 if (_logger.IsDebug) _logger.Debug($"Invalid block ({block.ToString(Block.Format.FullHashAndNumber)}) tx root {txRoot} != stated tx root {block.Header.TxRoot}");
@@ -147,13 +144,13 @@ namespace Nethermind.Blockchain.Validators
                 {
                     if(_logger.IsError) _logger.Error($"  state root {processedBlock.Header.StateRoot} != stated state root {suggestedBlock.Header.StateRoot}");
                 }
-            }
-            
-            for (int i = 0; i < processedBlock.Transactions.Length; i++)
-            {
-                if (receipts[i].Error != null && receipts[i].GasUsed == 0 && receipts[i].Error == "invalid")
+                
+                for (int i = 0; i < processedBlock.Transactions.Length; i++)
                 {
-                    if(_logger.IsError) _logger.Error($"  invalid transaction {i}");
+                    if (receipts[i].Error != null && receipts[i].GasUsed == 0 && receipts[i].Error == "invalid")
+                    {
+                        if(_logger.IsError) _logger.Error($"  invalid transaction {i}");
+                    }
                 }
             }
 

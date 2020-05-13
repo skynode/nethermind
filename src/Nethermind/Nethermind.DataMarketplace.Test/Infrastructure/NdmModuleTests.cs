@@ -1,30 +1,28 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using FluentAssertions;
 using Nethermind.Blockchain;
 using Nethermind.Blockchain.Filters;
+using Nethermind.Blockchain.Processing;
 using Nethermind.Blockchain.Receipts;
-using Nethermind.Blockchain.TxPools;
 using Nethermind.Config;
 using Nethermind.Core;
-using Nethermind.Core.Crypto;
 using Nethermind.Core.Specs;
+using Nethermind.Crypto;
 using Nethermind.DataMarketplace.Channels;
 using Nethermind.DataMarketplace.Core;
 using Nethermind.DataMarketplace.Core.Configs;
@@ -32,13 +30,17 @@ using Nethermind.DataMarketplace.Core.Services;
 using Nethermind.DataMarketplace.Infrastructure;
 using Nethermind.DataMarketplace.Infrastructure.Modules;
 using Nethermind.DataMarketplace.Infrastructure.Persistence.Mongo;
+using Nethermind.Db;
 using Nethermind.Facade.Proxy;
 using Nethermind.Grpc;
 using Nethermind.JsonRpc.Modules;
 using Nethermind.KeyStore;
 using Nethermind.Logging;
+using Nethermind.Monitoring;
 using Nethermind.Network;
-using Nethermind.Store;
+using Nethermind.Serialization.Json;
+using Nethermind.Store.Bloom;
+using Nethermind.TxPool;
 using Nethermind.Wallet;
 using NSubstitute;
 using NUnit.Framework;
@@ -79,6 +81,8 @@ namespace Nethermind.DataMarketplace.Test.Infrastructure
         private IJsonRpcClientProxy _jsonRpcClientProxy;
         private IEthJsonRpcClientProxy _ethJsonRpcClientProxy;
         private IHttpClient _httpClient;
+        private IMonitoringService _monitoringService;
+        private IBloomStorage _bloomStorage;
 
         [SetUp]
         public void Setup()
@@ -89,7 +93,7 @@ namespace Nethermind.DataMarketplace.Test.Infrastructure
             _baseDbPath = "db";
             _rocksProvider = Substitute.For<IDbProvider>();
             _mongoProvider = Substitute.For<IMongoProvider>();
-            _logManager = Substitute.For<ILogManager>();
+            _logManager = LimboLogs.Instance;
             _blockTree = Substitute.For<IBlockTree>();
             _specProvider = Substitute.For<ISpecProvider>();
             _transactionPool = Substitute.For<ITxPool>();
@@ -114,7 +118,9 @@ namespace Nethermind.DataMarketplace.Test.Infrastructure
             _jsonRpcClientProxy = Substitute.For<IJsonRpcClientProxy>();
             _ethJsonRpcClientProxy = Substitute.For<IEthJsonRpcClientProxy>();
             _httpClient = Substitute.For<IHttpClient>();
+            _monitoringService = Substitute.For<IMonitoringService>();
             _ndmModule = new NdmModule();
+            _bloomStorage = Substitute.For<IBloomStorage>();
         }
 
         [Test]
@@ -125,7 +131,7 @@ namespace Nethermind.DataMarketplace.Test.Infrastructure
                 _receiptStorage, _filterStore, _filterManager, _wallet, _timestamper, _ecdsa, _keyStore,
                 _rpcModuleProvider, _jsonSerializer, _cryptoRandom, _enode, _ndmConsumerChannelManager,
                 _ndmDataPublisher, _grpcServer, _ethRequestService, _notifier, _enableUnsecuredDevWallet,
-                _blockProcessor, _jsonRpcClientProxy, _ethJsonRpcClientProxy, _httpClient));
+                _blockProcessor, _jsonRpcClientProxy, _ethJsonRpcClientProxy, _httpClient, _monitoringService, _bloomStorage));
             services.Should().NotBeNull();
             services.CreatedServices.Should().NotBeNull();
             services.RequiredServices.Should().NotBeNull();

@@ -15,13 +15,11 @@
 //  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
-using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
-using Nethermind.Core;
-using Nethermind.Core.Extensions;
-using Nethermind.Core2.Containers;
+using Nethermind.Core2;
 using Nethermind.Core2.Crypto;
+using Nethermind.Core2.Types;
 using Nethermind.Dirichlet.Numerics;
 using Chunk = Nethermind.Dirichlet.Numerics.UInt256;
 
@@ -34,23 +32,22 @@ namespace Nethermind.Ssz
         private static void BuildZeroHashes()
         {
             Span<UInt256> concatenation = stackalloc UInt256[2];
-            UInt256.CreateFromLittleEndian(out ZeroHashes[0], Sha256.Zero.Bytes);
+            // ZeroHashes[0] will be UInt256.Zero
             for (int i = 1; i < 64; i++)
             {
                 var previous = ZeroHashes[i - 1];
                 MemoryMarshal.CreateSpan(ref previous, 1).CopyTo(concatenation.Slice(0, 1));
                 MemoryMarshal.CreateSpan(ref previous, 1).CopyTo(concatenation.Slice(1, 1));
-                UInt256.CreateFromLittleEndian(out ZeroHashes[i], Sha256.Compute(MemoryMarshal.Cast<UInt256, byte>(concatenation)).Bytes);
+                UInt256.CreateFromLittleEndian(out ZeroHashes[i], Sha256.Compute(MemoryMarshal.Cast<UInt256, byte>(concatenation)).AsSpan().ToArray());
             }
         }
 
         static Merkle()
         {
             BuildZeroHashes();
-            UInt256.CreateFromBigEndian(out RootOfNull, Sha256.OfAnEmptyString.Bytes);
+            UInt256.CreateFromBigEndian(out RootOfNull, Sha256.RootOfAnEmptyString.AsSpan().ToArray());
         }
 
-        [Todo(Improve.Refactor, "Consider moving to extensions")]
         public static uint NextPowerOfTwo(uint v)
         {
             if (Lzcnt.IsSupported)
@@ -71,15 +68,42 @@ namespace Nethermind.Ssz
 
         public static int NextPowerOfTwoExponent(ulong v)
         {
+            if (v == 0)
+            {
+                return 0;
+            }
+            
+            int leadingZeros = 0;
             if (Lzcnt.IsSupported)
             {
-                return 64 - (int)Lzcnt.X64.LeadingZeroCount(--v);
+                leadingZeros = (int) Lzcnt.X64.LeadingZeroCount(--v);
+            }
+            else
+            {
+                leadingZeros = CountLeadingZeros(v);
             }
 
-            throw new NotImplementedException();
+            return 64 - leadingZeros;
         }
 
-        [Todo(Improve.Refactor, "Consider moving to extensions")]
+        private static int CountLeadingZeros(ulong x)
+        {
+            x--;
+            
+            int count = 0;
+            for (int i = 63; i >= 0; i--)
+            {
+                if (x / (1UL << i) == 1)
+                {
+                    break;
+                }
+                
+                count++;
+            }
+
+            return count;
+        }
+
         public static ulong NextPowerOfTwo(ulong v)
         {
             if (Lzcnt.IsSupported)
@@ -101,7 +125,7 @@ namespace Nethermind.Ssz
 
         private static Chunk Compute(Span<Chunk> span)
         {
-            return MemoryMarshal.Cast<byte, Chunk>(Sha256.Compute(MemoryMarshal.Cast<Chunk, byte>(span)).Bytes)[0];
+            return MemoryMarshal.Cast<byte, Chunk>(Sha256.ComputeBytes(MemoryMarshal.Cast<Chunk, byte>(span)))[0];
         }
 
         internal static Chunk HashConcatenation(Chunk left, Chunk right, int level)
@@ -168,9 +192,30 @@ namespace Nethermind.Ssz
             root = value;
         }
 
-        public static void Ize(out UInt256 root, Sha256 value)
+        public static void Ize(out UInt256 root, Bytes32 value)
         {
-            UInt256.CreateFromLittleEndian(out root, value?.Bytes ?? Bytes.Zero32);
+            ReadOnlySpan<byte> readOnlyBytes = value.AsSpan();
+            unsafe
+            {
+                fixed (byte* buffer = &readOnlyBytes.GetPinnableReference())
+                {
+                    Span<byte> apiNeedsWriteableEvenThoughOnlyReading = new Span<byte>(buffer, readOnlyBytes.Length);
+                    UInt256.CreateFromLittleEndian(out root, apiNeedsWriteableEvenThoughOnlyReading);
+                }
+            }
+        }
+
+        public static void Ize(out UInt256 root, Root value)
+        {
+            ReadOnlySpan<byte> readOnlyBytes = value.AsSpan();
+            unsafe
+            {
+                fixed (byte* buffer = &readOnlyBytes.GetPinnableReference())
+                {
+                    Span<byte> apiNeedsWriteableEvenThoughOnlyReading = new Span<byte>(buffer, readOnlyBytes.Length);
+                    UInt256.CreateFromLittleEndian(out root, apiNeedsWriteableEvenThoughOnlyReading);
+                }
+            }
         }
 
         public static void Ize(out UInt256 root, Span<bool> value)
@@ -206,7 +251,24 @@ namespace Nethermind.Ssz
                 Ize(out root, MemoryMarshal.Cast<byte, Chunk>(value));
             }
         }
-
+        
+        public static void Ize(out UInt256 root, ReadOnlySpan<byte> value, ulong chunkCount)
+        {
+            const int typeSize = 1;
+            int partialChunkLength = value.Length % (32 / typeSize);
+            if (partialChunkLength > 0)
+            {
+                ReadOnlySpan<byte> fullChunks = value.Slice(0, value.Length - partialChunkLength);
+                Span<byte> lastChunk = stackalloc byte[32 / typeSize];
+                value.Slice(value.Length - partialChunkLength).CopyTo(lastChunk);
+                Ize(out root, MemoryMarshal.Cast<byte, Chunk>(fullChunks), MemoryMarshal.Cast<byte, Chunk>(lastChunk), chunkCount);
+            }
+            else
+            {
+                Ize(out root, MemoryMarshal.Cast<byte, Chunk>(value), chunkCount);
+            }
+        }
+        
         public static void IzeBits(out UInt256 root, Span<byte> value, uint limit)
         {
             // reset lowest bit perf
@@ -321,10 +383,10 @@ namespace Nethermind.Ssz
             }
         }
 
-        public static void Ize(out UInt256 root, Span<ulong> value, ulong limit = 0U)
+        public static void Ize(out UInt256 root, Span<ulong> value, ulong maxLength = 0U)
         {
-            limit = (limit * 8 + 31) / 32;
-            const int typeSize = 8;
+            const int typeSize = sizeof(ulong);
+            ulong limit = (maxLength * typeSize + 31) / 32;
             int partialChunkLength = value.Length % (32 / typeSize);
             if (partialChunkLength > 0)
             {
@@ -356,15 +418,15 @@ namespace Nethermind.Ssz
             }
         }
 
-        public static void Ize(out UInt256 root, Span<UInt256> value, Span<UInt256> lastChunk, ulong limit = 0)
+        public static void Ize(out UInt256 root, ReadOnlySpan<UInt256> value, ReadOnlySpan<UInt256> lastChunk, ulong limit = 0)
         {
             if (limit == 0 && (value.Length + lastChunk.Length == 1))
             {
                 root = value.Length == 0 ? lastChunk[0] : value[0];
                 return;
             }
-            
-            int depth = NextPowerOfTwoExponent(limit == 0UL ? (uint)(value.Length + lastChunk.Length) : limit);
+
+            int depth = NextPowerOfTwoExponent(limit == 0UL ? (uint) (value.Length + lastChunk.Length) : limit);
             Merkleizer merkleizer = new Merkleizer(depth);
             int length = value.Length;
             for (int i = 0; i < length; i++)
@@ -379,16 +441,16 @@ namespace Nethermind.Ssz
 
             merkleizer.CalculateRoot(out root);
         }
-        
-        public static void Ize(out UInt256 root, Span<UInt256> value, ulong limit = 0UL)
+
+        public static void Ize(out UInt256 root, ReadOnlySpan<UInt256> value, ulong limit = 0UL)
         {
             if (limit == 0 && value.Length == 1)
             {
                 root = value[0];
                 return;
             }
-            
-            int depth = NextPowerOfTwoExponent(limit == 0UL ? (ulong)value.Length : limit);
+
+            int depth = NextPowerOfTwoExponent(limit == 0UL ? (ulong) value.Length : limit);
             Merkleizer merkleizer = new Merkleizer(depth);
             int length = value.Length;
             for (int i = 0; i < length; i++)

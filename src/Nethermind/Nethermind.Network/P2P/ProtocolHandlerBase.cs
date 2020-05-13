@@ -1,25 +1,24 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 using DotNetty.Buffers;
+using Nethermind.Core;
 using Nethermind.Logging;
 using Nethermind.Network.Rlpx;
 using Nethermind.Stats;
@@ -27,11 +26,14 @@ using Nethermind.Stats.Model;
 
 namespace Nethermind.Network.P2P
 {
-    public abstract class ProtocolHandlerBase
+    public abstract class ProtocolHandlerBase : IProtocolHandler
     {
+        public abstract string Name { get; }
         protected INodeStatsManager StatsManager { get; }
         private readonly IMessageSerializationService _serializer;
         protected ISession Session { get; }
+        protected long Counter;
+
         private readonly TaskCompletionSource<MessageBase> _initCompletionSource;
 
         protected ProtocolHandlerBase(ISession session, INodeStatsManager nodeStats, IMessageSerializationService serializer, ILogManager logManager)
@@ -60,15 +62,17 @@ namespace Nethermind.Network.P2P
         
         protected void Send<T>(T message) where T : P2PMessage
         {
-            if (Logger.IsTrace) Logger.Trace($"Sending {typeof(T).Name}");
-            Session.DeliverMessage(message);   
+            Interlocked.Increment(ref Counter);
+            if (Logger.IsTrace) Logger.Trace($"{Counter} Sending {typeof(T).Name}");
+            if(NetworkDiagTracer.IsEnabled) NetworkDiagTracer.ReportOutgoingMessage(Session.Node.Host, Name, typeof(T).Name);
+            Session.DeliverMessage(message);
         }
 
         protected async Task CheckProtocolInitTimeout()
         {
-            var receivedInitMsgTask = _initCompletionSource.Task;
+            Task<MessageBase> receivedInitMsgTask = _initCompletionSource.Task;
             CancellationTokenSource delayCancellation = new CancellationTokenSource();
-            var firstTask = await Task.WhenAny(receivedInitMsgTask, Task.Delay(InitTimeout, delayCancellation.Token));
+            Task firstTask = await Task.WhenAny(receivedInitMsgTask, Task.Delay(InitTimeout, delayCancellation.Token));
             
             if (firstTask != receivedInitMsgTask)
             {
@@ -89,5 +93,25 @@ namespace Nethermind.Network.P2P
         {
             _initCompletionSource?.SetResult(msg);
         }
+
+        public abstract void Dispose();
+
+        public abstract byte ProtocolVersion { get; protected set; }
+        public abstract string ProtocolCode { get; }
+        public abstract int MessageIdSpaceSize { get; }
+        public abstract void Init();
+
+        public abstract void HandleMessage(Packet message);
+
+        public abstract void InitiateDisconnect(DisconnectReason disconnectReason, string details);
+
+        public abstract bool HasAvailableCapability(Capability capability);
+
+        public abstract bool HasAgreedCapability(Capability capability);
+
+        public abstract void AddSupportedCapability(Capability capability);
+
+        public abstract event EventHandler<ProtocolInitializedEventArgs> ProtocolInitialized;
+        public abstract event EventHandler<ProtocolEventArgs> SubprotocolRequested;
     }
 }

@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "Nethermind.BeaconNode.Host": {
+      "commandName": "Project",
+      "commandLineArgs": "--QuickStart:GenesisTime 1578009600 --QuickStart:ValidatorCount 64 --Peering:BootNodes xxx",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

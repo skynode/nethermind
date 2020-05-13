@@ -1,23 +1,23 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
+using Nethermind.Core.Extensions;
 using Nethermind.Logging;
 using Nethermind.Network.Config;
 using Nethermind.Network.Discovery.Messages;
@@ -36,8 +36,13 @@ namespace Nethermind.Network.Discovery.Lifecycle
         private readonly IDiscoveryMessageFactory _discoveryMessageFactory;
         private readonly IEvictionManager _evictionManager;
 
-        private bool _isPongExpected;
+        private PingMessage _lastSentPing;
         private bool _isNeighborsExpected;
+
+        private bool _receivedPing;
+        private bool _sentPing;
+        private bool _sentPong;
+        private bool _receivedPong;
 
         public NodeLifecycleManager(Node node, IDiscoveryManager discoveryManager, INodeTable nodeTable, IDiscoveryMessageFactory discoveryMessageFactory, IEvictionManager evictionManager, INodeStats nodeStats, IDiscoveryConfig discoveryConfig, ILogger logger)
         {
@@ -55,45 +60,64 @@ namespace Nethermind.Network.Discovery.Lifecycle
         public Node ManagedNode { get; }
         public NodeLifecycleState State { get; private set; }
         public INodeStats NodeStats { get; }
+        public bool IsBonded => (_sentPing && _receivedPong) || (_receivedPing && _sentPong);
 
         public event EventHandler<NodeLifecycleState> OnStateChanged;
 
         public void ProcessPingMessage(PingMessage discoveryMessage)
         {
+            _receivedPing = true;
             SendPong(discoveryMessage);
 
             NodeStats.AddNodeStatsEvent(NodeStatsEventType.DiscoveryPingIn);
             RefreshNodeContactTime();
-            
         }
 
         public void ProcessPongMessage(PongMessage discoveryMessage)
         {
-            if (_isPongExpected)
+            PingMessage sentPingMessage = Interlocked.Exchange(ref _lastSentPing, null);
+            if (sentPingMessage == null)
             {
-                NodeStats.AddNodeStatsEvent(NodeStatsEventType.DiscoveryPongIn);
-                RefreshNodeContactTime();
-
-                UpdateState(NodeLifecycleState.Active);
+                return;
             }
 
-            _isPongExpected = false;
+            if (Bytes.AreEqual(sentPingMessage.Mdc, discoveryMessage.PingMdc))
+            {
+                _receivedPong = true;
+                NodeStats.AddNodeStatsEvent(NodeStatsEventType.DiscoveryPongIn);
+                if (IsBonded)
+                {
+                    UpdateState(NodeLifecycleState.Active);
+                }
+
+                RefreshNodeContactTime();
+            }
+            else
+            {
+                // ignore spoofed message
+            }
         }
 
         public void ProcessNeighborsMessage(NeighborsMessage discoveryMessage)
         {
+            if (!IsBonded)
+            {
+                return;
+            }
+
             if (_isNeighborsExpected)
             {
                 NodeStats.AddNodeStatsEvent(NodeStatsEventType.DiscoveryNeighboursIn);
                 RefreshNodeContactTime();
 
-                foreach (var node in discoveryMessage.Nodes)
+                foreach (Node node in discoveryMessage.Nodes)
                 {
                     if (node.Address.Address.ToString().Contains("127.0.0.1"))
                     {
-                        if (_logger.IsTrace) _logger.Trace($"Received localhost as node address from: {discoveryMessage.FarPublicKey}, node: {node}"); 
+                        if (_logger.IsTrace) _logger.Trace($"Received localhost as node address from: {discoveryMessage.FarPublicKey}, node: {node}");
                         continue;
                     }
+
                     //If node is new it will create a new nodeLifecycleManager and will update state to New, which will trigger Ping
                     _discoveryManager.GetNodeLifecycleManager(node);
                 }
@@ -101,42 +125,77 @@ namespace Nethermind.Network.Discovery.Lifecycle
 
             _isNeighborsExpected = false;
         }
+        
 
         public void ProcessFindNodeMessage(FindNodeMessage discoveryMessage)
         {
+            if (!IsBonded)
+            {
+                return;
+            }
+
             NodeStats.AddNodeStatsEvent(NodeStatsEventType.DiscoveryFindNodeIn);
             RefreshNodeContactTime();
 
-            var nodes = _nodeTable.GetClosestNodes(discoveryMessage.SearchedNodeId);
+            Node[] nodes = _nodeTable.GetClosestNodes(discoveryMessage.SearchedNodeId);
             SendNeighbors(nodes);
         }
+        
+        private DateTime _lastTimeSendFindNode = DateTime.MinValue;
 
         public void SendFindNode(byte[] searchedNodeId)
         {
-            var msg = _discoveryMessageFactory.CreateOutgoingMessage<FindNodeMessage>(ManagedNode);
+            if (!IsBonded)
+            {
+                if (_logger.IsDebug) _logger.Debug($"Sending FIND NODE on {ManagedNode} before bonding");
+            }
+            
+            if (DateTime.UtcNow - _lastTimeSendFindNode < TimeSpan.FromSeconds(60))
+            {
+                return;
+            }
+
+            FindNodeMessage msg = _discoveryMessageFactory.CreateOutgoingMessage<FindNodeMessage>(ManagedNode);
             msg.SearchedNodeId = searchedNodeId;
             _isNeighborsExpected = true;
             _discoveryManager.SendMessage(msg);
             NodeStats.AddNodeStatsEvent(NodeStatsEventType.DiscoveryFindNodeOut);
         }
 
+        private DateTime _lastPingSent = DateTime.MinValue;
+
         public void SendPing()
         {
-            _isPongExpected = true;
-            Task.Run(() => SendPingAsync(_discoveryConfig.PingRetryCount));
+            Task.Run(() =>
+            {
+                _lastPingSent = DateTime.UtcNow;
+                Task task = SendPingAsync(_discoveryConfig.PingRetryCount);
+                _sentPing = true;
+                return task;
+            });
         }
 
         public void SendPong(PingMessage discoveryMessage)
         {
-            var msg = _discoveryMessageFactory.CreateOutgoingMessage<PongMessage>(ManagedNode);
+            PongMessage msg = _discoveryMessageFactory.CreateOutgoingMessage<PongMessage>(ManagedNode);
             msg.PingMdc = discoveryMessage.Mdc;
             _discoveryManager.SendMessage(msg);
             NodeStats.AddNodeStatsEvent(NodeStatsEventType.DiscoveryPongOut);
+            _sentPong = true;
+            if (IsBonded)
+            {
+                UpdateState(NodeLifecycleState.Active);
+            }
         }
 
         public void SendNeighbors(Node[] nodes)
         {
-            var msg = _discoveryMessageFactory.CreateOutgoingMessage<NeighborsMessage>(ManagedNode);
+            if (!IsBonded)
+            {
+                if (_logger.IsWarn) _logger.Warn("Sending NEIGHBOURS before bonding");
+            }
+
+            NeighborsMessage msg = _discoveryMessageFactory.CreateOutgoingMessage<NeighborsMessage>(ManagedNode);
             msg.Nodes = nodes;
             _discoveryManager.SendMessage(msg);
             NodeStats.AddNodeStatsEvent(NodeStatsEventType.DiscoveryNeighboursOut);
@@ -164,14 +223,14 @@ namespace Nethermind.Network.Discovery.Lifecycle
             }
             else if (newState == NodeLifecycleState.Active)
             {
-                //TODO && !ManagedNode.IsDicoveryNode - should we exclude discovery nodes
+                //TODO && !ManagedNode.IsDiscoveryNode - should we exclude discovery nodes
                 //received pong first time
                 if (State == NodeLifecycleState.New)
                 {
-                    var result = _nodeTable.AddNode(ManagedNode);
+                    NodeAddResult result = _nodeTable.AddNode(ManagedNode);
                     if (result.ResultType == NodeAddResultType.Full)
                     {
-                        var evictionCandidate = _discoveryManager.GetNodeLifecycleManager(result.EvictionCandidate.Node);
+                        INodeLifecycleManager evictionCandidate = _discoveryManager.GetNodeLifecycleManager(result.EvictionCandidate.Node);
                         if (evictionCandidate != null)
                         {
                             _evictionManager.StartEvictionProcess(evictionCandidate, this);
@@ -181,7 +240,19 @@ namespace Nethermind.Network.Discovery.Lifecycle
             }
             else if (newState == NodeLifecycleState.EvictCandidate)
             {
-                SendPing();
+                if (State == NodeLifecycleState.EvictCandidate)
+                {
+                    throw new InvalidOperationException("Cannot start more than one eviction process on same node.");
+                }
+
+                if (DateTime.UtcNow - _lastPingSent > TimeSpan.FromSeconds(5))
+                {
+                    SendPing();
+                }
+                else
+                {
+                    OnStateChanged?.Invoke(this, NodeLifecycleState.Active);
+                }
             }
 
             State = newState;
@@ -198,26 +269,25 @@ namespace Nethermind.Network.Discovery.Lifecycle
 
         private async Task SendPingAsync(int counter)
         {
+            PingMessage msg = _discoveryMessageFactory.CreateOutgoingMessage<PingMessage>(ManagedNode);
+            msg.SourceAddress = _nodeTable.MasterNode.Address;
+            msg.DestinationAddress = msg.FarAddress;
+
             try
             {
-                var msg = _discoveryMessageFactory.CreateOutgoingMessage<PingMessage>(ManagedNode);         
-                msg.Version = _discoveryConfig.PingMessageVersion;
-                msg.SourceAddress = _nodeTable.MasterNode.Address;
-                msg.DestinationAddress = msg.FarAddress;
+                _lastSentPing = msg;
                 _discoveryManager.SendMessage(msg);
                 NodeStats.AddNodeStatsEvent(NodeStatsEventType.DiscoveryPingOut);
 
-                var result = await _discoveryManager.WasMessageReceived(ManagedNode.IdHash, MessageType.Pong, _discoveryConfig.PongTimeout);
+                bool result = await _discoveryManager.WasMessageReceived(ManagedNode.IdHash, MessageType.Pong, _discoveryConfig.PongTimeout);
                 if (!result)
                 {
                     if (counter > 1)
                     {
                         await SendPingAsync(counter - 1);
                     }
-                    else
-                    {
-                        UpdateState(NodeLifecycleState.Unreachable);
-                    }
+
+                    UpdateState(NodeLifecycleState.Unreachable);
                 }
             }
             catch (Exception e)

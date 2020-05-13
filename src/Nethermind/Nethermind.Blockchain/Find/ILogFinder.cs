@@ -14,12 +14,15 @@
 //  You should have received a copy of the GNU Lesser General Public License
 //  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
+using System.Collections.Generic;
 using Nethermind.Blockchain.Filters;
 
 namespace Nethermind.Blockchain.Find
 {
     public interface ILogFinder
     {
-        FilterLog[] FindLogs(LogFilter filter);
+        public const string NotFoundError = "Block not found.";
+        
+        IEnumerable<FilterLog> FindLogs(LogFilter filter);
     }
 }

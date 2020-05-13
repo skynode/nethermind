@@ -1,32 +1,30 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
-using Nethermind.Core.Encoding;
 using Nethermind.Core.Extensions;
 using Nethermind.DataMarketplace.Core.Domain;
 using Nethermind.DataMarketplace.Core.Repositories;
 using Nethermind.Dirichlet.Numerics;
 using Nethermind.Logging;
+using Nethermind.Serialization.Rlp;
 using Nethermind.Wallet;
 
 namespace Nethermind.DataMarketplace.Core.Services
@@ -48,20 +46,27 @@ namespace Nethermind.DataMarketplace.Core.Services
         private readonly ILogger _logger;
         private bool _initialized;
 
-        public NdmFaucet(INdmBlockchainBridge blockchainBridge, IEthRequestRepository requestRepository,
-            Address faucetAddress, UInt256 maxValue, UInt256 dailyRequestsTotalValueEth, bool enabled,
-            ITimestamper timestamper, IWallet wallet, ILogManager logManager)
+        public NdmFaucet(
+            INdmBlockchainBridge blockchainBridge,
+            IEthRequestRepository requestRepository,
+            Address faucetAddress,
+            UInt256 maxValue,
+            UInt256 dailyRequestsTotalValueEth,
+            bool enabled,
+            ITimestamper timestamper,
+            IWallet wallet,
+            ILogManager logManager)
         {
-            _blockchainBridge = blockchainBridge;
-            _requestRepository = requestRepository;
+            _blockchainBridge = blockchainBridge ?? throw new ArgumentNullException(nameof(blockchainBridge));
+            _requestRepository = requestRepository ?? throw new ArgumentNullException(nameof(requestRepository));
             _faucetAddress = faucetAddress;
             _maxValue = maxValue;
             _dailyRequestsTotalValueWei = dailyRequestsTotalValueEth * 1_000_000_000_000_000_000;
             _enabled = enabled;
-            _timestamper = timestamper;
-            _wallet = wallet;
+            _timestamper = timestamper ?? throw new ArgumentNullException(nameof(timestamper));
+            _wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
             _today = _timestamper.UtcNow;
-            _logger = logManager.GetClassLogger();
+            _logger = logManager?.GetClassLogger() ?? throw new ArgumentNullException(nameof(logManager));
             if (!_enabled || _faucetAddress is null)
             {
                 return;
@@ -81,6 +86,8 @@ namespace Nethermind.DataMarketplace.Core.Services
                 if (_logger.IsInfo) _logger.Info($"Initialized NDM faucet today's ({_today.Date:d}) total value: {_todayRequestsTotalValueWei} wei");
             });
         }
+
+        public bool IsInitialized => _initialized;
 
         public async Task<FaucetResponse> TryRequestEthAsync(string node, Address address, UInt256 value)
         {
@@ -177,17 +184,22 @@ namespace Nethermind.DataMarketplace.Core.Services
                 var transaction = new Transaction
                 {
                     Value = value,
-                    GasLimit = 21000,
+                    GasLimit = Transaction.BaseTxGasCost,
                     GasPrice = 20.GWei(),
                     To = address,
                     SenderAddress = _faucetAddress,
                     Nonce = nonce
                 };
                 _wallet.Sign(transaction, await _blockchainBridge.GetNetworkIdAsync());
-                var transactionHash = await _blockchainBridge.SendOwnTransactionAsync(transaction);
+                Keccak? transactionHash = await _blockchainBridge.SendOwnTransactionAsync(transaction);
+                if (transactionHash == null)
+                {
+                    return FaucetResponse.ProcessingRequestError;
+                }
+                
                 if (latestRequest is null)
                 {
-                    var requestId = Keccak.Compute(Rlp.Encode(Rlp.Encode(node)));
+                    Keccak requestId = Keccak.Compute(Rlp.Encode(Rlp.Encode(node)).Bytes);
                     latestRequest = new EthRequest(requestId, node, address, value, requestedAt, transactionHash);
                     await _requestRepository.AddAsync(latestRequest);
                 }

@@ -1,34 +1,36 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using Nethermind.Blockchain;
+using Nethermind.Blockchain.Find;
 using Nethermind.Blockchain.Receipts;
-using Nethermind.Blockchain.TxPools;
-using Nethermind.Blockchain.Validators;
 using Nethermind.Core.Crypto;
-using Nethermind.Core.Encoding;
 using Nethermind.Core.Specs;
+using Nethermind.Crypto;
+using Nethermind.Db;
+using Nethermind.Specs;
 using Nethermind.Logging;
-using Nethermind.Store;
-using Nethermind.Store.Repositories;
+using Nethermind.Serialization.Rlp;
+using Nethermind.State.Proofs;
+using Nethermind.State.Repositories;
+using Nethermind.Store.Bloom;
+using Nethermind.TxPool;
 using NSubstitute;
 using NUnit.Framework;
 
@@ -56,7 +58,7 @@ namespace Nethermind.Core.Test.Builders
             _genesisBlock = genesisBlock;
             var blockInfoDb = new MemDb();
             ChainLevelInfoRepository = new ChainLevelInfoRepository(blockInfoDb);
-            TestObjectInternal = new BlockTree(blocksDb, headersDb, blockInfoDb, ChainLevelInfoRepository,  RopstenSpecProvider.Instance, Substitute.For<ITxPool>(), NullLogManager.Instance);
+            TestObjectInternal = new BlockTree(blocksDb, headersDb, blockInfoDb, ChainLevelInfoRepository, RopstenSpecProvider.Instance, Substitute.For<ITxPool>(), Substitute.For<IBloomStorage>(), LimboLogs.Instance);
         }
 
         public ChainLevelInfoRepository ChainLevelInfoRepository { get; private set; }
@@ -88,7 +90,7 @@ namespace Nethermind.Core.Test.Builders
             bool skipGenesis = TestObjectInternal.Genesis != null;
             for (int i = 0; i < chainLength; i++)
             {
-                Address beneficiary = blockBeneficiaries.Length == 0 ? Address.Zero : blockBeneficiaries[i%blockBeneficiaries.Length];
+                Address beneficiary = blockBeneficiaries.Length == 0 ? Address.Zero : blockBeneficiaries[i % blockBeneficiaries.Length];
                 headBlock = current;
                 if (_onlyHeaders)
                 {
@@ -111,7 +113,7 @@ namespace Nethermind.Core.Test.Builders
                     }
 
                     Block parent = current;
-                    
+
                     current = CreateBlock(splitVariant, splitFrom, i, parent, beneficiary);
                 }
             }
@@ -121,7 +123,7 @@ namespace Nethermind.Core.Test.Builders
 
         private Block CreateBlock(int splitVariant, int splitFrom, int blockIndex, Block parent, Address beneficiary)
         {
-            Block current;
+            Block currentBlock;
             if (_receiptStorage != null && blockIndex % 3 == 0)
             {
                 Transaction[] transactions = new[]
@@ -130,7 +132,7 @@ namespace Nethermind.Core.Test.Builders
                     Build.A.Transaction.WithValue(2).WithData(Rlp.Encode(blockIndex + 1).Bytes).Signed(_ecdsa, TestItem.PrivateKeyA, blockIndex + 1).TestObject
                 };
 
-                current = Build.A.Block
+                currentBlock = Build.A.Block
                     .WithNumber(blockIndex + 1)
                     .WithParent(parent)
                     .WithDifficulty(BlockHeaderBuilder.DefaultDifficulty - (splitFrom > parent.Number ? 0 : (ulong) splitVariant))
@@ -140,34 +142,43 @@ namespace Nethermind.Core.Test.Builders
                     .TestObject;
 
                 List<TxReceipt> receipts = new List<TxReceipt>();
-                foreach (var transaction in current.Transactions)
+                foreach (var transaction in currentBlock.Transactions)
                 {
-                    var logEntries = _logCreationFunction?.Invoke(current, transaction)?.ToArray() ?? Array.Empty<LogEntry>();
+                    var logEntries = _logCreationFunction?.Invoke(currentBlock, transaction)?.ToArray() ?? Array.Empty<LogEntry>();
                     TxReceipt receipt = new TxReceipt
                     {
                         Logs = logEntries,
                         TxHash = transaction.Hash,
                         Bloom = new Bloom(logEntries)
                     };
-                    _receiptStorage.Add(receipt, false);
+
                     receipts.Add(receipt);
-                    current.Bloom.Add(receipt.Logs);
+                    currentBlock.Bloom.Add(receipt.Logs);
                 }
 
-                current.Header.TxRoot = current.CalculateTxRoot();
-                current.Header.ReceiptsRoot = current.CalculateReceiptRoot(_specProvider, receipts.ToArray());
-                current.Hash = BlockHeader.CalculateHash(current);
+                currentBlock.Header.TxRoot = new TxTrie(currentBlock.Transactions).RootHash;
+                var txReceipts = receipts.ToArray();
+                currentBlock.Header.ReceiptsRoot = new ReceiptTrie(currentBlock.Number, _specProvider, txReceipts).RootHash;
+                currentBlock.Header.Hash = currentBlock.CalculateHash();
+                foreach (var txReceipt in txReceipts)
+                {
+                    txReceipt.BlockHash = currentBlock.Hash;
+                }
+
+                _receiptStorage.Insert(currentBlock, txReceipts);
             }
             else
             {
-                current = Build.A.Block.WithNumber(blockIndex + 1)
+                currentBlock = Build.A.Block.WithNumber(blockIndex + 1)
                     .WithParent(parent)
                     .WithDifficulty(BlockHeaderBuilder.DefaultDifficulty - (splitFrom > parent.Number ? 0 : (ulong) splitVariant))
                     .WithBeneficiary(beneficiary)
                     .TestObject;
             }
 
-            return current;
+            currentBlock.Header.AuRaStep = blockIndex;
+
+            return currentBlock;
         }
 
         public BlockTreeBuilder WithOnlySomeBlocksProcessed(int chainLength, int processedChainLength)
@@ -187,15 +198,21 @@ namespace Nethermind.Core.Test.Builders
             return this;
         }
 
-        public static void ExtendTree(IBlockTree blockTree, int newChainLength)
+        public static void AddBlock(IBlockTree blockTree, Block block)
+        {
+            blockTree.SuggestBlock(block);
+            blockTree.UpdateMainChain(new[] {block}, true);
+        }
+
+        public static void ExtendTree(IBlockTree blockTree, long newChainLength)
         {
             Block previous = blockTree.RetrieveHeadBlock();
-            int initialLength = (int) previous.Number + 1;
-            for (int i = initialLength; i < newChainLength; i++)
+            long initialLength = previous.Number + 1;
+            for (long i = initialLength; i < newChainLength; i++)
             {
                 previous = Build.A.Block.WithNumber(i).WithParent(previous).TestObject;
                 blockTree.SuggestBlock(previous);
-                blockTree.UpdateMainChain(new[] {previous});
+                blockTree.UpdateMainChain(new[] {previous}, true);
             }
         }
 

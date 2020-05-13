@@ -1,20 +1,18 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Collections.Generic;
@@ -30,7 +28,7 @@ namespace Nethermind.WriteTheDocs
     {
         private static List<string> _assemblyNames = new List<string>
         {
-            "Nethermind.Clique",
+            "Nethermind.Consensus.Clique",
             "Nethermind.JsonRpc"
         };
 
@@ -67,8 +65,9 @@ Some of the methods listed below are not implemented by Nethermind (they are mar
                 foreach (MethodInfo methodInfo in properties.OrderBy(p => p.Name))
                 {
                     JsonRpcMethodAttribute attribute = methodInfo.GetCustomAttribute<JsonRpcMethodAttribute>();
-                    string notImplementedString = attribute == null || attribute.IsImplemented ? string.Empty : "[NOT IMPLEMENTED]";
-                    descriptionsBuilder.AppendLine($" - {notImplementedString}{methodInfo.Name}({string.Join(", ", methodInfo.GetParameters().Select(p => p.Name))})").AppendLine();
+                    string notImplementedString = attribute == null || attribute.IsImplemented ? string.Empty : "[NOT IMPLEMENTED] ";
+                    descriptionsBuilder.AppendLine($" {methodInfo.Name}({string.Join(", ", methodInfo.GetParameters().Select(p => p.Name))})")
+                        .AppendLine($"  {notImplementedString}{attribute?.Description ?? "<description missing>"}").AppendLine();
                 }
             }
 
@@ -76,7 +75,9 @@ Some of the methods listed below are not implemented by Nethermind (they are mar
 
             Console.WriteLine(result);
             File.WriteAllText("jsonrpc.rst", result);
-            File.WriteAllText("../../../../../../docs/source/jsonrpc.rst", result);
+            string sourceDir = DocsDirFinder.FindDocsDir();
+            File.WriteAllText(Path.Combine(sourceDir, "jsonrpc.rst"), result);
         }
     }
 }
+

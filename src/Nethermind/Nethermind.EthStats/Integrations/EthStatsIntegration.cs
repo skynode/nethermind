@@ -1,20 +1,18 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Linq;
@@ -29,6 +27,7 @@ using Nethermind.EthStats.Messages.Models;
 using Nethermind.Logging;
 using Nethermind.Network;
 using Websocket.Client;
+using Timer = System.Timers.Timer;
 
 namespace Nethermind.EthStats.Integrations
 {
@@ -52,6 +51,7 @@ namespace Nethermind.EthStats.Integrations
         private IWebsocketClient _websocketClient;
         private bool _connected;
         private long _lastBlockProcessedTimestamp;
+        private Timer _timer;
         private const int ThrottlingThreshold = 25;
         private const int SendStatsInterval = 1000;
 
@@ -78,36 +78,33 @@ namespace Nethermind.EthStats.Integrations
 
         public async Task InitAsync()
         {
-            var timer = new System.Timers.Timer {Interval = SendStatsInterval};
-            timer.Elapsed += TimerOnElapsed;
+            _timer = new Timer {Interval = SendStatsInterval};
+            _timer.Elapsed += TimerOnElapsed;
             _blockTree.NewHeadBlock += BlockTreeOnNewHeadBlock;
-            var exitEvent = new ManualResetEvent(false);
-            using (_websocketClient = await _ethStatsClient.InitAsync())
+            _websocketClient = await _ethStatsClient.InitAsync();
+            if (_logger.IsInfo) _logger.Info("Initial connection, sending 'hello' message...");
+            await SendHelloAsync();
+            _connected = true;
+
+            Run(_timer);
+        }
+
+        private void Run(Timer timer)
+        {
+            _websocketClient.ReconnectionHappened.Subscribe(async reason =>
             {
-                if (_logger.IsInfo) _logger.Info("Initial connection, sending 'hello' message...");
+                if (_logger.IsInfo) _logger.Info("ETH Stats reconnected, sending 'hello' message...");
                 await SendHelloAsync();
                 _connected = true;
-                _websocketClient.ReconnectionHappened.Subscribe(async reason =>
-                {
-                    if (_logger.IsInfo) _logger.Info("ETH Stats reconnected, sending 'hello' message...");
-                    await SendHelloAsync();
-                    _connected = true;
-                });
-                _websocketClient.DisconnectionHappened.Subscribe(reason =>
-                {
-                    _connected = false;
-                    if (_logger.IsWarn) _logger.Warn($"ETH Stats disconnected, reason: {reason}");
-                });
+            });
 
-                timer.Start();
-                exitEvent.WaitOne();
-            }
+            _websocketClient.DisconnectionHappened.Subscribe(reason =>
+            {
+                _connected = false;
+                if (_logger.IsInfo) _logger.Info($"ETH Stats disconnected, reason: {reason}");
+            });
 
-            _connected = false;
-            timer.Stop();
-            timer.Dispose();
-            _blockTree.NewHeadBlock -= BlockTreeOnNewHeadBlock;
-            timer.Elapsed -= TimerOnElapsed;
+            timer.Start();
         }
 
         private void TimerOnElapsed(object sender, ElapsedEventArgs e)
@@ -128,7 +125,7 @@ namespace Nethermind.EthStats.Integrations
                 return;
             }
 
-            var timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+            long timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
             if (timestamp - _lastBlockProcessedTimestamp < ThrottlingThreshold)
             {
                 return;
@@ -138,6 +135,16 @@ namespace Nethermind.EthStats.Integrations
             _lastBlockProcessedTimestamp = timestamp;
             SendBlockAsync(e.Block);
             SendPendingAsync(e.Block.Transactions?.Length ?? 0);
+        }
+
+        public void Dispose()
+        {
+            _websocketClient?.Dispose();
+            _connected = false;
+            _timer.Stop();
+            _timer.Dispose();
+            _blockTree.NewHeadBlock -= BlockTreeOnNewHeadBlock;
+            _timer.Elapsed -= TimerOnElapsed;
         }
 
         private Task SendHelloAsync()
@@ -152,7 +159,7 @@ namespace Nethermind.EthStats.Integrations
                 (long) block.Timestamp, block.Author?.ToString(), block.GasUsed, block.GasLimit,
                 block.Difficulty.ToString(), block.TotalDifficulty?.ToString(),
                 block.Transactions?.Select(t => new Transaction(t.Hash?.ToString())) ?? Enumerable.Empty<Transaction>(),
-                block.TransactionsRoot.ToString(), block.StateRoot.ToString(),
+                block.TxRoot.ToString(), block.StateRoot.ToString(),
                 block.Ommers?.Select(o => new Uncle()) ?? Enumerable.Empty<Uncle>())));
 
         private Task SendPendingAsync(int pending)

@@ -1,20 +1,18 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System.Collections.Generic;
 using Nethermind.Core;
@@ -27,11 +25,10 @@ namespace Nethermind.Evm.Tracing
     {
         private readonly Keccak _txHash;
 
-        private bool _isTracingEntireBlock;
+        private bool IsTracingEntireBlock => _txHash == null;
 
         protected BlockTracerBase()
         {
-            _isTracingEntireBlock = true;
             TxTraces = new List<TTrace>();
         }
 
@@ -41,7 +38,7 @@ namespace Nethermind.Evm.Tracing
             TxTraces = new List<TTrace>();
         }
 
-        protected TTracer CurrentTxTracer { get; set; }
+        private TTracer CurrentTxTracer { get; set; }
 
         protected abstract TTracer OnStart(Keccak txHash);
         protected abstract TTrace OnEnd(TTracer txTracer);
@@ -56,29 +53,22 @@ namespace Nethermind.Evm.Tracing
 
         ITxTracer IBlockTracer.StartNewTxTrace(Keccak txHash)
         {
-            if (_isTracingEntireBlock || _txHash == txHash)
+            if (IsTracingEntireBlock || txHash == _txHash)
             {
                 CurrentTxTracer = OnStart(txHash);
                 return CurrentTxTracer;
             }
-            
-            // if(!_isTracingEntireBlock && _txHash != txHash)
-            // {
-            //     throw new InvalidOperationException($"Unexpected tx trace started - awaiting {_txHash}, received {txHash}");
-            // }
 
             return NullTxTracer.Instance;
         }
 
         void IBlockTracer.EndTxTrace()
         {
-            if (CurrentTxTracer == null)
+            if (CurrentTxTracer != null)
             {
-                return;
+                TxTraces.Add(OnEnd(CurrentTxTracer));
+                CurrentTxTracer = null;
             }
-                
-            TxTraces.Add(OnEnd(CurrentTxTracer));
-            CurrentTxTracer = null;
         }
 
         protected List<TTrace> TxTraces { get; }

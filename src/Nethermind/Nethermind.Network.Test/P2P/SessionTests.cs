@@ -1,20 +1,18 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Net.NetworkInformation;
@@ -33,6 +31,7 @@ using NUnit.Framework;
 
 namespace Nethermind.Network.Test.P2P
 {
+    [Parallelizable(ParallelScope.Self)]
     [TestFixture]
     public class SessionTests
     {
@@ -177,7 +176,7 @@ namespace Nethermind.Network.Test.P2P
             Session session = new Session(30312, LimboLogs.Instance, _channel, new Node("127.0.0.1", 8545));
             session.Handshake(TestItem.PublicKeyA);
             session.Init(5, _channelHandlerContext, _packetSender);
-            session.Disconnect(DisconnectReason.Other, DisconnectType.Remote, "test");
+            session.MarkDisconnected(DisconnectReason.Other, DisconnectType.Remote, "test");
             session.EnableSnappy();
         }
 
@@ -262,7 +261,7 @@ namespace Nethermind.Network.Test.P2P
 
             session.Handshake(TestItem.PublicKeyA);
             session.Init(5, _channelHandlerContext, _packetSender);
-            session.Disconnect(DisconnectReason.Other, DisconnectType.Local, "test");
+            session.MarkDisconnected(DisconnectReason.Other, DisconnectType.Local, "test");
             Assert.True(wasCalled);
         }
 
@@ -286,7 +285,7 @@ namespace Nethermind.Network.Test.P2P
             Session session = new Session(30312, LimboLogs.Instance, _channel, new Node("127.0.0.1", 8545));
             _channel.DisconnectAsync().Returns(Task.FromException<Exception>(new Exception()));
             session.Disconnected += (s, e) => wasCalled = true;
-            session.Disconnect(DisconnectReason.Other, DisconnectType.Local, "test");
+            session.MarkDisconnected(DisconnectReason.Other, DisconnectType.Local, "test");
             Assert.True(wasCalled);
         }
 
@@ -299,7 +298,7 @@ namespace Nethermind.Network.Test.P2P
             session.Disconnected += (s, e) => wasCalled = true;
             session.Handshake(TestItem.PublicKeyA);
             session.Init(5, _channelHandlerContext, _packetSender);
-            session.Disconnect(DisconnectReason.Other, DisconnectType.Local, "test");
+            session.MarkDisconnected(DisconnectReason.Other, DisconnectType.Local, "test");
             Assert.True(wasCalled);
         }
 
@@ -314,8 +313,8 @@ namespace Nethermind.Network.Test.P2P
             session.Init(5, _channelHandlerContext, _packetSender);
             session.InitiateDisconnect(DisconnectReason.Other);
             session.InitiateDisconnect(DisconnectReason.Other);
-            session.Disconnect(DisconnectReason.Other, DisconnectType.Local, "test");
-            session.Disconnect(DisconnectReason.Other, DisconnectType.Remote, "test");
+            session.MarkDisconnected(DisconnectReason.Other, DisconnectType.Local, "test");
+            session.MarkDisconnected(DisconnectReason.Other, DisconnectType.Remote, "test");
             Assert.AreEqual(1, wasCalledTimes);
         }
 
@@ -326,7 +325,7 @@ namespace Nethermind.Network.Test.P2P
             Session session = new Session(30312, LimboLogs.Instance, _channel, new Node("127.0.0.1", 8545));
             session.Disconnecting += (s, e) => wasCalledTimes++;
             session.Handshake(TestItem.PublicKeyA);
-            session.Disconnect(DisconnectReason.Other, DisconnectType.Remote, "test");
+            session.MarkDisconnected(DisconnectReason.Other, DisconnectType.Remote, "test");
             session.Init(5, _channelHandlerContext, _packetSender);
             Assert.AreEqual(1, wasCalledTimes);
         }
@@ -512,7 +511,7 @@ namespace Nethermind.Network.Test.P2P
 
             long beforeLocal = Network.Metrics.LocalOtherDisconnects;
             long beforeRemote = Network.Metrics.OtherDisconnects;
-            session.Disconnect(DisconnectReason.Other, DisconnectType.Local, "");
+            session.MarkDisconnected(DisconnectReason.Other, DisconnectType.Local, "");
             long afterLocal = Network.Metrics.LocalOtherDisconnects;
             long afterRemote = Network.Metrics.OtherDisconnects;
             Assert.AreEqual(beforeLocal + 1, afterLocal);
@@ -526,7 +525,7 @@ namespace Nethermind.Network.Test.P2P
 
             beforeLocal = Network.Metrics.LocalOtherDisconnects;
             beforeRemote = Network.Metrics.OtherDisconnects;
-            session.Disconnect(DisconnectReason.Other, DisconnectType.Remote, "");
+            session.MarkDisconnected(DisconnectReason.Other, DisconnectType.Remote, "");
             afterLocal = Network.Metrics.LocalOtherDisconnects;
             afterRemote = Network.Metrics.OtherDisconnects;
             Assert.AreEqual(beforeLocal, afterLocal);

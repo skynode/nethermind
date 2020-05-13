@@ -1,22 +1,21 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Nethermind.Core;
@@ -119,16 +118,16 @@ namespace Nethermind.DataMarketplace.Consumers.Shared.Services
         
         #region DataStreams
         
-        public Task<Keccak> EnableDataStreamAsync(Keccak depositId, string client, string[] args)
+        public Task<Keccak?> EnableDataStreamAsync(Keccak depositId, string client, string?[] args)
             => _dataStreamService.EnableDataStreamAsync(depositId, client, args);
 
-        public Task<Keccak> DisableDataStreamAsync(Keccak depositId, string client)
+        public Task<Keccak?> DisableDataStreamAsync(Keccak depositId, string client)
             => _dataStreamService.DisableDataStreamAsync(depositId, client);
 
-        public Task<Keccak> DisableDataStreamsAsync(Keccak depositId)
+        public Task<Keccak?> DisableDataStreamsAsync(Keccak depositId)
             => _dataStreamService.DisableDataStreamsAsync(depositId);
 
-        public Task SetEnabledDataStreamAsync(Keccak depositId, string client, string[] args)
+        public Task SetEnabledDataStreamAsync(Keccak depositId, string client, string?[] args)
             => _dataStreamService.SetEnabledDataStreamAsync(depositId, client, args);
 
         public Task SetDisabledDataStreamAsync(Keccak depositId, string client)
@@ -150,19 +149,19 @@ namespace Nethermind.DataMarketplace.Consumers.Shared.Services
         
         #region Deposits
         
-        public Task<DepositDetails> GetDepositAsync(Keccak depositId)
+        public Task<DepositDetails?> GetDepositAsync(Keccak depositId)
             => _depositManager.GetAsync(depositId);
 
         public Task<PagedResult<DepositDetails>> GetDepositsAsync(GetDeposits query)
             => _depositManager.BrowseAsync(query);
 
-        public Task<Keccak> MakeDepositAsync(Keccak assetId, uint units, UInt256 value, UInt256? gasPrice = null)
+        public Task<Keccak?> MakeDepositAsync(Keccak assetId, uint units, UInt256 value, UInt256? gasPrice = null)
             => _depositManager.MakeAsync(assetId, units, value, _accountService.GetAddress(), gasPrice);
 
         public Task<PagedResult<DepositApproval>> GetDepositApprovalsAsync(GetConsumerDepositApprovals query)
             => _depositApprovalService.BrowseAsync(query);
 
-        public Task<Keccak> RequestDepositApprovalAsync(Keccak assetId, string kyc)
+        public Task<Keccak?> RequestDepositApprovalAsync(Keccak assetId, string kyc)
             => _depositApprovalService.RequestAsync(assetId, _accountService.GetAddress(), kyc);
         
         public Task ConfirmDepositApprovalAsync(Keccak assetId, Address consumer)
@@ -179,7 +178,7 @@ namespace Nethermind.DataMarketplace.Consumers.Shared.Services
         #region Providers
 
         public IReadOnlyList<Address> GetConnectedProviders()
-            => _providerService.GetPeers().Select(p => p.ProviderAddress).ToArray();
+            => _providerService.GetPeers().Select(p => p.ProviderAddress ?? throw new InvalidDataException("Connected provider peer has no provider address set")).ToArray();
             
         public Task<IReadOnlyList<ProviderInfo>> GetKnownProvidersAsync()
             => _providerService.GetKnownAsync();
@@ -220,14 +219,14 @@ namespace Nethermind.DataMarketplace.Consumers.Shared.Services
         public Task FinishSessionsAsync(INdmPeer provider, bool removePeer = true)
             => _sessionService.FinishSessionsAsync(provider, removePeer);
         
-        public Task<Keccak> SendFinishSessionAsync(Keccak depositId)
+        public Task<Keccak?> SendFinishSessionAsync(Keccak depositId)
             => _sessionService.SendFinishSessionAsync(depositId);
         
         #endregion
         
         #region Proxy
 
-        public Task<NdmProxy> GetProxyAsync()
+        public Task<NdmProxy?> GetProxyAsync()
             => _proxyService.GetAsync();
 
         public Task SetProxyAsync(IEnumerable<string> urls)

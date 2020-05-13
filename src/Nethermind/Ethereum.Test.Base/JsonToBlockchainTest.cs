@@ -19,14 +19,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Nethermind.Blockchain;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
-using Nethermind.Core.Encoding;
 using Nethermind.Core.Extensions;
-using Nethermind.Core.Json;
 using Nethermind.Core.Specs;
-using Nethermind.Core.Specs.Forks;
-using Newtonsoft.Json;
+using Nethermind.Crypto;
+using Nethermind.Serialization.Json;
+using Nethermind.Serialization.Rlp;
+using Nethermind.Specs.Forks;
 
 namespace Ethereum.Test.Base
 {
@@ -85,7 +86,7 @@ namespace Ethereum.Test.Base
                 Bytes.FromHexString(headerJson.ExtraData)
             );
 
-            header.Bloom = new Bloom(Bytes.FromHexString(headerJson.Bloom).AsSpan().ToBigEndianBitArray2048());
+            header.Bloom = new Bloom(Bytes.FromHexString(headerJson.Bloom));
             header.GasUsed = (long) Bytes.FromHexString(headerJson.GasUsed).ToUnsignedBigInteger();
             header.Hash = new Keccak(headerJson.Hash);
             header.MixHash = new Keccak(headerJson.MixHash);
@@ -100,8 +101,8 @@ namespace Ethereum.Test.Base
         {
             BlockHeader header = Convert(testBlockJson.BlockHeader);
             BlockHeader[] ommers = testBlockJson.UncleHeaders?.Select(Convert).ToArray() ?? new BlockHeader[0];
-            Block block = new Block(header, ommers);
-            block.Body.Transactions = testBlockJson.Transactions?.Select(t => Convert(t)).ToArray();
+            Block block = new Block(header, Enumerable.Empty<Transaction>(), ommers);
+            block.Body = block.Body.WithChangedTransactions(testBlockJson.Transactions?.Select(Convert).ToArray());
             return block;
         }
 
@@ -118,7 +119,7 @@ namespace Ethereum.Test.Base
             transaction.Init = transaction.To == null ? transactionJson.Data[postStateJson.Indexes.Data] : null;
             transaction.SenderAddress = new PrivateKey(transactionJson.SecretKey).Address;
             transaction.Signature = new Signature(1, 1, 27);
-            transaction.Hash = Transaction.CalculateHash(transaction);
+            transaction.Hash = transaction.CalculateHash();
             return transaction;
         }
 
@@ -133,7 +134,7 @@ namespace Ethereum.Test.Base
             transaction.Data = transaction.To == null ? null : transactionJson.Data;
             transaction.Init = transaction.To == null ? transactionJson.Data : null;
             transaction.Signature = new Signature(transactionJson.R, transactionJson.S, (int) transactionJson.V);
-            transaction.Hash = Transaction.CalculateHash(transaction);
+            transaction.Hash = transaction.CalculateHash();
             return transaction;
         }
 

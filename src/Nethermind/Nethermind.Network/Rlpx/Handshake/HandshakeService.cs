@@ -1,27 +1,24 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
-using Nethermind.Core;
 using Nethermind.Core.Crypto;
 using Nethermind.Core.Extensions;
+using Nethermind.Crypto;
 using Nethermind.Logging;
-using Nethermind.Network.Crypto;
 using Nethermind.Secp256k1;
 using Org.BouncyCastle.Crypto.Digests;
 
@@ -54,7 +51,6 @@ namespace Nethermind.Network.Rlpx.Handshake
             _messageSerializationService = messageSerializationService ?? throw new ArgumentNullException(nameof(messageSerializationService));
             _eciesCipher = eciesCipher ?? throw new ArgumentNullException(nameof(eciesCipher));
             _privateKey = privateKey ?? throw new ArgumentNullException(nameof(privateKey));
-            ;
             _cryptoRandom = cryptoRandom ?? throw new ArgumentNullException(nameof(cryptoRandom));
             _ecdsa = ecdsa ?? throw new ArgumentNullException(nameof(ecdsa));
             _ephemeralGenerator = new PrivateKeyGenerator(_cryptoRandom);
@@ -130,7 +126,7 @@ namespace Nethermind.Network.Rlpx.Handshake
                 authMessage = _messageSerializationService.Deserialize<AuthEip8Message>(plainText);
             }
 
-            var nodeId = authMessage.PublicKey;
+            PublicKey nodeId = authMessage.PublicKey;
             if (_logger.IsTrace) _logger.Trace($"Received AUTH v{authMessage.Version} from {nodeId}");
 
             handshake.RemoteNodeId = nodeId;
@@ -150,7 +146,7 @@ namespace Nethermind.Network.Rlpx.Handshake
                 AckMessage ackMessage = new AckMessage();
                 ackMessage.EphemeralPublicKey = handshake.EphemeralPrivateKey.PublicKey;
                 ackMessage.Nonce = handshake.RecipientNonce;
-                var ackData = _messageSerializationService.Serialize(ackMessage);
+                byte[] ackData = _messageSerializationService.Serialize(ackMessage);
                 
                 data = _eciesCipher.Encrypt(handshake.RemoteNodeId, ackData, Array.Empty<byte>());
             }
@@ -160,7 +156,7 @@ namespace Nethermind.Network.Rlpx.Handshake
                 AckEip8Message ackMessage = new AckEip8Message();
                 ackMessage.EphemeralPublicKey = handshake.EphemeralPrivateKey.PublicKey;
                 ackMessage.Nonce = handshake.RecipientNonce;
-                var ackData = _messageSerializationService.Serialize(ackMessage);
+                byte[] ackData = _messageSerializationService.Serialize(ackMessage);
                 
                 int size = ackData.Length + 32 + 16 + 65; // data + MAC + IV + pub
                 byte[] sizeBytes = size.ToBigEndianByteArray().Slice(2, 2);

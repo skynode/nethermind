@@ -1,25 +1,23 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Nethermind.Core;
+using Nethermind.Config;
 using Nethermind.Logging;
 using Nethermind.Network.Config;
 using Nethermind.Stats;
@@ -52,7 +50,7 @@ namespace Nethermind.Network
             LoadConfigPeers(allPeers, _discoveryConfig.Bootnodes, n =>
             {
                 n.IsBootnode = true;
-                if (_logger.IsInfo) _logger.Info($"Bootnode     : {n}");
+                if (_logger.IsDebug) _logger.Debug($"Bootnode     : {n}");
             });
             
             LoadConfigPeers(allPeers, _networkConfig.StaticPeers, n =>
@@ -86,11 +84,11 @@ namespace Nethermind.Network
                 return;
             }
 
-            var networkNodes = _peerStorage.GetPersistedNodes();
+            NetworkNode[] networkNodes = _peerStorage.GetPersistedNodes();
 
-            if (_logger.IsInfo) _logger.Info($"Initializing persisted peers: {networkNodes.Length}.");
+            if (_logger.IsDebug) _logger.Debug($"Initializing persisted peers: {networkNodes.Length}.");
 
-            foreach (var persistedPeer in networkNodes)
+            foreach (NetworkNode persistedPeer in networkNodes)
             {
                 Node node;
                 try
@@ -103,7 +101,7 @@ namespace Nethermind.Network
                     continue;
                 }
                 
-                var nodeStats = _stats.GetOrAdd(node);
+                INodeStats nodeStats = _stats.GetOrAdd(node);
                 nodeStats.CurrentPersistedNodeReputation = persistedPeer.Reputation;
 
                 peers.Add(new Peer(node));
@@ -124,9 +122,9 @@ namespace Nethermind.Network
 
         private void LoadConfigPeers(List<Peer> peers, IEnumerable<NetworkNode> networkNodes, Action<Node> nodeUpdate)
         {
-            foreach (var networkNode in networkNodes)
+            foreach (NetworkNode networkNode in networkNodes)
             {
-                var node = new Node(networkNode.NodeId, networkNode.Host, networkNode.Port);
+                Node node = new Node(networkNode.NodeId, networkNode.Host, networkNode.Port);
                 nodeUpdate.Invoke(node);
                 peers.Add(new Peer(node));
             }

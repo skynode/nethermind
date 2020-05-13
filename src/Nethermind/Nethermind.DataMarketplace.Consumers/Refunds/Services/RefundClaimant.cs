@@ -1,28 +1,30 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
+using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Nethermind.Core;
+using Nethermind.Core.Crypto;
 using Nethermind.DataMarketplace.Consumers.Deposits.Domain;
 using Nethermind.DataMarketplace.Consumers.Deposits.Repositories;
 using Nethermind.DataMarketplace.Consumers.Shared.Services.Models;
 using Nethermind.DataMarketplace.Core.Domain;
 using Nethermind.DataMarketplace.Core.Services;
+using Nethermind.Dirichlet.Numerics;
 using Nethermind.Logging;
 
 namespace Nethermind.DataMarketplace.Consumers.Refunds.Services
@@ -52,34 +54,46 @@ namespace Nethermind.DataMarketplace.Consumers.Refunds.Services
 
         public async Task<RefundClaimStatus> TryClaimRefundAsync(DepositDetails deposit, Address refundTo)
         {
-            var now = _timestamper.EpochSeconds;
+            ulong now = _timestamper.EpochSeconds;
             if (!deposit.CanClaimRefund(now))
             {
                 return RefundClaimStatus.Empty;
             }
             
-            var latestBlock = await _blockchainBridge.GetLatestBlockAsync();
+            Block? latestBlock = await _blockchainBridge.GetLatestBlockAsync();
+            if (latestBlock == null)
+            {
+                return RefundClaimStatus.Empty;
+            }
+            
             now = (ulong) latestBlock.Timestamp;
             if (!deposit.CanClaimRefund(now))
             {
                 return RefundClaimStatus.Empty;
             }
             
-            var depositId = deposit.Deposit.Id;
-            var transactionHash = deposit.ClaimedRefundTransactionHash;
+            Keccak depositId = deposit.Deposit.Id;
+            Keccak? transactionHash = deposit.ClaimedRefundTransaction?.Hash;
             if (transactionHash is null)
             {
-                var provider = deposit.DataAsset.Provider.Address;
-                var refundClaim = new RefundClaim(depositId, deposit.DataAsset.Id, deposit.Deposit.Units,
+                Address provider = deposit.DataAsset.Provider.Address;
+                RefundClaim refundClaim = new RefundClaim(depositId, deposit.DataAsset.Id, deposit.Deposit.Units,
                     deposit.Deposit.Value, deposit.Deposit.ExpiryTime, deposit.Pepper, provider, refundTo);
-                var gasPrice = await _gasPriceService.GetCurrentAsync();
+                UInt256 gasPrice = await _gasPriceService.GetCurrentAsync();
                 transactionHash = await _refundService.ClaimRefundAsync(refundTo, refundClaim, gasPrice);
-                deposit.SetClaimedRefundTransactionHash(transactionHash, gasPrice);
+                if (transactionHash is null)
+                {
+                    if (_logger.IsError) _logger.Error("There was an error when trying to claim refund (no transaction hash returned).");
+                    return RefundClaimStatus.Empty;
+                }
+
+                deposit.AddClaimedRefundTransaction(TransactionInfo.Default(transactionHash, 0, gasPrice,
+                    _refundService.GasLimit, _timestamper.EpochSeconds));
                 await _depositRepository.UpdateAsync(deposit);
                 if (_logger.IsInfo) _logger.Info($"Claimed a refund for deposit: '{depositId}', gas price: {gasPrice} wei, transaction hash: '{transactionHash}' (awaits a confirmation).");
             }
 
-            var confirmed = await TryConfirmClaimAsync(deposit, string.Empty);
+            bool confirmed = await TryConfirmClaimAsync(deposit, string.Empty);
 
             return confirmed
                 ? RefundClaimStatus.Confirmed(transactionHash)
@@ -88,36 +102,53 @@ namespace Nethermind.DataMarketplace.Consumers.Refunds.Services
 
         public async Task<RefundClaimStatus> TryClaimEarlyRefundAsync(DepositDetails deposit, Address refundTo)
         {
-            var now = _timestamper.EpochSeconds;
+            ulong now = _timestamper.EpochSeconds;
             if (!deposit.CanClaimEarlyRefund(now))
             {
                 return RefundClaimStatus.Empty;
             }
             
-            var latestBlock = await _blockchainBridge.GetLatestBlockAsync();
+            Block? latestBlock = await _blockchainBridge.GetLatestBlockAsync();
+            if (latestBlock == null)
+            {
+                return RefundClaimStatus.Empty;
+            }
+            
             now = (ulong) latestBlock.Timestamp;
             if (!deposit.CanClaimEarlyRefund(now))
             {
                 return RefundClaimStatus.Empty;
             }
             
-            var depositId = deposit.Deposit.Id;
-            var transactionHash = deposit.ClaimedRefundTransactionHash;
+            Keccak depositId = deposit.Deposit.Id;
+            Keccak? transactionHash = deposit.ClaimedRefundTransaction?.Hash;
             if (transactionHash is null)
             {
-                var provider = deposit.DataAsset.Provider.Address;
-                var ticket = deposit.EarlyRefundTicket;
-                var earlyRefundClaim = new EarlyRefundClaim(ticket.DepositId, deposit.DataAsset.Id,
+                Address provider = deposit.DataAsset.Provider.Address;
+                if (deposit.EarlyRefundTicket == null)
+                {
+                    throw new InvalidDataException($"Early refund ticket is null on a claimable deposit {depositId}");
+                }
+                
+                EarlyRefundTicket ticket = deposit.EarlyRefundTicket;
+                EarlyRefundClaim earlyRefundClaim = new EarlyRefundClaim(ticket.DepositId, deposit.DataAsset.Id,
                     deposit.Deposit.Units, deposit.Deposit.Value, deposit.Deposit.ExpiryTime, deposit.Pepper, provider,
                     ticket.ClaimableAfter, ticket.Signature, refundTo);
-                var gasPrice = await _gasPriceService.GetCurrentAsync();
+                UInt256 gasPrice = await _gasPriceService.GetCurrentAsync();
                 transactionHash = await _refundService.ClaimEarlyRefundAsync(refundTo, earlyRefundClaim, gasPrice);
-                deposit.SetClaimedRefundTransactionHash(transactionHash, gasPrice);
+                if (transactionHash is null)
+                {
+                    if (_logger.IsError) _logger.Error("There was an error when trying to claim early refund (no transaction hash returned).");
+                    return RefundClaimStatus.Empty;
+                }
+
+                deposit.AddClaimedRefundTransaction(TransactionInfo.Default(transactionHash, 0, gasPrice,
+                    _refundService.GasLimit, _timestamper.EpochSeconds));
                 await _depositRepository.UpdateAsync(deposit);
                 if (_logger.IsInfo) _logger.Info($"Claimed an early refund for deposit: '{depositId}', gas price: {gasPrice} wei, transaction hash: '{transactionHash}' (awaits a confirmation).");
             }
 
-            var confirmed = await TryConfirmClaimAsync(deposit, "early ");
+            bool confirmed = await TryConfirmClaimAsync(deposit, "early ");
             
             return confirmed
                 ? RefundClaimStatus.Confirmed(transactionHash)
@@ -126,24 +157,76 @@ namespace Nethermind.DataMarketplace.Consumers.Refunds.Services
 
         private async Task<bool> TryConfirmClaimAsync(DepositDetails deposit, string type)
         {
-            var depositId = deposit.Id;
-            var transactionHash = deposit.TransactionHash;
-            var transaction  = await _blockchainBridge.GetTransactionAsync(transactionHash);          
-            if (transaction is null)
+            string claimType = $"{type}refund";
+            Keccak depositId = deposit.Id;
+            
+            NdmTransaction? transactionDetails = null;
+            TransactionInfo includedTransaction = deposit.Transactions.SingleOrDefault(t => t.State == TransactionState.Included);
+            IOrderedEnumerable<TransactionInfo> pendingTransactions = deposit.Transactions
+                .Where(t => t.State == TransactionState.Pending)
+                .OrderBy(t => t.Timestamp);
+
+            if (_logger.IsInfo) _logger.Info($"Deposit: '{deposit.Id}' refund claim pending transactions: {string.Join(", ", pendingTransactions.Select(t => $"{t.Hash} [{t.Type}]"))}");
+            
+            if (includedTransaction is null)
             {
-                if (_logger.IsInfo) _logger.Info($"Transaction was not found for hash: '{transactionHash}' for deposit: '{depositId}' to claim the {type}refund.");
+                foreach (TransactionInfo transaction in pendingTransactions)
+                {
+                    Keccak? transactionHash = transaction.Hash;
+                    if (transactionHash is null)
+                    {
+                        if (_logger.IsInfo) _logger.Info($"Transaction was not found for hash: '{null}' for deposit: '{depositId}' to claim the {claimType}.");
+                        return false;
+                    }
+                    
+                    transactionDetails  = await _blockchainBridge.GetTransactionAsync(transactionHash);
+                    if (transactionDetails is null)
+                    {
+                        if (_logger.IsInfo) _logger.Info($"Transaction was not found for hash: '{transactionHash}' for deposit: '{depositId}' to claim the {claimType}.");
+                        return false;
+                    }
+            
+                    if (transactionDetails.IsPending)
+                    {
+                        if (_logger.IsInfo) _logger.Info($"Transaction with hash: '{transactionHash}' for deposit: '{deposit.Id}' {claimType} claim is still pending.");
+                        return false;
+                    }
+
+                    deposit.SetIncludedClaimedRefundTransaction(transactionHash);
+                    if (_logger.IsInfo) _logger.Info($"Transaction with hash: '{transactionHash}', type: '{transaction.Type}' for deposit: '{deposit.Id}' {claimType} claim was included into block: {transactionDetails.BlockNumber}.");
+                    await _depositRepository.UpdateAsync(deposit);
+                    includedTransaction = transaction;
+                    break;
+                }
+            }
+            else if (includedTransaction.Type == TransactionType.Cancellation)
+            {
                 return false;
             }
+            else
+            {
+                transactionDetails = includedTransaction.Hash == null ? null : await _blockchainBridge.GetTransactionAsync(includedTransaction.Hash);
+                if (transactionDetails is null)
+                {
+                    if (_logger.IsWarn) _logger.Warn($"Transaction (set as included) was not found for hash: '{includedTransaction.Hash}' for deposit: '{deposit.Id}' {claimType} claim.");
+                    return false;
+                }
+            }
             
-            if (_logger.IsInfo) _logger.Info($"Trying to claim the {type}refund (transaction hash: '{transactionHash}') for deposit: '{depositId}'.");
-            var verifierResult = await _transactionVerifier.VerifyAsync(transaction);
+            if (includedTransaction is null)
+            {
+                return false;
+            }
+
+            if (_logger.IsInfo) _logger.Info($"Trying to claim the {claimType} (transaction hash: '{includedTransaction.Hash}') for deposit: '{depositId}'.");
+            TransactionVerifierResult verifierResult = await _transactionVerifier.VerifyAsync(transactionDetails!);
             if (!verifierResult.BlockFound)
             {
-                if (_logger.IsWarn) _logger.Warn($"Block number: {transaction.BlockNumber}, hash: '{transaction.BlockHash}' was not found for transaction hash: '{transactionHash}' - {type}refund claim for deposit: '{depositId}' will not confirmed.");
+                if (_logger.IsWarn) _logger.Warn($"Block number: {transactionDetails!.BlockNumber}, hash: '{transactionDetails.BlockHash}' was not found for transaction hash: '{includedTransaction.Hash}' - {claimType} claim for deposit: '{depositId}' will not confirmed.");
                 return false;
             }
             
-            if (_logger.IsInfo) _logger.Info($"The {type}refund claim (transaction hash: '{transactionHash}') for deposit: '{depositId}' has {verifierResult.Confirmations} confirmations (required at least {verifierResult.RequiredConfirmations}).");
+            if (_logger.IsInfo) _logger.Info($"The {claimType} claim (transaction hash: '{includedTransaction.Hash}') for deposit: '{depositId}' has {verifierResult.Confirmations} confirmations (required at least {verifierResult.RequiredConfirmations}).");
             if (!verifierResult.Confirmed)
             {
                 return false;
@@ -151,7 +234,7 @@ namespace Nethermind.DataMarketplace.Consumers.Refunds.Services
             
             deposit.SetRefundClaimed();
             await _depositRepository.UpdateAsync(deposit);
-            if (_logger.IsInfo) _logger.Info($"The {type}refund claim (transaction hash: '{transactionHash}') for deposit: '{depositId}' has been confirmed.");
+            if (_logger.IsInfo) _logger.Info($"The {claimType} claim (transaction hash: '{includedTransaction.Hash}') for deposit: '{depositId}' has been confirmed.");
 
             return true;
         }

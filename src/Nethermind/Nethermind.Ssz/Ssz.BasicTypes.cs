@@ -19,7 +19,6 @@ using System.Buffers.Binary;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using Nethermind.Core;
 using Nethermind.Dirichlet.Numerics;
 
 namespace Nethermind.Ssz
@@ -204,8 +203,7 @@ namespace Nethermind.Ssz
             dynamicOffset += value.Length;
         }
         
-        [Todo(Improve.Refactor, "Not sure if this will be useful for readability")]
-        public static void Encode(Span<byte> span, Span<byte> value)
+        public static void Encode(Span<byte> span, ReadOnlySpan<byte> value)
         {
             const int typeSize = 1;
             if (span.Length != value.Length * typeSize)
@@ -246,7 +244,7 @@ namespace Nethermind.Ssz
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static uint DecodeUInt(Span<byte> span)
+        public static uint DecodeUInt(ReadOnlySpan<byte> span)
         {
             const int expectedLength = 4;
             if (span.Length != expectedLength)
@@ -258,7 +256,7 @@ namespace Nethermind.Ssz
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong DecodeULong(Span<byte> span)
+        public static ulong DecodeULong(ReadOnlySpan<byte> span)
         {
             const int expectedLength = 8;
             if (span.Length != expectedLength)
@@ -270,7 +268,7 @@ namespace Nethermind.Ssz
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static ulong DecodeULong(Span<byte> span, ref int offset)
+        private static ulong DecodeULong(ReadOnlySpan<byte> span, ref int offset)
         {
             ulong result = BinaryPrimitives.ReadUInt64LittleEndian(span.Slice(offset, sizeof(ulong)));
             offset += sizeof(ulong);
@@ -373,20 +371,7 @@ namespace Nethermind.Ssz
             
             return MemoryMarshal.Cast<byte, ushort>(span);
         }
-        
-        public static Span<byte> DecodeBytes(Span<byte> span)
-        {
-            return span;
-        }
-        
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static byte[] DecodeBytes32(Span<byte> span, ref int offset)
-        {
-            byte[] bytes = span.Slice(offset, 32).ToArray();
-            offset += 32;
-            return bytes;
-        }
-        
+
         public static Span<bool> DecodeBools(Span<byte> span)
         {
             return MemoryMarshal.Cast<byte, bool>(span);
@@ -395,19 +380,22 @@ namespace Nethermind.Ssz
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void ThrowTargetLength<T>(int targetLength, int expectedLength)
         {
-            throw new InvalidDataException($"Invalid target length in SSZ encoding of {nameof(T)}. Target length is {targetLength} and expected length is {expectedLength}.");
+            Type type = typeof(T);
+            throw new InvalidDataException($"Invalid target length in SSZ encoding of {type.Name}. Target length is {targetLength} and expected length is {expectedLength}.");
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void ThrowSourceLength<T>(int sourceLength, int expectedLength)
         {
-            throw new InvalidDataException($"Invalid source length in SSZ decoding of {nameof(T)}. Source length is {sourceLength} and expected length is {expectedLength}.");
+            Type type = typeof(T);
+            throw new InvalidDataException($"Invalid source length in SSZ decoding of {type.Name}. Source length is {sourceLength} and expected length is {expectedLength}.");
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void ThrowInvalidSourceArrayLength<T>(int sourceLength, int expectedItemLength)
         {
-            throw new InvalidDataException($"Invalid source length in SSZ decoding of {nameof(T)}. Source length is {sourceLength} and expected length is a multiple of {expectedItemLength}.");
+            Type type = typeof(T);
+            throw new InvalidDataException($"Invalid source length in SSZ decoding of {type.Name}. Source length is {sourceLength} and expected length is a multiple of {expectedItemLength}.");
         }
     }
 }

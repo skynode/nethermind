@@ -1,31 +1,28 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Nethermind.Core.Encoding;
-using Nethermind.Core.Extensions;
 using Nethermind.DataMarketplace.Consumers.DataAssets.Domain;
 using Nethermind.DataMarketplace.Consumers.Deposits.Domain;
 using Nethermind.DataMarketplace.Consumers.Providers.Domain;
 using Nethermind.DataMarketplace.Consumers.Providers.Repositories;
-using Nethermind.Store;
+using Nethermind.Db;
+using Nethermind.Serialization.Rlp;
 
 namespace Nethermind.DataMarketplace.Consumers.Infrastructure.Persistence.Rocks.Repositories
 {
@@ -54,22 +51,20 @@ namespace Nethermind.DataMarketplace.Consumers.Infrastructure.Persistence.Rocks.
 
         private IEnumerable<DepositDetails> GetAll()
         {
-            var depositsBytes = _database.GetAll();
+            byte[][] depositsBytes = _database.GetAllValues().ToArray();
             if (depositsBytes.Length == 0)
             {
                 yield break;
             }
 
-            var dataAssets = new DepositDetails[depositsBytes.Length];
-            for (var i = 0; i < depositsBytes.Length; i++)
+            DepositDetails[] dataAssets = new DepositDetails[depositsBytes.Length];
+            for (int i = 0; i < depositsBytes.Length; i++)
             {
                 yield return dataAssets[i] = Decode(depositsBytes[i]);
             }
         }
 
         private DepositDetails Decode(byte[] bytes)
-            => bytes is null
-                ? null
-                : _rlpDecoder.Decode(bytes.AsRlpStream());
+            => _rlpDecoder.Decode(bytes.AsRlpStream());
     }
 }

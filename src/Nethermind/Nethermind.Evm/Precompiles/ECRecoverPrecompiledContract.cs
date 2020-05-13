@@ -1,25 +1,26 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
+using System;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
 using Nethermind.Core.Extensions;
 using Nethermind.Core.Specs;
+using Nethermind.Crypto;
+using Nethermind.Specs;
 using Nethermind.Logging;
 
 namespace Nethermind.Evm.Precompiles
@@ -44,7 +45,7 @@ namespace Nethermind.Evm.Precompiles
             return 3000L;
         }
 
-        private readonly EthereumEcdsa _ecdsa = new EthereumEcdsa(OlympicSpecProvider.Instance, NullLogManager.Instance);
+        private readonly EthereumEcdsa _ecdsa = new EthereumEcdsa(OlympicSpecProvider.Instance, new NullLogManager());
         
         public (byte[], bool) Run(byte[] inputData)
         {
@@ -81,6 +82,29 @@ namespace Nethermind.Evm.Precompiles
             }
             
             return (recovered.Bytes.PadLeft(32), true); // TODO: change recovery code to return bytes?
+        }
+        
+        private class NullLogManager : ILogManager
+        {
+            public ILogger GetClassLogger(Type type)
+            {
+                return NullLogger.Instance;
+            }
+
+            public ILogger GetClassLogger<T>()
+            {
+                return NullLogger.Instance;
+            }
+
+            public ILogger GetClassLogger()
+            {
+                return NullLogger.Instance;
+            }
+
+            public ILogger GetLogger(string loggerName)
+            {
+                return NullLogger.Instance;
+            }
         }
     }
 }

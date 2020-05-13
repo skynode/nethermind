@@ -1,3 +1,19 @@
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
+
 using System;
 using System.Diagnostics;
 
@@ -14,13 +30,28 @@ namespace Nethermind.EvmPlayground
         {
             return ToHexString(bytes, false, false);
         }
+        
+        public static string ToHexString(this Span<byte> bytes)
+        {
+            return ToHexString(bytes, false, false);
+        }
 
         public static string ToHexString(this byte[] bytes, bool withZeroX)
         {
             return ToHexString(bytes, withZeroX, false);
         }
+        
+        public static string ToHexString(this Span<byte> bytes, bool withZeroX)
+        {
+            return ToHexString(bytes, withZeroX, false);
+        }
 
         private static string ToHexString(byte[] bytes, bool withZeroX, bool skipLeadingZeros)
+        {
+            return ToHexString(bytes.AsSpan(), withZeroX, skipLeadingZeros);
+        }
+
+        private static string ToHexString(Span<byte> bytes, bool withZeroX, bool skipLeadingZeros)
         {
             int leadingZeros = skipLeadingZeros ? CountLeadingZeroNibbles(bytes) : 0;
             var result = new char[bytes.Length * 2 + (withZeroX ? 2 : 0) - leadingZeros];
@@ -59,7 +90,7 @@ namespace Nethermind.EvmPlayground
             return result;
         }
 
-        private static int CountLeadingZeroNibbles(byte[] bytes)
+        private static int CountLeadingZeroNibbles(Span<byte> bytes)
         {
             int leadingZeros = 0;
             for (int i = 0; i < bytes.Length; i++)

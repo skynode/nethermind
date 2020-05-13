@@ -15,7 +15,6 @@
 //  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
-using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using Nethermind.Core2.Types;
 
@@ -23,29 +22,32 @@ namespace Nethermind.Ssz
 {
     public static partial class Ssz
     {
-        public static void Encode(Span<byte> span, ForkVersion value)
-        {
-            Encode(span, value.Number);
-        }
-        
+        public const int ForkVersionLength = ForkVersion.Length;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ForkVersion DecodeForkVersion(Span<byte> span, ref int offset)
+        public static ForkVersion DecodeForkVersion(ReadOnlySpan<byte> span, ref int offset)
         {
-            ForkVersion forkVersion = new ForkVersion(BinaryPrimitives.ReadUInt32LittleEndian(span.Slice(offset)));
-            offset += ForkVersion.SszLength;
+            ForkVersion forkVersion = new ForkVersion(span.Slice(offset, ForkVersionLength));
+            offset += ForkVersionLength;
             return forkVersion;
         }
-        
+
+        public static ForkVersion DecodeForkVersion(ReadOnlySpan<byte> span)
+        {
+            return new ForkVersion(span.Slice(0, ForkVersionLength));
+        }
+
+        public static void Encode(Span<byte> span, ForkVersion value)
+        {
+            value.AsSpan().CopyTo(span);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void Encode(Span<byte> span, ForkVersion value, ref int offset)
         {
-            BinaryPrimitives.WriteUInt32LittleEndian(span.Slice(offset), value.Number);
-            offset += ForkVersion.SszLength;
-        }
-        
-        public static ForkVersion DecodeForkVersion(Span<byte> span)
-        {
-            return new ForkVersion(DecodeUInt(span));
+            // FIXME: ForkVersion can be created by marshalling a span onto it, with no guarantee the underlying architecture is little endian.
+            value.AsSpan().CopyTo(span.Slice(offset, ForkVersionLength));
+            offset += ForkVersionLength;
         }
     }
 }

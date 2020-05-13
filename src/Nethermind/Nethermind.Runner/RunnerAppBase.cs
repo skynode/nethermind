@@ -1,23 +1,22 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.IO;
+using System.IO.Abstractions;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -25,7 +24,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.CommandLineUtils;
 using Nethermind.Config;
 using Nethermind.Core;
-using Nethermind.Core.Json;
+using Nethermind.Core.Attributes;
 using Nethermind.DataMarketplace.Channels;
 using Nethermind.DataMarketplace.Channels.Grpc;
 using Nethermind.DataMarketplace.Consumers.Infrastructure;
@@ -43,74 +42,68 @@ using Nethermind.JsonRpc.Modules.Web3;
 using Nethermind.JsonRpc.WebSockets;
 using Nethermind.Monitoring;
 using Nethermind.Monitoring.Metrics;
-using Nethermind.Logging;
+using Nethermind.Logging.NLog;
 using Nethermind.Monitoring.Config;
-using Nethermind.Runner.Config;
-using Nethermind.Runner.Runners;
+using Nethermind.Runner.Ethereum;
+using Nethermind.Serialization.Json;
 using Nethermind.WebSockets;
-using NLog;
-using NLog.Config;
 using ILogger = Nethermind.Logging.ILogger;
 
 namespace Nethermind.Runner
 {
     public abstract class RunnerAppBase
     {
-        protected ILogger Logger;
+        private ILogger? _logger;
         private IRunner _jsonRpcRunner = NullRunner.Instance;
         private IRunner _ethereumRunner = NullRunner.Instance;
         private IRunner _grpcRunner = NullRunner.Instance;
-        private TaskCompletionSource<object> _cancelKeySource;
-        private IMonitoringService _monitoringService;
-        
-        protected RunnerAppBase(ILogger logger)
+        private TaskCompletionSource<object?>? _cancelKeySource;
+        private IMonitoringService _monitoringService = NullMonitoringService.Instance;
+
+        protected RunnerAppBase()
         {
-            Logger = logger;
             AppDomain.CurrentDomain.ProcessExit += CurrentDomainOnProcessExit;
         }
 
-        private void CurrentDomainOnProcessExit(object sender, EventArgs e)
+        private void CurrentDomainOnProcessExit(object? sender, EventArgs e)
         {
         }
 
         private void LogMemoryConfiguration()
         {
-            if (Logger.IsDebug) Logger.Debug($"Server GC           : {System.Runtime.GCSettings.IsServerGC}");
-            if (Logger.IsDebug) Logger.Debug($"GC latency mode     : {System.Runtime.GCSettings.LatencyMode}");
-            if (Logger.IsDebug)
-                Logger.Debug($"LOH compaction mode : {System.Runtime.GCSettings.LargeObjectHeapCompactionMode}");
+            if (_logger?.IsDebug ?? false) _logger!.Debug($"Server GC           : {System.Runtime.GCSettings.IsServerGC}");
+            if (_logger?.IsDebug ?? false) _logger!.Debug($"GC latency mode     : {System.Runtime.GCSettings.LatencyMode}");
+            if (_logger?.IsDebug ?? false) _logger!.Debug($"LOH compaction mode : {System.Runtime.GCSettings.LargeObjectHeapCompactionMode}");
         }
 
         public void Run(string[] args)
         {
-            var (app, buildConfigProvider, getDbBasePath) = BuildCommandLineApp();
-            ManualResetEventSlim appClosed = new ManualResetEventSlim(false);
+            (CommandLineApplication app, var buildConfigProvider, var getDbBasePath) = BuildCommandLineApp();
+            ManualResetEventSlim appClosed = new ManualResetEventSlim(true);
             app.OnExecute(async () =>
             {
-                var configProvider = buildConfigProvider();
-                var initConfig = configProvider.GetConfig<IInitConfig>();
-                LogManager.Configuration = new XmlLoggingConfiguration("NLog.config".GetApplicationResourcePath());
-                Logger = new NLogLogger(initConfig.LogFileName, initConfig.LogDirectory);
+                appClosed.Reset();
+                IConfigProvider configProvider = buildConfigProvider();
+                IInitConfig initConfig = configProvider.GetConfig<IInitConfig>();
+                _logger = new NLogLogger(initConfig.LogFileName, initConfig.LogDirectory);
+                if (_logger.IsDebug) _logger.Debug($"Nethermind version: {ClientVersion.Description}");
                 LogMemoryConfiguration();
 
-                var pathDbPath = getDbBasePath();
+                string? pathDbPath = getDbBasePath();
                 if (!string.IsNullOrWhiteSpace(pathDbPath))
                 {
-                    var newDbPath = Path.Combine(pathDbPath, initConfig.BaseDbPath);
-                    if (Logger.IsDebug) Logger.Debug($"Adding prefix to baseDbPath, new value: {newDbPath}, old value: {initConfig.BaseDbPath}");
-                    initConfig.BaseDbPath = newDbPath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "db");
+                    string newDbPath = Path.Combine(pathDbPath, initConfig.BaseDbPath);
+                    if (_logger.IsDebug) _logger.Debug($"Adding prefix to baseDbPath, new value: {newDbPath}, old value: {initConfig.BaseDbPath}");
+                    initConfig.BaseDbPath = newDbPath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory ?? "", "db");
                 }
 
                 Console.Title = initConfig.LogFileName;
                 Console.CancelKeyPress += ConsoleOnCancelKeyPress;
 
-                var serializer = new EthereumJsonSerializer();
-                if (Logger.IsInfo)
-                {
-                    Logger.Info($"Nethermind config:\n{serializer.Serialize(initConfig, true)}\n");
-                }
+                EthereumJsonSerializer serializer = new EthereumJsonSerializer();
+                if (_logger.IsDebug) _logger.Debug($"Nethermind config:\n{serializer.Serialize(initConfig, true)}\n");
 
-                _cancelKeySource = new TaskCompletionSource<object>();
+                _cancelKeySource = new TaskCompletionSource<object?>();
 
                 await StartRunners(configProvider);
                 await _cancelKeySource.Task;
@@ -129,7 +122,7 @@ namespace Nethermind.Runner
 
         private void ConsoleOnCancelKeyPress(object sender, ConsoleCancelEventArgs e)
         {
-            _cancelKeySource?.SetResult(null);
+            _cancelKeySource?.TrySetResult(null);
             e.Cancel = false;
         }
 
@@ -138,118 +131,133 @@ namespace Nethermind.Runner
         {
             IInitConfig initConfig = configProvider.GetConfig<IInitConfig>();
             IJsonRpcConfig jsonRpcConfig = configProvider.GetConfig<IJsonRpcConfig>();
-            var metricsParams = configProvider.GetConfig<IMetricsConfig>();
-            var logManager = new NLogManager(initConfig.LogFileName, initConfig.LogDirectory);
+            IMetricsConfig metricsConfig = configProvider.GetConfig<IMetricsConfig>();
+            NLogManager logManager = new NLogManager(initConfig.LogFileName, initConfig.LogDirectory);
             IRpcModuleProvider rpcModuleProvider = jsonRpcConfig.Enabled
                 ? new RpcModuleProvider(configProvider.GetConfig<IJsonRpcConfig>(), logManager)
                 : (IRpcModuleProvider) NullModuleProvider.Instance;
-            var jsonSerializer = new EthereumJsonSerializer();
-            var webSocketsManager = new WebSocketsManager();
+            EthereumJsonSerializer jsonSerializer = new EthereumJsonSerializer();
+            WebSocketsManager webSocketsManager = new WebSocketsManager();
 
-            INdmDataPublisher ndmDataPublisher = null;
-            INdmConsumerChannelManager ndmConsumerChannelManager = null;
-            INdmInitializer ndmInitializer = null;
-            var ndmConfig = configProvider.GetConfig<INdmConfig>();
-            var ndmEnabled = ndmConfig.Enabled;
+            if (!string.IsNullOrEmpty(metricsConfig.NodeName))
+            {
+                logManager.SetGlobalVariable("nodeName", metricsConfig.NodeName);
+            }
+            
+            if (metricsConfig.Enabled)
+            {
+                Metrics.Version = VersionToMetrics.ConvertToNumber(ClientVersion.Version);
+                MetricsUpdater metricsUpdater = new MetricsUpdater(metricsConfig);
+                _monitoringService = new MonitoringService(metricsUpdater, metricsConfig, logManager);
+                _monitoringService.RegisterMetrics(typeof(Nethermind.Blockchain.Metrics));
+                _monitoringService.RegisterMetrics(typeof(Nethermind.Db.Metrics));
+                _monitoringService.RegisterMetrics(typeof(Nethermind.Evm.Metrics));
+                _monitoringService.RegisterMetrics(typeof(Nethermind.JsonRpc.Metrics));
+                _monitoringService.RegisterMetrics(typeof(Nethermind.Trie.Metrics));
+                _monitoringService.RegisterMetrics(typeof(Nethermind.Network.Metrics));
+                _monitoringService.RegisterMetrics(typeof(Nethermind.Synchronization.Metrics));
+                _monitoringService.RegisterMetrics(typeof(Nethermind.TxPool.Metrics));
+                _monitoringService.RegisterMetrics(typeof(Metrics));
+
+                await _monitoringService.StartAsync().ContinueWith(x =>
+                {
+                    if (x.IsFaulted && (_logger?.IsError ?? false)) _logger!.Error("Error during starting a monitoring.", x.Exception);
+                });
+            }
+            else
+            {
+                if (_logger?.IsInfo ?? false) _logger!.Info("Grafana / Prometheus metrics are disabled in configuration");
+            }
+
+            IGrpcConfig grpcConfig = configProvider.GetConfig<IGrpcConfig>();
+            GrpcServer? grpcServer = null;
+            if (grpcConfig.Enabled)
+            {
+                grpcServer = new GrpcServer(jsonSerializer, logManager);
+                _grpcRunner = new GrpcRunner(grpcServer, grpcConfig, logManager);
+                await _grpcRunner.Start().ContinueWith(x =>
+                {
+                    if (x.IsFaulted && (_logger?.IsError ?? false)) _logger!.Error("Error during GRPC runner start", x.Exception);
+                });
+            }
+
+            INdmDataPublisher? ndmDataPublisher = null;
+            INdmConsumerChannelManager? ndmConsumerChannelManager = null;
+            INdmInitializer? ndmInitializer = null;
+            INdmConfig ndmConfig = configProvider.GetConfig<INdmConfig>();
+            bool ndmEnabled = ndmConfig.Enabled;
             if (ndmEnabled)
             {
                 ndmDataPublisher = new NdmDataPublisher();
                 ndmConsumerChannelManager = new NdmConsumerChannelManager();
-                var initializerName = ndmConfig.InitializerName;
-                if (Logger.IsInfo) Logger.Info($"NDM initializer: {initializerName}");
-                var ndmInitializerType = AppDomain.CurrentDomain.GetAssemblies()
+                string initializerName = ndmConfig.InitializerName;
+                if (_logger?.IsInfo ?? false) _logger!.Info($"NDM initializer: {initializerName}");
+                Type ndmInitializerType = AppDomain.CurrentDomain.GetAssemblies()
                     .SelectMany(a => a.GetTypes())
                     .FirstOrDefault(t =>
                         t.GetCustomAttribute<NdmInitializerAttribute>()?.Name == initializerName);
-                var ndmModule = new NdmModule();
-                var ndmConsumersModule = new NdmConsumersModule();
-                ndmInitializer = new NdmInitializerFactory(ndmInitializerType, ndmModule, ndmConsumersModule,
-                    logManager).CreateOrFail();
-            }
+                NdmModule ndmModule = new NdmModule();
+                NdmConsumersModule ndmConsumersModule = new NdmConsumersModule();
+                ndmInitializer = new NdmInitializerFactory(ndmInitializerType, ndmModule, ndmConsumersModule, logManager).CreateOrFail();
 
-            var grpcConfig = configProvider.GetConfig<IGrpcConfig>();
-            GrpcServer grpcServer = null;
-            if (grpcConfig.Enabled)
-            {
-                grpcServer = new GrpcServer(jsonSerializer, logManager);
-                if (ndmEnabled)
+                if (grpcServer != null)
                 {
                     ndmConsumerChannelManager.Add(new GrpcNdmConsumerChannel(grpcServer));
                 }
-                
-                _grpcRunner = new GrpcRunner(grpcServer, grpcConfig, logManager);
-                await _grpcRunner.Start().ContinueWith(x =>
-                {
-                    if (x.IsFaulted && Logger.IsError) Logger.Error("Error during GRPC runner start", x.Exception);
-                });
+
+                webSocketsManager.AddModule(new NdmWebSocketsModule(ndmConsumerChannelManager, ndmDataPublisher, jsonSerializer));
             }
-            
-            if (initConfig.WebSocketsEnabled)
-            {
-                if (ndmEnabled)
-                {
-                    webSocketsManager.AddModule(new NdmWebSocketsModule(ndmConsumerChannelManager, ndmDataPublisher,
-                        jsonSerializer));
-                }
-            }
-            
-            _ethereumRunner = new EthereumRunner(rpcModuleProvider, configProvider, logManager, grpcServer,
-                ndmConsumerChannelManager, ndmDataPublisher, ndmInitializer, webSocketsManager, jsonSerializer);
+
+            _ethereumRunner = new EthereumRunner(
+                rpcModuleProvider,
+                configProvider,
+                logManager,
+                grpcServer,
+                ndmConsumerChannelManager,
+                ndmDataPublisher,
+                ndmInitializer,
+                webSocketsManager,
+                jsonSerializer,
+                _monitoringService);
+
             await _ethereumRunner.Start().ContinueWith(x =>
             {
-                if (x.IsFaulted && Logger.IsError) Logger.Error("Error during ethereum runner start", x.Exception);
+                if (x.IsFaulted && (_logger?.IsError ?? false)) _logger!.Error("Error during ethereum runner start", x.Exception);
             });
 
             if (jsonRpcConfig.Enabled)
             {
                 rpcModuleProvider.Register(new SingletonModulePool<IWeb3Module>(new Web3Module(logManager), true));
-                var jsonRpcService = new JsonRpcService(rpcModuleProvider, logManager);
-                var jsonRpcProcessor = new JsonRpcProcessor(jsonRpcService, jsonSerializer, jsonRpcConfig, logManager);
+                JsonRpcService jsonRpcService = new JsonRpcService(rpcModuleProvider, logManager);
+                JsonRpcProcessor jsonRpcProcessor = new JsonRpcProcessor(jsonRpcService, jsonSerializer, jsonRpcConfig, new FileSystem(), logManager);
                 if (initConfig.WebSocketsEnabled)
                 {
-                    webSocketsManager.AddModule(new JsonRpcWebSocketsModule(jsonRpcProcessor, jsonSerializer));
+                    webSocketsManager.AddModule(new JsonRpcWebSocketsModule(jsonRpcProcessor, jsonSerializer), true);
                 }
-                
+
                 Bootstrap.Instance.JsonRpcService = jsonRpcService;
                 Bootstrap.Instance.LogManager = logManager;
                 Bootstrap.Instance.JsonSerializer = jsonSerializer;
-                _jsonRpcRunner = new JsonRpcRunner(configProvider, rpcModuleProvider, logManager, jsonRpcProcessor,
-                    webSocketsManager);
+                _jsonRpcRunner = new JsonRpcRunner(configProvider, rpcModuleProvider, logManager, jsonRpcProcessor, webSocketsManager);
                 await _jsonRpcRunner.Start().ContinueWith(x =>
                 {
-                    if (x.IsFaulted && Logger.IsError) Logger.Error("Error during jsonRpc runner start", x.Exception);
+                    if (x.IsFaulted && (_logger?.IsError ?? false)) _logger!.Error("Error during jsonRpc runner start", x.Exception);
                 });
             }
             else
             {
-                if (Logger.IsInfo) Logger.Info("Json RPC is disabled");
-            }
-
-            if (metricsParams.Enabled)
-            {
-                var intervalSeconds = metricsParams.IntervalSeconds;
-                _monitoringService = new MonitoringService(new MetricsUpdater(intervalSeconds),
-                    metricsParams.PushGatewayUrl, ClientVersion.Description,
-                    metricsParams.NodeName, intervalSeconds, logManager);
-                await _monitoringService.StartAsync().ContinueWith(x =>
-                {
-                    if (x.IsFaulted && Logger.IsError) Logger.Error("Error during starting a monitoring.", x.Exception);
-                });
-            }
-            else
-            {
-                if (Logger.IsInfo) Logger.Info("Monitoring is disabled");
+                if (_logger?.IsInfo ?? false) _logger!.Info("Json RPC is disabled");
             }
         }
 
-        protected abstract (CommandLineApplication, Func<IConfigProvider>, Func<string>) BuildCommandLineApp();
+        protected abstract (CommandLineApplication, Func<IConfigProvider>, Func<string?>) BuildCommandLineApp();
 
         protected async Task StopAsync()
         {
             _grpcRunner?.StopAsync();
             _monitoringService?.StopAsync();
             _jsonRpcRunner?.StopAsync(); // do not await
-            var ethereumTask = _ethereumRunner?.StopAsync() ?? Task.CompletedTask;
+            Task ethereumTask = _ethereumRunner?.StopAsync() ?? Task.CompletedTask;
             await ethereumTask;
         }
     }

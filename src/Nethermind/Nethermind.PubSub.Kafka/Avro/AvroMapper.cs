@@ -1,27 +1,25 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System.Collections.Generic;
 using System.Linq;
 using Nethermind.Blockchain;
 using Nethermind.Core.Crypto;
-using Nethermind.Core.Encoding;
 using Nethermind.PubSub.Kafka.Avro.Models;
+using Nethermind.Serialization.Rlp;
 
 namespace Nethermind.PubSub.Kafka.Avro
 {
@@ -54,7 +52,7 @@ namespace Nethermind.PubSub.Kafka.Avro
                 logsBloom = block.Header.Bloom.ToString(),
                 receiptsRoot = block.Header.ReceiptsRoot.ToString(),
                 stateRoot = block.Header.StateRoot.ToString(),
-                transactionRoot = block.TransactionsRoot.ToString(),
+                transactionRoot = block.TxRoot.ToString(),
                 totalDifficulty = block.TotalDifficulty?.ToString() ?? string.Empty,
                 uncles = block.Ommers?.Select(o => o.Hash.ToString()).ToList() ?? new List<string>(),
                 sha3uncles = block.Header.OmmersHash.ToString()
@@ -80,7 +78,7 @@ namespace Nethermind.PubSub.Kafka.Avro
                 weiValue = transaction.Value.ToString()
             };
 
-        public FullTransaction MapFullTransaction(Core.FullTransaction fullTransaction)
+        public FullTransaction MapFullTransaction(PubSub.Models.FullTransaction fullTransaction)
         {
             var index = fullTransaction.Index;
             var transaction = fullTransaction.Transaction;

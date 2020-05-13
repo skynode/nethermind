@@ -1,34 +1,36 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using Nethermind.Blockchain.TxPools;
+using Nethermind.Blockchain.Processing;
 using Nethermind.Core;
+using Nethermind.Core.Attributes;
 using Nethermind.Core.Crypto;
-using Nethermind.Core.Specs;
+using Nethermind.Specs;
 using Nethermind.Core.Test.Builders;
+using Nethermind.Db;
 using Nethermind.Evm.Tracing;
 using Nethermind.Logging;
-using Nethermind.Store;
-using Nethermind.Store.Repositories;
+using Nethermind.State.Repositories;
+using Nethermind.Store.Bloom;
+using Nethermind.TxPool;
 using NUnit.Framework;
 
 namespace Nethermind.Blockchain.Test
@@ -67,13 +69,13 @@ namespace Nethermind.Blockchain.Test
                     _allowedToFail.Add(hash);
                 }
 
-                public Block[] Process(Keccak branchStateRoot, Block[] suggestedBlocks, ProcessingOptions processingOptions, IBlockTracer blockTracer)
+                public Block[] Process(Keccak branchStateRoot, List<Block> suggestedBlocks, ProcessingOptions processingOptions, IBlockTracer blockTracer)
                 {
                     _logger.Info($"Processing {suggestedBlocks.Last().ToString(Block.Format.Short)}");
                     while (true)
                     {
                         bool notYet = false;
-                        for (int i = 0; i < suggestedBlocks.Length; i++)
+                        for (int i = 0; i < suggestedBlocks.Count; i++)
                         {
                             Keccak hash = suggestedBlocks[i].Hash;
                             if (!_allowed.Contains(hash))
@@ -97,7 +99,7 @@ namespace Nethermind.Blockchain.Test
                         else
                         {
                             BlockProcessed?.Invoke(this, new BlockProcessedEventArgs(suggestedBlocks.Last()));
-                            return suggestedBlocks;
+                            return suggestedBlocks.ToArray();
                         }
                     }
                 }
@@ -115,9 +117,9 @@ namespace Nethermind.Blockchain.Test
             {
                 private ILogger _logger;
                 
-                private HashSet<Keccak> _allowed = new HashSet<Keccak>();
+                private ConcurrentDictionary<Keccak, object> _allowed = new ConcurrentDictionary<Keccak, object>();
 
-                private HashSet<Keccak> _allowedToFail = new HashSet<Keccak>();
+                private ConcurrentDictionary<Keccak, object> _allowedToFail = new ConcurrentDictionary<Keccak, object>();
 
                 public RecoveryStepMock(ILogManager logManager)
                 {
@@ -127,13 +129,13 @@ namespace Nethermind.Blockchain.Test
                 public void Allow(Keccak hash)
                 {
                     _logger.Info($"Allowing {hash} to recover");
-                    _allowed.Add(hash);
+                    _allowed[hash] = new object();
                 }
 
                 public void AllowToFail(Keccak hash)
                 {
                     _logger.Info($"Allowing {hash} to fail recover");
-                    _allowedToFail.Add(hash);
+                    _allowedToFail[hash] = new object();
                 }
 
                 public void RecoverData(Block block)
@@ -147,11 +149,11 @@ namespace Nethermind.Blockchain.Test
 
                     while (true)
                     {
-                        if (!_allowed.Contains(block.Hash))
+                        if (!_allowed.ContainsKey(block.Hash))
                         {
-                            if (_allowedToFail.Contains(block.Hash))
+                            if (_allowedToFail.ContainsKey(block.Hash))
                             {
-                                _allowedToFail.Remove(block.Hash);
+                                _allowedToFail.Remove(block.Hash, out _);
                                 throw new Exception();
                             }
 
@@ -159,8 +161,8 @@ namespace Nethermind.Blockchain.Test
                             continue;
                         }
 
-                        block.Author = Address.Zero;
-                        _allowed.Remove(block.Hash);
+                        block.Header.Author = Address.Zero;
+                        _allowed.Remove(block.Hash, out _);
                         return;
                     }
                 }
@@ -179,10 +181,10 @@ namespace Nethermind.Blockchain.Test
                 MemDb blockDb = new MemDb();
                 MemDb blockInfoDb = new MemDb();
                 MemDb headersDb = new MemDb();
-                _blockTree = new BlockTree(blockDb, headersDb, blockInfoDb, new ChainLevelInfoRepository(blockInfoDb), MainNetSpecProvider.Instance, NullTxPool.Instance, LimboLogs.Instance);
+                _blockTree = new BlockTree(blockDb, headersDb, blockInfoDb, new ChainLevelInfoRepository(blockInfoDb), MainnetSpecProvider.Instance, NullTxPool.Instance, NullBloomStorage.Instance, LimboLogs.Instance);
                 _blockProcessor = new BlockProcessorMock(_logManager);
                 _recoveryStep = new RecoveryStepMock(_logManager);
-                _processor = new BlockchainProcessor(_blockTree, _blockProcessor, _recoveryStep, LimboLogs.Instance, true, true);
+                _processor = new BlockchainProcessor(_blockTree, _blockProcessor, _recoveryStep, LimboLogs.Instance, true);
                 _resetEvent = new AutoResetEvent(false);
 
                 _blockTree.NewHeadBlock += (sender, args) =>
@@ -452,7 +454,7 @@ namespace Nethermind.Blockchain.Test
                 .FullyProcessed(_block5D10).BecomesNewHead();
         }
 
-        [Test]
+        [Test, Retry(3)]
         public void Can_reorganize_to_longer_path()
         {
             When.ProcessingBlocks

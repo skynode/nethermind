@@ -1,8 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>netcoreapp3.0</TargetFramework>
+        <TargetFramework>netcoreapp3.1</TargetFramework>
         <LangVersion>latest</LangVersion>
+        <Nullable>enable</Nullable>
     </PropertyGroup>
 
     <ItemGroup>
@@ -12,6 +13,7 @@
       <ProjectReference Include="..\Nethermind.DataMarketplace.Infrastructure\Nethermind.DataMarketplace.Infrastructure.csproj" />
       <ProjectReference Include="..\Nethermind.DataMarketplace.Subprotocols\Nethermind.DataMarketplace.Subprotocols.csproj" />
       <ProjectReference Include="..\Nethermind.DataMarketplace.WebSockets\Nethermind.DataMarketplace.WebSockets.csproj" />
+      <ProjectReference Include="..\Nethermind.Monitoring\Nethermind.Monitoring.csproj" />
       <ProjectReference Include="..\Nethermind.Network\Nethermind.Network.csproj" />
     </ItemGroup>
 

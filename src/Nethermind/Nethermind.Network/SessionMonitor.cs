@@ -1,31 +1,27 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Nethermind.Core.Crypto;
 using Nethermind.Logging;
 using Nethermind.Network.Config;
 using Nethermind.Network.P2P;
-using Nethermind.Stats.Model;
 
 namespace Nethermind.Network
 {
@@ -41,6 +37,7 @@ namespace Nethermind.Network
 
         public SessionMonitor(INetworkConfig config, ILogManager logManager)
         {
+            
             _logger = logManager.GetClassLogger() ?? throw new ArgumentNullException(nameof(logManager));
             _networkConfig = config ?? throw new ArgumentNullException(nameof(config));
 
@@ -107,7 +104,8 @@ namespace Nethermind.Network
                 if (_logger.IsTrace) _logger.Trace($"Sent ping messages to {tasks.Length} peers. Received {successes} pongs.");
                 if (failures > tasks.Length / 3)
                 {
-                    if (_logger.IsWarn) _logger.Warn($"More than 33% of nodes did not respond to a Ping message - {failures}/{successes + failures}");
+                    decimal percentage = (decimal)failures/(successes + failures);
+                    if (_logger.IsInfo) _logger.Info($"{percentage:P0} of nodes did not respond to a Ping message - {failures}/{successes + failures}");
                 }
 
                 _pingTasks.Clear();
@@ -129,18 +127,23 @@ namespace Nethermind.Network
                 return true;
             }
 
-            var pingTime = DateTime.UtcNow;
+            DateTime pingTime = DateTime.UtcNow;
             if (pingTime - session.LastPingUtc > _pingInterval)
             {
                 session.LastPingUtc = pingTime;
                 bool pongReceived = await session.PingSender.SendPing();
                 if (!pongReceived)
                 {
-                    if (_logger.IsDebug) _logger.Debug($"No pong received in response to the {pingTime:T} ping at {session?.Node:c} | last pong time {session.LastPongUtc:T}");
-                    return false;
+                    if (!session.IsClosing)
+                    {
+                        if (_logger.IsDebug) _logger.Debug($"No pong received in response to the {pingTime:T} ping at {session?.Node:c} | last pong time {session.LastPongUtc:T}");
+                        return false;
+                    }
+
+                    return true;
                 }
                 
-                session.LastPongUtc = DateTime.Now;
+                session.LastPongUtc = DateTime.UtcNow;
                 return true;
             }
 

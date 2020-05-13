@@ -1,25 +1,25 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
-using System.IO;
-using Nethermind.Core.Encoding;
+using Nethermind.Core;
+using Nethermind.Core.Crypto;
 using Nethermind.DataMarketplace.Core.Domain;
+using Nethermind.Dirichlet.Numerics;
+using Nethermind.Serialization.Rlp;
 
 namespace Nethermind.DataMarketplace.Infrastructure.Rlp
 {
@@ -30,55 +30,44 @@ namespace Nethermind.DataMarketplace.Infrastructure.Rlp
             // here to register with RLP in static constructor
         }
 
-        public FaucetRequestDetailsDecoder()
-        {
-        }
-
         static FaucetRequestDetailsDecoder()
         {
-            Nethermind.Core.Encoding.Rlp.Decoders[typeof(FaucetRequestDetails)] = new FaucetRequestDetailsDecoder();
+            Serialization.Rlp.Rlp.Decoders[typeof(FaucetRequestDetails)] = new FaucetRequestDetailsDecoder();
         }
 
         public FaucetRequestDetails Decode(RlpStream rlpStream,
             RlpBehaviors rlpBehaviors = RlpBehaviors.None)
         {
-            var sequenceLength = rlpStream.ReadSequenceLength();
+            int sequenceLength = rlpStream.ReadSequenceLength();
             if (sequenceLength == 0)
             {
-                return null;
+                return FaucetRequestDetails.Empty;
             }
-
-            var host = rlpStream.DecodeString();
-            var address = rlpStream.DecodeAddress();
-            var value = rlpStream.DecodeUInt256();
-            var date = DateTimeOffset.FromUnixTimeSeconds(rlpStream.DecodeLong()).UtcDateTime;
-            var transactionHash = rlpStream.DecodeKeccak();
+            
+            string host = rlpStream.DecodeString();
+            Address address = rlpStream.DecodeAddress();
+            UInt256 value = rlpStream.DecodeUInt256();
+            DateTime date = DateTimeOffset.FromUnixTimeSeconds(rlpStream.DecodeLong()).UtcDateTime;
+            Keccak transactionHash = rlpStream.DecodeKeccak();
 
             return new FaucetRequestDetails(host, address, value, date, transactionHash);
         }
 
-        public Nethermind.Core.Encoding.Rlp Encode(FaucetRequestDetails item,
-            RlpBehaviors rlpBehaviors = RlpBehaviors.None)
+        public Serialization.Rlp.Rlp Encode(FaucetRequestDetails item, RlpBehaviors rlpBehaviors = RlpBehaviors.None)
         {
             if (item == null)
             {
-                return Nethermind.Core.Encoding.Rlp.OfEmptySequence;
+                return Serialization.Rlp.Rlp.OfEmptySequence;
             }
+            
+            long date = (item.Date == DateTime.MinValue || item.Date == null) ? 0 : new DateTimeOffset(item.Date.Value).ToUnixTimeSeconds();
 
-            var date = item.Date == DateTime.MinValue ? 0 : new DateTimeOffset(item.Date).ToUnixTimeSeconds();
-
-            return Nethermind.Core.Encoding.Rlp.Encode(
-                Nethermind.Core.Encoding.Rlp.Encode(item.Host),
-                Nethermind.Core.Encoding.Rlp.Encode(item.Address),
-                Nethermind.Core.Encoding.Rlp.Encode(item.Value),
-                Nethermind.Core.Encoding.Rlp.Encode(date),
-                Nethermind.Core.Encoding.Rlp.Encode(item.TransactionHash));
-        }
-
-        public void Encode(MemoryStream stream, FaucetRequestDetails item,
-            RlpBehaviors rlpBehaviors = RlpBehaviors.None)
-        {
-            throw new System.NotImplementedException();
+            return Serialization.Rlp.Rlp.Encode(
+                Serialization.Rlp.Rlp.Encode(item.Host),
+                Serialization.Rlp.Rlp.Encode(item.Address),
+                Serialization.Rlp.Rlp.Encode(item.Value),
+                Serialization.Rlp.Rlp.Encode(date),
+                Serialization.Rlp.Rlp.Encode(item.TransactionHash));
         }
 
         public int GetLength(FaucetRequestDetails item, RlpBehaviors rlpBehaviors)

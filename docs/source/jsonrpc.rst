@@ -7,234 +7,364 @@ Some of the methods listed below are not implemented by Nethermind (they are mar
 admin
 ^^^^^
 
- - admin_addPeer(enode)
+ admin_addPeer(enode, addToStaticNodes)
+  
 
- - [NOT IMPLEMENTED]admin_dataDir()
+ admin_dataDir()
+  [NOT IMPLEMENTED] 
 
- - [NOT IMPLEMENTED]admin_nodeInfo()
+ admin_nodeInfo()
+  [NOT IMPLEMENTED] 
 
- - admin_peers()
+ admin_peers()
+  
 
- - admin_removePeer(enode)
+ admin_removePeer(enode, removeFromStaticNodes)
+  
 
- - [NOT IMPLEMENTED]admin_setSolc()
+ admin_setSolc()
+  [NOT IMPLEMENTED] 
 
 clique
 ^^^^^^
 
- - clique_discard(signer)
+ clique_discard(signer)
+  <description missing>
 
- - clique_getSigners()
+ clique_getSigners()
+  <description missing>
 
- - clique_getSignersAnnotated()
+ clique_getSignersAnnotated()
+  <description missing>
 
- - clique_getSignersAtHash(hash)
+ clique_getSignersAtHash(hash)
+  <description missing>
 
- - clique_getSignersAtHashAnnotated(hash)
+ clique_getSignersAtHashAnnotated(hash)
+  <description missing>
 
- - clique_getSignersAtNumber(number)
+ clique_getSignersAtNumber(number)
+  <description missing>
 
- - clique_getSnapshot()
+ clique_getSnapshot()
+  <description missing>
 
- - clique_getSnapshotAtHash(hash)
+ clique_getSnapshotAtHash(hash)
+  <description missing>
 
- - clique_propose(signer, vote)
+ clique_propose(signer, vote)
+  <description missing>
 
 debug
 ^^^^^
 
- - [NOT IMPLEMENTED]debug_dumpBlock(blockParameter)
+ debug_deleteChainSlice(startNumber, endNumber)
+  Deletes a slice of a chain from the tree on all branches (Nethermind specific).
 
- - [NOT IMPLEMENTED]debug_gcStats()
+ debug_dumpBlock(blockParameter)
+  [NOT IMPLEMENTED] 
 
- - debug_getBlockRlp(number)
+ debug_gcStats()
+  [NOT IMPLEMENTED] 
 
- - debug_getBlockRlpByHash(hash)
+ debug_getBlockRlp(number)
+  Retrieves a block in the RLP-serialized form.
 
- - debug_getConfigValue(category, name)
+ debug_getBlockRlpByHash(hash)
+  Retrieves a block in the RLP-serialized form.
 
- - [NOT IMPLEMENTED]debug_getFromDb(dbName, key)
+ debug_getChainLevel(number)
+  Retrieves a representation of tree branches on a given chain level (Nethermind specific).
 
- - [NOT IMPLEMENTED]debug_memStats(blockParameter)
+ debug_getConfigValue(category, name)
+  Retrieves the Nethermind configuration value, e.g. JsonRpc.Enabled
 
- - [NOT IMPLEMENTED]debug_seedHash(blockParameter)
+ debug_getFromDb(dbName, key)
+  [NOT IMPLEMENTED] 
 
- - [NOT IMPLEMENTED]debug_setHead(blockParameter)
+ debug_memStats(blockParameter)
+  [NOT IMPLEMENTED] 
 
- - debug_traceBlock(blockRlp, options)
+ debug_seedHash(blockParameter)
+  [NOT IMPLEMENTED] 
 
- - debug_traceBlockByHash(blockHash, options)
+ debug_setHead(blockParameter)
+  [NOT IMPLEMENTED] 
 
- - debug_traceBlockByNumber(number, options)
+ debug_traceBlock(blockRlp, options)
+  
 
- - [NOT IMPLEMENTED]debug_traceBlockFromFile(fileName, options)
+ debug_traceBlockByHash(blockHash, options)
+  
 
- - debug_traceTransaction(transactionHash, options)
+ debug_traceBlockByNumber(number, options)
+  
 
- - debug_traceTransactionByBlockAndIndex(blockParameter, txIndex, options)
+ debug_traceBlockFromFile(fileName, options)
+  [NOT IMPLEMENTED] 
 
- - debug_traceTransactionByBlockhashAndIndex(blockHash, txIndex, options)
+ debug_traceTransaction(transactionHash, options)
+  
+
+ debug_traceTransactionByBlockAndIndex(blockParameter, txIndex, options)
+  
+
+ debug_traceTransactionByBlockhashAndIndex(blockHash, txIndex, options)
+  
+
+ debug_traceTransactionInBlockByHash(blockRlp, transactionHash, options)
+  
+
+ debug_traceTransactionInBlockByIndex(blockRlp, txIndex, options)
+  
 
 eth
 ^^^
 
- - eth_accounts()
+ eth_accounts()
+  [NOT IMPLEMENTED] Returns accounts
 
- - eth_blockNumber()
+ eth_blockNumber()
+  Returns current block number
 
- - eth_call(transactionCall, blockParameter)
+ eth_call(transactionCall, blockParameter)
+  Executes a tx call (does not create a transaction)
 
- - eth_coinbase()
+ eth_chainId()
+  Returns ChainID
 
- - eth_estimateGas(transactionCall)
+ eth_coinbase()
+  [NOT IMPLEMENTED] Returns miner's coinbase'
 
- - eth_gasPrice()
+ eth_estimateGas(transactionCall)
+  Executes a tx call and returns gas used (does not create a transaction)
 
- - eth_getBalance(address, blockParameter)
+ eth_gasPrice()
+  [NOT IMPLEMENTED] Returns miner's gas price
 
- - eth_getBlockByHash(blockHash, returnFullTransactionObjects)
+ eth_getBalance(address, blockParameter)
+  Returns account balance
 
- - eth_getBlockByNumber(blockParameter, returnFullTransactionObjects)
+ eth_getBlockByHash(blockHash, returnFullTransactionObjects)
+  Retrieves a block by hash
 
- - eth_getBlockTransactionCountByHash(blockHash)
+ eth_getBlockByNumber(blockParameter, returnFullTransactionObjects)
+  Retrieves a block by number
 
- - eth_getBlockTransactionCountByNumber(blockParameter)
+ eth_getBlockTransactionCountByHash(blockHash)
+  Returns number of transactions in the block block hash
 
- - eth_getCode(address, blockParameter)
+ eth_getBlockTransactionCountByNumber(blockParameter)
+  Returns number of transactions in the block by block number
 
- - eth_getFilterChanges(filterId)
+ eth_getCode(address, blockParameter)
+  Returns account code at given address and block
 
- - eth_getFilterLogs(filterId)
+ eth_getFilterChanges(filterId)
+  Reads filter changes
 
- - eth_getLogs(filter)
+ eth_getFilterLogs(filterId)
+  Reads filter changes
 
- - eth_getProof(accountAddress, hashRate, blockParameter)
+ eth_getLogs(filter)
+  Reads logs
 
- - eth_getStorageAt(address, positionIndex, blockParameter)
+ eth_getProof(accountAddress, hashRate, blockParameter)
+  https://github.com/ethereum/EIPs/issues/1186
 
- - eth_getTransactionByBlockHashAndIndex(blockHash, positionIndex)
+ eth_getStorageAt(address, positionIndex, blockParameter)
+  Returns storage data at address. storage_index
 
- - eth_getTransactionByBlockNumberAndIndex(blockParameter, positionIndex)
+ eth_getTransactionByBlockHashAndIndex(blockHash, positionIndex)
+  Retrieves a transaction by block hash and index
 
- - eth_getTransactionByHash(transactionHash)
+ eth_getTransactionByBlockNumberAndIndex(blockParameter, positionIndex)
+  Retrieves a transaction by block number and index
 
- - eth_getTransactionCount(address, blockParameter)
+ eth_getTransactionByHash(transactionHash)
+  Retrieves a transaction by hash
 
- - eth_getTransactionReceipt(txHashData)
+ eth_getTransactionCount(address, blockParameter)
+  Returns account nonce (number of trnsactions from the account since genesis) at the given block number
 
- - eth_getUncleByBlockHashAndIndex(blockHashData, positionIndex)
+ eth_getTransactionReceipt(txHashData)
+  Retrieves a transaction receipt by tx hash
 
- - eth_getUncleByBlockNumberAndIndex(blockParameter, positionIndex)
+ eth_getUncleByBlockHashAndIndex(blockHashData, positionIndex)
+  Retrieves an uncle block header by block hash and uncle index
 
- - eth_getUncleCountByBlockHash(blockHash)
+ eth_getUncleByBlockNumberAndIndex(blockParameter, positionIndex)
+  Retrieves an uncle block header by block number and uncle index
 
- - eth_getUncleCountByBlockNumber(blockParameter)
+ eth_getUncleCountByBlockHash(blockHash)
+  Returns number of uncles in the block by block hash
 
- - [NOT IMPLEMENTED]eth_getWork()
+ eth_getUncleCountByBlockNumber(blockParameter)
+  Returns number of uncles in the block by block number
 
- - eth_hashrate()
+ eth_getWork()
+  [NOT IMPLEMENTED] 
 
- - eth_mining()
+ eth_hashrate()
+  [NOT IMPLEMENTED] Returns mining hashrate
 
- - eth_newBlockFilter()
+ eth_mining()
+  [NOT IMPLEMENTED] Returns mining status
 
- - eth_newFilter(filter)
+ eth_newBlockFilter()
+  Creates an update filter
 
- - eth_newPendingTransactionFilter()
+ eth_newFilter(filter)
+  Creates an update filter
 
- - eth_protocolVersion()
+ eth_newPendingTransactionFilter()
+  Creates an update filter
 
- - eth_sendRawTransaction(transaction)
+ eth_pendingTransactions()
+  Returns the pending transactions list
 
- - eth_sendTransaction(transactionForRpc)
+ eth_protocolVersion()
+  Returns ETH protocol version
 
- - eth_sign(addressData, message)
+ eth_sendRawTransaction(transaction)
+  Send a raw transaction to the tx pool and broadcasting
 
- - eth_snapshot()
+ eth_sendTransaction(transactionForRpc)
+  Send a transaction to the tx pool and broadcasting
 
- - [NOT IMPLEMENTED]eth_submitHashrate(hashRate, id)
+ eth_sign(addressData, message)
+  [NOT IMPLEMENTED] Signs a transaction
 
- - [NOT IMPLEMENTED]eth_submitWork(nonce, headerPowHash, mixDigest)
+ eth_snapshot()
+  [NOT IMPLEMENTED] Returns full state snapshot
 
- - eth_syncing()
+ eth_submitHashrate(hashRate, id)
+  [NOT IMPLEMENTED] 
 
- - eth_uninstallFilter(filterId)
+ eth_submitWork(nonce, headerPowHash, mixDigest)
+  [NOT IMPLEMENTED] 
+
+ eth_syncing()
+  Returns syncing status
+
+ eth_uninstallFilter(filterId)
+  Creates an update filter
 
 net
 ^^^
 
- - net_dumpPeerConnectionDetails()
+ net_listening()
+  <description missing>
 
- - net_listening()
+ net_localAddress()
+  <description missing>
 
- - net_localAddress()
+ net_localEnode()
+  <description missing>
 
- - net_localEnode()
+ net_peerCount()
+  <description missing>
 
- - net_peerCount()
-
- - net_version()
+ net_version()
+  <description missing>
 
 parity
 ^^^^^^
 
- - parity_getBlockReceipts(blockParameter)
+ parity_getBlockReceipts(blockParameter)
+  <description missing>
 
- - parity_pendingTransactions()
+ parity_pendingTransactions()
+  <description missing>
 
 personal
 ^^^^^^^^
 
- - [NOT IMPLEMENTED]personal_ecRecover(message, signature)
+ personal_ecRecover(message, signature)
+  [NOT IMPLEMENTED] ecRecover returns the address associated with the private key that was used to calculate the signature in personal_sign
 
- - [NOT IMPLEMENTED]personal_importRawKey(keyData, passphrase)
+ personal_importRawKey(keyData, passphrase)
+  [NOT IMPLEMENTED] 
 
- - personal_listAccounts()
+ personal_listAccounts()
+  <description missing>
 
- - personal_lockAccount(address)
+ personal_lockAccount(address)
+  <description missing>
 
- - personal_newAccount(passphrase)
+ personal_newAccount(passphrase)
+  <description missing>
 
- - [NOT IMPLEMENTED]personal_sendTransaction(transaction, passphrase)
+ personal_sendTransaction(transaction, passphrase)
+  [NOT IMPLEMENTED] 
 
- - [NOT IMPLEMENTED]personal_sign(message, address, passphrase)
+ personal_sign(message, address, passphrase)
+  [NOT IMPLEMENTED] The sign method calculates an Ethereum specific signature with: sign(keccack256("ƞthereum Signed Message:
+" + len(message) + message))).
 
- - personal_unlockAccount(address, passphrase)
+ personal_unlockAccount(address, passphrase)
+  <description missing>
+
+proof
+^^^^^
+
+ proof_call(tx, blockParameter)
+  [NOT IMPLEMENTED] This function returns the same result as `eth_getTransactionByHash` and also a tx proof and a serialized block header.
+
+ proof_getTransactionByHash(txHash, includeHeader)
+  This function returns the same result as `eth_getTransactionReceipt` and also a tx proof, receipt proof and serialized block headers.
+
+ proof_getTransactionReceipt(txHash, includeHeader)
+  This function should return the same result as `eth_call` and also proofs of all USED accunts and their storages and serialized block headers
 
 trace
 ^^^^^
 
- - trace_block(numberOrTag)
+ trace_block(numberOrTag)
+  
 
- - [NOT IMPLEMENTED]trace_call(message, traceTypes, numberOrTag)
+ trace_call(message, traceTypes, numberOrTag)
+  [NOT IMPLEMENTED] 
 
- - [NOT IMPLEMENTED]trace_callMany(calls)
+ trace_callMany(calls)
+  [NOT IMPLEMENTED] 
 
- - [NOT IMPLEMENTED]trace_filter(fromBlock, toBlock, toAddress, after, count)
+ trace_filter(fromBlock, toBlock, toAddress, after, count)
+  [NOT IMPLEMENTED] 
 
- - [NOT IMPLEMENTED]trace_get(txHash, positions)
+ trace_get(txHash, positions)
+  [NOT IMPLEMENTED] 
 
- - [NOT IMPLEMENTED]trace_rawTransaction(data, traceTypes)
+ trace_rawTransaction(data, traceTypes)
+  Traces a call to eth_sendRawTransaction without making the call, returning the traces
 
- - trace_replayBlockTransactions(numberOrTag, traceTypes)
+ trace_replayBlockTransactions(numberOrTag, traceTypes)
+  
 
- - trace_replayTransaction(txHash, traceTypes)
+ trace_replayTransaction(txHash, traceTypes)
+  
 
- - trace_transaction(txHash)
+ trace_transaction(txHash)
+  
 
 txpool
 ^^^^^^
 
- - txpool_content()
+ txpool_content()
+  <description missing>
 
- - txpool_inspect()
+ txpool_inspect()
+  <description missing>
 
- - txpool_status()
+ txpool_status()
+  <description missing>
 
 web3
 ^^^^
 
- - web3_clientVersion()
+ web3_clientVersion()
+  <description missing>
 
- - web3_sha3(data)
+ web3_sha3(data)
+  <description missing>
 

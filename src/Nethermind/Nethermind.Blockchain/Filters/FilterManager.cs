@@ -1,29 +1,29 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using Nethermind.Blockchain.TxPools;
+using Nethermind.Blockchain.Find;
+using Nethermind.Blockchain.Processing;
 using Nethermind.Core;
+using Nethermind.Core.Attributes;
 using Nethermind.Core.Crypto;
-using Nethermind.Dirichlet.Numerics;
 using Nethermind.Logging;
+using Nethermind.TxPool;
 
 namespace Nethermind.Blockchain.Filters
 {
@@ -43,7 +43,10 @@ namespace Nethermind.Blockchain.Filters
         private readonly ILogger _logger;
         private long _logIndex;
 
-        public FilterManager(IFilterStore filterStore, IBlockProcessor blockProcessor, ITxPool txPool,
+        public FilterManager(
+            IFilterStore filterStore,
+            IBlockProcessor blockProcessor,
+            ITxPool txPool,
             ILogManager logManager)
         {
             _filterStore = filterStore ?? throw new ArgumentNullException(nameof(filterStore));
@@ -251,7 +254,7 @@ namespace Nethermind.Blockchain.Filters
             for (var i = 0; i < txReceipt.Logs.Length; i++)
             {
                 var logEntry = txReceipt.Logs[i];
-                var filterLog = CreateLog(filter, txReceipt, logEntry, logIndex++);
+                var filterLog = CreateLog(filter, txReceipt, logEntry, logIndex++, i);
                 if (!(filterLog is null))
                 {
                     logs.Add(filterLog);
@@ -266,15 +269,15 @@ namespace Nethermind.Blockchain.Filters
             if (_logger.IsDebug) _logger.Debug($"Filter with id: '{filter.Id}' contains {logs.Count} logs.");
         }
 
-        private FilterLog CreateLog(LogFilter logFilter, TxReceipt txReceipt, LogEntry logEntry, long index)
+        private FilterLog CreateLog(LogFilter logFilter, TxReceipt txReceipt, LogEntry logEntry, long index, int transactionLogIndex)
         {
-            if (logFilter.FromBlock.Type == FilterBlockType.BlockNumber &&
+            if (logFilter.FromBlock.Type == BlockParameterType.BlockNumber &&
                 logFilter.FromBlock.BlockNumber > txReceipt.BlockNumber)
             {
                 return null;
             }
 
-            if (logFilter.ToBlock.Type == FilterBlockType.BlockNumber && logFilter.ToBlock.BlockNumber < txReceipt.BlockNumber)
+            if (logFilter.ToBlock.Type == BlockParameterType.BlockNumber && logFilter.ToBlock.BlockNumber < txReceipt.BlockNumber)
             {
                 return null;
             }
@@ -284,21 +287,21 @@ namespace Nethermind.Blockchain.Filters
                 return null;
             }
 
-            if (logFilter.FromBlock.Type == FilterBlockType.Earliest
-                || logFilter.FromBlock.Type == FilterBlockType.Pending
-                || logFilter.ToBlock.Type == FilterBlockType.Earliest
-                || logFilter.ToBlock.Type == FilterBlockType.Pending)
+            if (logFilter.FromBlock.Type == BlockParameterType.Earliest
+                || logFilter.FromBlock.Type == BlockParameterType.Pending
+                || logFilter.ToBlock.Type == BlockParameterType.Earliest
+                || logFilter.ToBlock.Type == BlockParameterType.Pending)
             {
-                return new FilterLog(index, txReceipt, logEntry);
+                return new FilterLog(index, transactionLogIndex, txReceipt, logEntry);
             }
 
-            if (logFilter.FromBlock.Type == FilterBlockType.Latest || logFilter.ToBlock.Type == FilterBlockType.Latest)
+            if (logFilter.FromBlock.Type == BlockParameterType.Latest || logFilter.ToBlock.Type == BlockParameterType.Latest)
             {
                 //TODO: check if is last mined block
-                return new FilterLog(index, txReceipt, logEntry);
+                return new FilterLog(index, transactionLogIndex, txReceipt, logEntry);
             }
 
-            return new FilterLog(index, txReceipt, logEntry);
+            return new FilterLog(index, transactionLogIndex, txReceipt, logEntry);
         }
     }
 }

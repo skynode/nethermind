@@ -16,7 +16,6 @@
 
 using System;
 using FluentAssertions;
-using Nethermind.Blockchain.Filters.Topics;
 using Nethermind.Blockchain.Test.Builders;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
@@ -36,7 +35,7 @@ namespace Nethermind.Blockchain.Test.Filters
                 .WithAddress(null)
                 .Build();
 
-            filter.Matches(Bloom.Empty).Should().BeTrue();
+            filter.Matches(Core.Bloom.Empty).Should().BeTrue();
         }
         
         [Test]
@@ -70,7 +69,7 @@ namespace Nethermind.Blockchain.Test.Filters
                 .WithTopicExpressions(TestTopicExpressions.Any)
                 .Build();
 
-            filter.Matches(Bloom.Empty).Should().BeTrue();
+            filter.Matches(Core.Bloom.Empty).Should().BeTrue();
         }
         
         [Test]
@@ -219,9 +218,9 @@ namespace Nethermind.Blockchain.Test.Filters
             filter.Matches(bloom).Should().BeFalse();
         }
 
-        private Bloom GetBloom(params LogEntry[] logEntries)
+        private Core.Bloom GetBloom(params LogEntry[] logEntries)
         {
-            var bloom = new Bloom();
+            var bloom = new Core.Bloom();
             bloom.Add(logEntries);
             return bloom;
         }

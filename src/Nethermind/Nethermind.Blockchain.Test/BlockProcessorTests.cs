@@ -1,32 +1,34 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
+using System.Collections.Generic;
+using Nethermind.Blockchain.Processing;
 using Nethermind.Blockchain.Receipts;
 using Nethermind.Blockchain.Rewards;
-using Nethermind.Blockchain.TxPools;
+using Nethermind.Blockchain.Test.Validators;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
-using Nethermind.Core.Specs;
+using Nethermind.Specs;
 using Nethermind.Core.Test.Builders;
+using Nethermind.Db;
 using Nethermind.Evm;
 using Nethermind.Evm.Tracing;
 using Nethermind.Logging;
-using Nethermind.Store;
+using Nethermind.State;
+using Nethermind.TxPool;
 using NSubstitute;
 using NUnit.Framework;
 
@@ -40,7 +42,6 @@ namespace Nethermind.Blockchain.Test
         {
             ISnapshotableDb stateDb = new StateDb();
             ISnapshotableDb codeDb = new StateDb();
-            IDb traceDb = new MemDb();
             IStateProvider stateProvider = new StateProvider(stateDb, codeDb, LimboLogs.Instance);
             ITransactionProcessor transactionProcessor = Substitute.For<ITransactionProcessor>();
             BlockProcessor processor = new BlockProcessor(
@@ -50,16 +51,15 @@ namespace Nethermind.Blockchain.Test
                 transactionProcessor,
                 stateDb,
                 codeDb,
-                traceDb,
                 stateProvider,
                 new StorageProvider(stateDb, stateProvider, LimboLogs.Instance),
                 NullTxPool.Instance,
-                NullReceiptStorage.Instance, 
+                NullReceiptStorage.Instance,
                 LimboLogs.Instance);
 
             BlockHeader header = Build.A.BlockHeader.WithAuthor(TestItem.AddressD).TestObject;
             Block block = Build.A.Block.WithHeader(header).TestObject;
-            Block[] processedBlocks = processor.Process(Keccak.EmptyTreeHash, new [] {block}, ProcessingOptions.None, NullBlockTracer.Instance);
+            Block[] processedBlocks = processor.Process(Keccak.EmptyTreeHash, new List<Block> {block}, ProcessingOptions.None, NullBlockTracer.Instance);
             Assert.AreEqual(1, processedBlocks.Length, "length");
             Assert.AreEqual(block.Author, processedBlocks[0].Author, "author");
         }

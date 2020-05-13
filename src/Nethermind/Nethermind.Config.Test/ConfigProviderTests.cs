@@ -1,24 +1,23 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using Nethermind.Core.Extensions;
 using Nethermind.JsonRpc;
 using Nethermind.KeyStore.Config;
@@ -40,13 +39,23 @@ namespace Nethermind.Config.Test
             var statsConfig = new StatsConfig();
         }
 
-
         [Test]
         public void Can_read_without_sources()
         {
             ConfigProvider configProvider = new ConfigProvider();
             IStatsConfig statsConfig = configProvider.GetConfig<IStatsConfig>();
             Assert.AreEqual(1000500L, statsConfig.PredefinedReputation);
+        }
+
+        public int DefaultTestProperty { get; set; } = 5;
+        
+        [Test]
+        public void Can_read_defaults_from_registered_categories()
+        {
+            ConfigProvider configProvider = new ConfigProvider();
+            configProvider.RegisterCategory("Nananana", typeof(DefaultConfigProviderTests));
+            var result = configProvider.GetRawValue("Nananana", nameof(DefaultTestProperty));
+            Assert.AreEqual(5, result);
         }
 
         [Test]

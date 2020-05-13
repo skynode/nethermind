@@ -1,20 +1,18 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Buffers.Binary;
@@ -51,6 +49,7 @@ namespace Nethermind.Abi
             }
 
             Length = length;
+            CSharpType = GetCSharpType();
         }
 
         public int Length { get; }
@@ -61,16 +60,34 @@ namespace Nethermind.Abi
 
         public override (object, int) Decode(byte[] data, int position, bool packed)
         {
-            BigInteger lengthData = data.Slice(position, (packed ? LengthInBytes : UInt256.LengthInBytes)).ToUnsignedBigInteger();
-            return (lengthData, position + (packed ? LengthInBytes : UInt256.LengthInBytes));
+            var (value, length) = DecodeUInt(data, position, packed);
+            
+            switch (Length)
+            {
+                case { } n when n <= 8:
+                    return ((byte) value, length);
+                case { } n when n <= 16:
+                    return ((ushort) value, length);
+                case { } n when n <= 32:
+                    return ((uint) value, length);
+                case { } n when n <= 64:
+                    return ((ulong) value, length);
+                case { } n when n <= 128:
+                    return ((UInt128) value, length);
+                case { } n when n <= 256:
+                    return ((UInt256) value, length);
+                default:
+                    return (value, length);
+            }
         }
 
         public (BigInteger, int) DecodeUInt(byte[] data, int position, bool packed)
         {
-            return ((BigInteger, int)) Decode(data, position, packed);
+            BigInteger lengthData = data.Slice(position, (packed ? LengthInBytes : UInt256.LengthInBytes)).ToUnsignedBigInteger();
+            return (lengthData, position + (packed ? LengthInBytes : UInt256.LengthInBytes));
         }
 
-        public override byte[] Encode(object arg, bool packed)
+        public override byte[] Encode(object? arg, bool packed)
         {
             Span<byte> bytes = null;
             if (arg is UInt256 uint256)
@@ -96,6 +113,11 @@ namespace Nethermind.Abi
                 bytes = new byte[8];
                 BinaryPrimitives.WriteInt64BigEndian(bytes, longInput);
             }
+            else if (arg is ulong ulongInput)
+            {
+                bytes = new byte[8];
+                BinaryPrimitives.WriteUInt64BigEndian(bytes, ulongInput);
+            }
             else if (arg is short shortInput)
             {
                 bytes = new byte[8];
@@ -114,6 +136,27 @@ namespace Nethermind.Abi
             return bytes.PadLeft(packed ? LengthInBytes : UInt256.LengthInBytes);
         }
 
-        public override Type CSharpType { get; } = typeof(BigInteger);
+        public override Type CSharpType { get; }
+        
+        private Type GetCSharpType()
+        {
+            switch (Length)
+            {
+                case { } n when n <= 8:
+                    return typeof(byte);
+                case { } n when n <= 16:
+                    return typeof(ushort);
+                case { } n when n <= 32:
+                    return typeof(uint);
+                case { } n when n <= 64:
+                    return typeof(ulong);
+                case { } n when n <= 128:
+                    return typeof(UInt128);
+                case { } n when n <= 256:
+                    return typeof(UInt256);
+                default:
+                    return typeof(BigInteger);
+            }
+        }
     }
 }

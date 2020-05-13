@@ -1,20 +1,18 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Net;
@@ -23,20 +21,17 @@ using System.Threading;
 using System.Threading.Tasks;
 using DotNetty.Buffers;
 using DotNetty.Codecs;
-using DotNetty.Common;
 using DotNetty.Common.Concurrency;
-using DotNetty.Common.Internal.Logging;
 using DotNetty.Handlers.Logging;
 using DotNetty.Transport.Bootstrapping;
 using DotNetty.Transport.Channels;
 using DotNetty.Transport.Channels.Sockets;
-using Microsoft.Extensions.Logging.Console;
 using Nethermind.Core.Crypto;
 using Nethermind.Logging;
+using Nethermind.Network.Config;
 using Nethermind.Network.P2P;
 using Nethermind.Network.Rlpx.Handshake;
 using Nethermind.Stats.Model;
-using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 
 namespace Nethermind.Network.Rlpx
 {
@@ -112,7 +107,7 @@ namespace Nethermind.Network.Rlpx
                         if (aggregateException?.InnerException is SocketException socketException
                             && socketException.ErrorCode == 10048)
                         {
-                            if(_logger.IsError) _logger.Error($"Port {LocalPort} is in use. You can change the port used by adding: --InitConfig.P2PPort 30303");    
+                            if(_logger.IsError) _logger.Error($"Port {LocalPort} is in use. You can change the port used by adding: --{nameof(NetworkConfig).Replace("Config", "")}.{nameof(NetworkConfig.P2PPort)} 30303");    
                         }
                         else
                         {
@@ -153,9 +148,10 @@ namespace Nethermind.Network.Rlpx
                 Session session = new Session(LocalPort, _logManager, ch, node);
                 InitializeChannel(ch, session);
             }));
-            var connectTask = clientBootstrap.ConnectAsync(node.Address);
+
+            Task<IChannel> connectTask = clientBootstrap.ConnectAsync(node.Address);
             CancellationTokenSource delayCancellation = new CancellationTokenSource();
-            var firstTask = await Task.WhenAny(connectTask, Task.Delay(Timeouts.InitialConnection.Add(TimeSpan.FromSeconds(10)), delayCancellation.Token));
+            Task firstTask = await Task.WhenAny(connectTask, Task.Delay(Timeouts.InitialConnection.Add(TimeSpan.FromSeconds(2)), delayCancellation.Token));
             if (firstTask != connectTask)
             {
                 if (_logger.IsTrace) _logger.Trace($"|NetworkTrace| {node:s} OUT connection timed out");
@@ -196,7 +192,7 @@ namespace Nethermind.Network.Rlpx
             SessionCreated?.Invoke(this, new SessionEventArgs(session));
 
             HandshakeRole role = session.Direction == ConnectionDirection.In ? HandshakeRole.Recipient : HandshakeRole.Initiator;
-            var handshakeHandler = new NettyHandshakeHandler(_serializationService, _handshakeService, session, role, _logManager, _group);
+            NettyHandshakeHandler handshakeHandler = new NettyHandshakeHandler(_serializationService, _handshakeService, session, role, _logManager, _group);
 
             IChannelPipeline pipeline = channel.Pipeline;
             pipeline.AddLast(new LoggingHandler(session.Direction.ToString().ToUpper(), DotNetty.Handlers.Logging.LogLevel.TRACE));
@@ -209,7 +205,7 @@ namespace Nethermind.Network.Rlpx
             channel.CloseCompletion.ContinueWith(x =>
             {
                 if (_logger.IsTrace) _logger.Trace($"|NetworkTrace| {session} channel disconnected");
-                session.Disconnect(DisconnectReason.ClientQuitting, DisconnectType.Remote, "channel disconnected");
+                session.MarkDisconnected(DisconnectReason.ClientQuitting, DisconnectType.Remote, "channel disconnected");
             });
         }
 
@@ -234,9 +230,9 @@ namespace Nethermind.Network.Rlpx
             if (_logger.IsDebug) _logger.Debug("Closed _bootstrapChannel");
 
             // every [quietPeriod] we check if there were any event in the loop - if none then we can shutdown
-            var quietPeriod = TimeSpan.FromMilliseconds(100);
-            var nettyCloseTimeout = TimeSpan.FromMilliseconds(1000);
-            var closingTask = Task.WhenAll(
+            TimeSpan quietPeriod = TimeSpan.FromMilliseconds(100);
+            TimeSpan nettyCloseTimeout = TimeSpan.FromMilliseconds(1000);
+            Task closingTask = Task.WhenAll(
                 _bossGroup.ShutdownGracefullyAsync(quietPeriod, nettyCloseTimeout),
                 _workerGroup.ShutdownGracefullyAsync(nettyCloseTimeout, nettyCloseTimeout));
 

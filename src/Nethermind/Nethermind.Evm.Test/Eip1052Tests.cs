@@ -1,25 +1,24 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
 using Nethermind.Core.Extensions;
 using Nethermind.Core.Specs;
+using Nethermind.Specs;
 using Nethermind.Core.Test.Builders;
 using Nethermind.Dirichlet.Numerics;
 using Nethermind.Evm.Precompiles;
@@ -221,7 +220,7 @@ namespace Nethermind.Evm.Test
         {
             byte[] code = Prepare.EvmCode
                 .Create(Bytes.Empty, 0)
-                .PushData(Address.OfContract(Recipient, 0))
+                .PushData(ContractAddress.From(Recipient, 0))
                 .Op(Instruction.EXTCODEHASH)
                 .PushData(0)
                 .Op(Instruction.SSTORE)
@@ -231,7 +230,7 @@ namespace Nethermind.Evm.Test
 
             // todo: so far EIP does not define whether it should be zero or empty data
             AssertStorage(0, Keccak.OfAnEmptyString);
-            Assert.True(TestState.AccountExists(Address.OfContract(Recipient, 0)),
+            Assert.True(TestState.AccountExists(ContractAddress.From(Recipient, 0)),
                 "did not test the right thing - it was not a newly created empty account scenario");
         }
 
@@ -259,7 +258,7 @@ namespace Nethermind.Evm.Test
             
             byte[] code = Prepare.EvmCode
                 .Call(TestItem.AddressC, 50000)
-                .PushData(Address.OfContract(TestItem.AddressC, 0))
+                .PushData(ContractAddress.From(TestItem.AddressC, 0))
                 .Op(Instruction.EXTCODEHASH)
                 .PushData(0)
                 .Op(Instruction.SSTORE)
@@ -287,7 +286,7 @@ namespace Nethermind.Evm.Test
 
             byte[] code = Prepare.EvmCode
                 .Call(TestItem.AddressC, 50000)
-                .PushData(Address.OfContract(TestItem.AddressC, 0))
+                .PushData(ContractAddress.From(TestItem.AddressC, 0))
                 .Op(Instruction.EXTCODEHASH)
                 .PushData(0)
                 .Op(Instruction.SSTORE)

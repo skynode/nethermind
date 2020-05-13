@@ -16,6 +16,8 @@
 
 using System;
 using System.Buffers.Binary;
+using System.Linq;
+using Nethermind.Core2;
 using Nethermind.Core2.Containers;
 using Nethermind.Core2.Crypto;
 using Nethermind.Core2.Types;
@@ -24,28 +26,45 @@ namespace Nethermind.Ssz
 {
     public static partial class Ssz
     {
-        public static void Encode(Span<byte> span, IndexedAttestation container)
+        public const int IndexedAttestationDynamicOffset = sizeof(uint) + Ssz.AttestationDataLength + Ssz.BlsSignatureLength;
+
+        public static int IndexedAttestationLength(IndexedAttestation? value)
         {
-            if (span.Length != IndexedAttestation.SszLength(container))
+            if (value is null)
             {
-                ThrowTargetLength<IndexedAttestation>(span.Length, IndexedAttestation.SszLength(container));
+                return 0;
+            }
+            
+            return Ssz.IndexedAttestationDynamicOffset + (value.AttestingIndices?.Count ?? 0) * Ssz.ValidatorIndexLength;
+        }
+
+        public static void Encode(Span<byte> span, IndexedAttestation? container)
+        {
+            if (container is null)
+            {
+                return;
+            }
+            
+            if (span.Length != Ssz.IndexedAttestationLength(container))
+            {
+                ThrowTargetLength<IndexedAttestation>(span.Length, Ssz.IndexedAttestationLength(container));
             }
 
             int offset = 0;
-            int dynamicOffset = IndexedAttestation.SszDynamicOffset;
-            Encode(span, container.AttestingIndices, ref offset, ref dynamicOffset);
+            int dynamicOffset = Ssz.IndexedAttestationDynamicOffset;
+            Encode(span, container.AttestingIndices.ToArray(), ref offset, ref dynamicOffset);
             Encode(span, container.Data, ref offset);
             Encode(span, container.Signature, ref offset);
         }
 
-        public static IndexedAttestation DecodeIndexedAttestation(Span<byte> span)
+        public static IndexedAttestation DecodeIndexedAttestation(ReadOnlySpan<byte> span)
         {
-            IndexedAttestation container = new IndexedAttestation();
             int offset = 0;
             DecodeDynamicOffset(span, ref offset, out int dynamicOffset1);
-            container.AttestingIndices = DecodeValidatorIndexes(span.Slice(dynamicOffset1));
-            container.Data = DecodeAttestationData(span, ref offset);
-            container.Signature = DecodeBlsSignature(span, ref offset);
+            ValidatorIndex[] attestingIndices = DecodeValidatorIndexes(span.Slice(dynamicOffset1));
+            AttestationData data = DecodeAttestationData(span, ref offset);
+            BlsSignature signature = DecodeBlsSignature(span, ref offset);
+            IndexedAttestation container = new IndexedAttestation(attestingIndices, data, signature);
             return container;
         }
     }

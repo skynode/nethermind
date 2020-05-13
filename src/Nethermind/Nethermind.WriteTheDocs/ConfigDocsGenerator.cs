@@ -1,20 +1,18 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Collections.Generic;
@@ -31,7 +29,7 @@ namespace Nethermind.WriteTheDocs
         private static List<string> _assemblyNames = new List<string>
         {
             "Nethermind.Blockchain",
-            "Nethermind.Clique",
+            "Nethermind.Consensus.Clique",
             "Nethermind.Db",
             "Nethermind.EthStats",
             "Nethermind.JsonRpc",
@@ -94,32 +92,37 @@ Use '/' as the path separator so the configs can be shared between all platforms
                     PropertyInfo interfaceProperty = configInterface.GetProperty(propertyInfo.Name);
                     if (interfaceProperty == null)
                     {
-                        Console.WriteLine($"Property {propertyInfo.Name} is missing from interface {configInterface.Name}.");
-                    }
-                    
-                    ConfigItemAttribute attribute = interfaceProperty.GetCustomAttribute<ConfigItemAttribute>();
-                    string defaultValue = attribute == null ? "[MISSING_DOCS]" : attribute.DefaultValue;
-
-                    if (propertyIndex == properties.Length)
-                    {
-                        exampleBuilder.AppendLine($"              \"{propertyInfo.Name}\" : {defaultValue}");
+                        if (propertyInfo.GetCustomAttribute<ObsoleteAttribute>() == null)
+                        {
+                            Console.WriteLine($"Property {propertyInfo.Name} is missing from interface {configInterface.Name}.");
+                        }
                     }
                     else
                     {
-                        exampleBuilder.AppendLine($"              \"{propertyInfo.Name}\" : {defaultValue},");
-                    }
+                        ConfigItemAttribute attribute = interfaceProperty.GetCustomAttribute<ConfigItemAttribute>();
+                        string defaultValue = attribute == null ? "[MISSING_DOCS]" : attribute.DefaultValue;
 
-                    if (attribute == null)
-                    {
-                        descriptionsBuilder.AppendLine($" {propertyInfo.Name}").AppendLine();
-                        continue;
-                    }
+                        if (propertyIndex == properties.Length)
+                        {
+                            exampleBuilder.AppendLine($"              \"{propertyInfo.Name}\" : {defaultValue}");
+                        }
+                        else
+                        {
+                            exampleBuilder.AppendLine($"              \"{propertyInfo.Name}\" : {defaultValue},");
+                        }
 
-                    descriptionsBuilder
-                        .AppendLine($" {propertyInfo.Name}")
-                        .AppendLine($"   {attribute.Description}")
-                        .AppendLine($"   default value: {defaultValue}")
-                        .AppendLine();
+                        if (attribute == null)
+                        {
+                            descriptionsBuilder.AppendLine($" {propertyInfo.Name}").AppendLine();
+                            continue;
+                        }
+
+                        descriptionsBuilder
+                            .AppendLine($" {propertyInfo.Name}")
+                            .AppendLine($"   {attribute.Description}")
+                            .AppendLine($"   default value: {defaultValue}")
+                            .AppendLine();
+                    }
                 }
 
                 exampleBuilder.AppendLine("        },");
@@ -131,7 +134,8 @@ Use '/' as the path separator so the configs can be shared between all platforms
 
             Console.WriteLine(result);
             File.WriteAllText("configuration.rst", result);
-            File.WriteAllText("../../../../../../docs/source/configuration.rst", result);
+            string sourceDir = DocsDirFinder.FindDocsDir();
+            File.WriteAllText(Path.Combine(sourceDir, "configuration.rst"), result);
         }
     }
 }

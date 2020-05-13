@@ -1,20 +1,18 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Collections.Generic;
@@ -29,8 +27,8 @@ namespace Nethermind.DataMarketplace.Core.Domain
     public interface INdmPeer : IDisposable
     {
         PublicKey NodeId { get; }
-        Address ConsumerAddress { get; }
-        Address ProviderAddress { get; }
+        Address? ConsumerAddress { get; }
+        Address? ProviderAddress { get; }
         bool IsConsumer { get; }
         bool IsProvider { get; }
         void ChangeConsumerAddress(Address address);
@@ -43,13 +41,13 @@ namespace Nethermind.DataMarketplace.Core.Domain
             CancellationToken? token = null);
 
         void SendFinishSession(Keccak depositId);
-        void SendEnableDataStream(Keccak depositId, string client, string[] args);
+        void SendEnableDataStream(Keccak depositId, string client, string?[] args);
         void SendDisableDataStream(Keccak depositId, string client);
         void SendDataDeliveryReceipt(Keccak depositId, DataDeliveryReceipt receipt);
         Task<FaucetResponse> SendRequestEthAsync(Address address, UInt256 value, CancellationToken? token = null);
         void SendRequestDepositApproval(Keccak assetId, Address consumer, string kyc);
 
-        Task<IReadOnlyList<DepositApproval>> SendGetDepositApprovals(Keccak dataAssetId = null,
+        Task<IReadOnlyList<DepositApproval>> SendGetDepositApprovals(Keccak? dataAssetId = null,
             bool onlyPending = false, CancellationToken? token = null);
     }
 }

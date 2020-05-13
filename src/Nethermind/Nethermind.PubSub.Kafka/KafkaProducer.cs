@@ -1,30 +1,30 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using Confluent.Kafka;
 using Nethermind.Blockchain;
 using Nethermind.Logging;
 using Nethermind.PubSub.Kafka.Avro;
 using Nethermind.PubSub.Kafka.TypeProducers;
+using Nethermind.PubSub.Models;
 
 namespace Nethermind.PubSub.Kafka
 {
@@ -95,24 +95,24 @@ namespace Nethermind.PubSub.Kafka
             switch (_kafkaConfig.SecurityProtocol?.ToLowerInvariant())
             {
                 case "plaintext":
-                    config.SecurityProtocol = SecurityProtocolType.Plaintext;
+                    config.SecurityProtocol = SecurityProtocol.Plaintext;
                     break;
                 case "sasl_plaintext":
-                    config.SecurityProtocol = SecurityProtocolType.Sasl_Plaintext;
+                    config.SecurityProtocol = SecurityProtocol.SaslPlaintext;
                     break;
                 case "sasl_ssl":
-                    config.SecurityProtocol = SecurityProtocolType.Sasl_Ssl;
+                    config.SecurityProtocol = SecurityProtocol.SaslSsl;
                     config.SslKeyLocation = _kafkaConfig.SslKeyLocation;
                     break;
                 case "ssl":
-                    config.SecurityProtocol = SecurityProtocolType.Ssl;
+                    config.SecurityProtocol = SecurityProtocol.Ssl;
                     config.SslKeyLocation = _kafkaConfig.SslKeyLocation;
                     break;
             }
 
             if (_kafkaConfig.SaslEnabled)
             {
-                config.SaslMechanism = SaslMechanismType.Plain;
+                config.SaslMechanism = SaslMechanism.Plain;
                 config.SaslUsername = _kafkaConfig.SaslUsername;
                 config.SaslPassword = _kafkaConfig.SaslPassword;
             }
@@ -194,7 +194,7 @@ namespace Nethermind.PubSub.Kafka
             => new Dictionary<Type, string>
             {
                 [typeof(Core.Block)] = _kafkaConfig.TopicBlocks,
-                [typeof(Core.FullTransaction)] = _kafkaConfig.TopicTransactions,
+                [typeof(FullTransaction)] = _kafkaConfig.TopicTransactions,
                 [typeof(Core.TxReceipt)] = _kafkaConfig.TopicReceipts,
             };
     }

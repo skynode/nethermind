@@ -24,8 +24,10 @@ using Ethereum.Test.Base;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
 using Nethermind.Core.Specs;
+using Nethermind.Crypto;
 using Nethermind.Dirichlet.Numerics;
 using Nethermind.Logging;
+using Nethermind.Specs;
 using Newtonsoft.Json;
 using NUnit.Framework;
 
@@ -40,7 +42,7 @@ namespace Ethereum.KeyAddress.Test
         public void SetUp()
         {
             Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
-            _ecdsa = new EthereumEcdsa(OlympicSpecProvider.Instance, NullLogManager.Instance);
+            _ecdsa = new EthereumEcdsa(OlympicSpecProvider.Instance, LimboLogs.Instance);
         }
 
         private static IEnumerable<KeyAddressTest> LoadTests()

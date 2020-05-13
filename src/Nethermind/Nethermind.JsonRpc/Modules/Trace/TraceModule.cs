@@ -1,123 +1,192 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Linq;
 using Nethermind.Blockchain;
+using Nethermind.Blockchain.Find;
+using Nethermind.Blockchain.Receipts;
+using Nethermind.Blockchain.Tracing;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
-using Nethermind.Evm.Tracing;
-using Nethermind.Facade;
+using Nethermind.Evm.Tracing.ParityStyle;
 using Nethermind.JsonRpc.Data;
-using Nethermind.Logging;
+using Nethermind.Serialization.Rlp;
 
 namespace Nethermind.JsonRpc.Modules.Trace
 {
     public class TraceModule : ITraceModule
     {
-        private readonly IBlockchainBridge _blockchainBridge;
+        private readonly IReceiptFinder _receiptFinder;
         private readonly ITracer _tracer;
+        private readonly IBlockFinder _blockFinder;
+        private readonly TransactionDecoder _txDecoder = new TransactionDecoder();
 
-        public TraceModule(IBlockchainBridge blockchainBridge, ILogManager logManager, ITracer tracer)
+        public TraceModule(IReceiptFinder receiptFinder, ITracer tracer, IBlockFinder blockFinder)
         {
-            _blockchainBridge = blockchainBridge ?? throw new ArgumentNullException(nameof(blockchainBridge));
+            _receiptFinder = receiptFinder ?? throw new ArgumentNullException(nameof(receiptFinder));
             _tracer = tracer ?? throw new ArgumentNullException(nameof(tracer));
+            _blockFinder = blockFinder ?? throw new ArgumentNullException(nameof(blockFinder));
         }
 
-        private ParityTraceTypes GetParityTypes(string[] types)
+        private static ParityTraceTypes GetParityTypes(string[] types)
         {
             return types.Select(s => (ParityTraceTypes) Enum.Parse(typeof(ParityTraceTypes), s, true)).Aggregate((t1, t2) => t1 | t2);
         }
 
-        public ResultWrapper<ParityLikeTxTrace> trace_call(TransactionForRpc message, string[] traceTypes, BlockParameter quantity)
+        public ResultWrapper<ParityTxTraceFromReplay> trace_call(TransactionForRpc message, string[] traceTypes, BlockParameter blockParameter)
+        {
+            Transaction tx = message.ToTransaction();
+            return TraceTx(tx, traceTypes, blockParameter);
+        }
+
+        public ResultWrapper<ParityTxTraceFromReplay[]> trace_callMany((TransactionForRpc message, string[] traceTypes, BlockParameter numberOrTag)[] a)
         {
             throw new NotImplementedException();
         }
 
-        public ResultWrapper<ParityLikeTxTrace[]> trace_callMany((TransactionForRpc message, string[] traceTypes, BlockParameter numberOrTag)[] a)
+        public ResultWrapper<ParityTxTraceFromReplay> trace_rawTransaction(byte[] data, string[] traceTypes)
+        {
+            Transaction tx = _txDecoder.Decode(new RlpStream(data));
+            return TraceTx(tx, traceTypes, BlockParameter.Latest);
+        }
+
+        private ResultWrapper<ParityTxTraceFromReplay> TraceTx(Transaction tx, string[] traceTypes, BlockParameter blockParameter)
+        {
+            SearchResult<BlockHeader> headerSearch = _blockFinder.SearchForHeader(blockParameter);
+            if (headerSearch.IsError)
+            {
+                return ResultWrapper<ParityTxTraceFromReplay>.Fail(headerSearch);
+            }
+
+            BlockHeader header = headerSearch.Object;
+
+            if (header.IsGenesis)
+            {
+                header = new BlockHeader(
+                    header.Hash,
+                    Keccak.OfAnEmptySequenceRlp,
+                    Address.Zero,
+                    header.Difficulty,
+                    header.Number + 1,
+                    header.GasLimit,
+                    header.Timestamp + 1,
+                    header.ExtraData);
+
+                header.TotalDifficulty = 2 * header.Difficulty;
+            }
+
+            Block block = new Block(header, new[] {tx}, Enumerable.Empty<BlockHeader>());
+
+            ParityLikeTxTrace[] result = TraceBlock(block, GetParityTypes(traceTypes));
+            return ResultWrapper<ParityTxTraceFromReplay>.Success(new ParityTxTraceFromReplay(result.SingleOrDefault()));
+        }
+
+        public ResultWrapper<ParityTxTraceFromReplay> trace_replayTransaction(Keccak txHash, string[] traceTypes)
+        {
+            SearchResult<Keccak> blockHashSearch = _receiptFinder.SearchForReceiptBlockHash(txHash);
+            if (blockHashSearch.IsError)
+            {
+                return ResultWrapper<ParityTxTraceFromReplay>.Fail(blockHashSearch);
+            }
+
+            SearchResult<Block> blockSearch = _blockFinder.SearchForBlock(new BlockParameter(blockHashSearch.Object));
+            if (blockSearch.IsError)
+            {
+                return ResultWrapper<ParityTxTraceFromReplay>.Fail(blockSearch);
+            }
+
+            Block block = blockSearch.Object;
+
+            ParityLikeTxTrace txTrace = TraceTx(block, txHash, GetParityTypes(traceTypes));
+            return ResultWrapper<ParityTxTraceFromReplay>.Success(new ParityTxTraceFromReplay(txTrace));
+        }
+
+        public ResultWrapper<ParityTxTraceFromReplay[]> trace_replayBlockTransactions(BlockParameter blockParameter, string[] traceTypes)
+        {
+            SearchResult<Block> blockSearch = _blockFinder.SearchForBlock(blockParameter);
+            if (blockSearch.IsError)
+            {
+                return ResultWrapper<ParityTxTraceFromReplay[]>.Fail(blockSearch);
+            }
+
+            Block block = blockSearch.Object;
+
+            ParityLikeTxTrace[] txTraces = TraceBlock(block, GetParityTypes(traceTypes));
+
+            // ReSharper disable once CoVariantArrayConversion
+            return ResultWrapper<ParityTxTraceFromReplay[]>.Success(txTraces.Select(t => new ParityTxTraceFromReplay(t, true)).ToArray());
+        }
+
+        public ResultWrapper<ParityTxTraceFromStore[]> trace_filter(BlockParameter fromBlock, BlockParameter toBlock, Address toAddress, int after, int count)
         {
             throw new NotImplementedException();
         }
 
-        public ResultWrapper<ParityLikeTxTrace> trace_rawTransaction(byte[] data, string[] traceTypes)
+        public ResultWrapper<ParityTxTraceFromStore[]> trace_block(BlockParameter blockParameter)
         {
-            ParityLikeTxTrace result = _tracer.ParityTraceRawTransaction(data, GetParityTypes(traceTypes));
-            return ResultWrapper<ParityLikeTxTrace>.Success(result);
-        }
-
-        public ResultWrapper<ParityLikeTxTrace> trace_replayTransaction(Keccak txHash, string[] traceTypes)
-        {
-            return ResultWrapper<ParityLikeTxTrace>.Success(_tracer.ParityTrace(txHash, GetParityTypes(traceTypes)));
-        }
-
-        public ResultWrapper<ParityLikeTxTrace[]> trace_replayBlockTransactions(BlockParameter blockParameter, string[] traceTypes)
-        {
-            Block block;
-            try
+            SearchResult<Block> blockSearch = _blockFinder.SearchForBlock(blockParameter);
+            if (blockSearch.IsError)
             {
-                block = _blockchainBridge.GetBlock(blockParameter, true, true);
-                if (block is null)
-                {
-                    return ResultWrapper<ParityLikeTxTrace[]>.Success(null);
-                }
-            }
-            catch (JsonRpcException ex)
-            {
-                return ResultWrapper<ParityLikeTxTrace[]>.Fail(ex.Message, ex.ErrorType, null);
+                return ResultWrapper<ParityTxTraceFromStore[]>.Fail(blockSearch);
             }
 
-            ParityLikeTxTrace[] result = _tracer.ParityTraceBlock(block.Hash, GetParityTypes(traceTypes));
-            return ResultWrapper<ParityLikeTxTrace[]>.Success(result);
+            Block block = blockSearch.Object;
+
+            ParityLikeTxTrace[] txTraces = TraceBlock(block, ParityTraceTypes.Trace | ParityTraceTypes.Rewards);
+            return ResultWrapper<ParityTxTraceFromStore[]>.Success(txTraces.SelectMany(ParityTxTraceFromStore.FromTxTrace).ToArray());
         }
 
-        public ResultWrapper<ParityLikeTxTrace[]> trace_filter(BlockParameter fromBlock, BlockParameter toBlock, Address toAddress, int after, int count)
+        public ResultWrapper<ParityTxTraceFromStore[]> trace_get(Keccak txHash, int[] positions)
         {
             throw new NotImplementedException();
         }
 
-        public ResultWrapper<ParityLikeTxTrace[]> trace_block(BlockParameter blockParameter)
+        public ResultWrapper<ParityTxTraceFromStore[]> trace_transaction(Keccak txHash)
         {
-            Block block;
-            try
+            SearchResult<Keccak> blockHashSearch = _receiptFinder.SearchForReceiptBlockHash(txHash);
+            if (blockHashSearch.IsError)
             {
-                block = _blockchainBridge.GetBlock(blockParameter, true, true);
-                if (block is null)
-                {
-                    return ResultWrapper<ParityLikeTxTrace[]>.Success(null);
-                }
+                return ResultWrapper<ParityTxTraceFromStore[]>.Fail(blockHashSearch);
             }
-            catch (JsonRpcException ex)
+            
+            SearchResult<Block> blockSearch = _blockFinder.SearchForBlock(new BlockParameter(blockHashSearch.Object));
+            if (blockSearch.IsError)
             {
-                return ResultWrapper<ParityLikeTxTrace[]>.Fail(ex.Message, ex.ErrorType, null);
+                return ResultWrapper<ParityTxTraceFromStore[]>.Fail(blockSearch);
             }
 
-            return ResultWrapper<ParityLikeTxTrace[]>.Success(_tracer.ParityTraceBlock(block.Hash,
-                ParityTraceTypes.Trace));
+            Block block = blockSearch.Object;
+
+            ParityLikeTxTrace txTrace = TraceTx(block, txHash, ParityTraceTypes.Trace | ParityTraceTypes.Rewards);
+            return ResultWrapper<ParityTxTraceFromStore[]>.Success(ParityTxTraceFromStore.FromTxTrace(txTrace));
         }
 
-        public ResultWrapper<ParityLikeTxTrace> trace_get(Keccak txHash, int[] positions)
+        private ParityLikeTxTrace[] TraceBlock(Block block, ParityTraceTypes traceTypes)
         {
-            throw new NotImplementedException();
+            ParityLikeBlockTracer listener = new ParityLikeBlockTracer(traceTypes);
+            _tracer.Trace(block, listener);
+            return listener.BuildResult().ToArray();
         }
 
-        public ResultWrapper<ParityLikeTxTrace> trace_transaction(Keccak txHash)
+        private ParityLikeTxTrace TraceTx(Block block, Keccak txHash, ParityTraceTypes traceTypes)
         {
-            return ResultWrapper<ParityLikeTxTrace>.Success(_tracer.ParityTrace(txHash, ParityTraceTypes.Trace));
+            ParityLikeBlockTracer listener = new ParityLikeBlockTracer(txHash, traceTypes);
+            _tracer.Trace(block, listener);
+            return listener.BuildResult().SingleOrDefault();
         }
     }
 }

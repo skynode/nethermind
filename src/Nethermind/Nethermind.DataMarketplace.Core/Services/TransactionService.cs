@@ -19,6 +19,8 @@ using System.Numerics;
 using System.Threading.Tasks;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
+using Nethermind.DataMarketplace.Core.Configs;
+using Nethermind.DataMarketplace.Core.Services.Models;
 using Nethermind.Dirichlet.Numerics;
 using Nethermind.Logging;
 using Nethermind.Wallet;
@@ -66,21 +68,31 @@ namespace Nethermind.DataMarketplace.Core.Services
                 if (_logger.IsInfo) _logger.Info($"Updating transaction with hash: '{transactionHash}' value: {previousValue} wei -> {value} wei.");
             });
 
-        public Task<Keccak> CancelAsync(Keccak transactionHash)
-            => UpdateAsync(transactionHash, async transaction =>
+        public async Task<CanceledTransactionInfo> CancelAsync(Keccak transactionHash)
+        {
+            NdmConfig? config = await _configManager.GetAsync(_configId);
+            uint multiplier = config?.CancelTransactionGasPricePercentageMultiplier ?? 0;
+            if (multiplier == 0)
             {
-                var config = await _configManager.GetAsync(_configId);
-                var multiplier = config.CancelTransactionGasPricePercentageMultiplier;
-                if (multiplier == 0)
-                {
-                    throw new InvalidOperationException("Multiplier for gas price when canceling transaction cannot be 0.");
-                }
-                
-                var gasPrice = multiplier *  (BigInteger)transaction.GasPrice / 100;
-                transaction.GasPrice = new UInt256(gasPrice);
+                throw new InvalidOperationException("Multiplier for gas price when canceling transaction cannot be 0.");
+            }
+
+            const long gasLimit = Transaction.BaseTxGasCost;
+            UInt256 gasPrice = 0; 
+            
+            var hash = await UpdateAsync(transactionHash, transaction =>
+            {
+                gasPrice = new UInt256(multiplier * (BigInteger) transaction.GasPrice / 100);
+                transaction.GasPrice = gasPrice;
+                transaction.GasLimit = gasLimit;
+                transaction.Data = null;
+                transaction.Init = null;
                 transaction.Value = 0;
                 if (_logger.IsInfo) _logger.Info($"Canceling transaction with hash: '{transactionHash}', gas price: {gasPrice} wei ({multiplier}% of original transaction).");
             });
+
+            return new CanceledTransactionInfo(hash, gasPrice, gasLimit);
+        }
 
         private async Task<Keccak> UpdateAsync(Keccak transactionHash, Action<Transaction> update)
         {
@@ -93,6 +105,11 @@ namespace Nethermind.DataMarketplace.Core.Services
             if (transactionDetails is null)
             {
                 throw new ArgumentException($"Transaction was not found for hash: '{transactionHash}'.", nameof(transactionHash));
+            }
+
+            if (!transactionDetails.IsPending)
+            {
+                throw new InvalidOperationException($"Transaction with hash: '{transactionHash}' is not pending.");
             }
             
             var transaction = transactionDetails.Transaction;

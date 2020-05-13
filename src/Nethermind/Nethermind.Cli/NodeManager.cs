@@ -1,32 +1,30 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Jint;
 using Jint.Native;
 using Jint.Native.Json;
-using Nethermind.Core;
+using Nethermind.Cli.Console;
 using Nethermind.JsonRpc.Client;
 using Nethermind.Logging;
+using Nethermind.Serialization.Json;
 
 namespace Nethermind.Cli
 {
@@ -35,16 +33,18 @@ namespace Nethermind.Cli
         private ICliEngine _cliEngine;
         private ILogManager _logManager;
         private IJsonSerializer _serializer;
+        private readonly ICliConsole _cliConsole;
         private JsonParser _jsonParser;
 
         private Dictionary<Uri, IJsonRpcClient> _clients = new Dictionary<Uri, IJsonRpcClient>();
 
         private IJsonRpcClient _currentClient;
 
-        public NodeManager(ICliEngine cliEngine, IJsonSerializer serializer, ILogManager logManager)
+        public NodeManager(ICliEngine cliEngine, IJsonSerializer serializer, ICliConsole cliConsole, ILogManager logManager)
         {
             _cliEngine = cliEngine ?? throw new ArgumentNullException(nameof(cliEngine));
             _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
+            _cliConsole = cliConsole ?? throw new ArgumentNullException(nameof(cliConsole));
             _logManager = logManager ?? throw new ArgumentNullException(nameof(logManager));
 
             _jsonParser = new JsonParser(_cliEngine.JintEngine);
@@ -52,6 +52,11 @@ namespace Nethermind.Cli
 
         public string CurrentUri { get; private set; }
 
+        public void SwitchClient(IJsonRpcClient client)
+        {
+            _currentClient = client;
+        }
+        
         public void SwitchUri(Uri uri)
         {
             CurrentUri = uri.ToString();
@@ -72,7 +77,7 @@ namespace Nethermind.Cli
                 object result = await _currentClient.Post<object>(method, parameters);
                 stopwatch.Stop();
                 decimal totalMicroseconds = stopwatch.ElapsedTicks * (1_000_000m / Stopwatch.Frequency);
-                Console.WriteLine($"Request complete in {totalMicroseconds}μs");
+                Colorful.Console.WriteLine($"Request complete in {totalMicroseconds}μs");
                 string resultString = result?.ToString();
                 if (resultString == "0x")
                 {
@@ -83,11 +88,17 @@ namespace Nethermind.Cli
             }
             catch (HttpRequestException e)
             {
-                CliConsole.WriteErrorLine(e.Message);
+                _cliConsole.WriteErrorLine("  " + e.Message);
+                _cliConsole.Write("  Use ");
+                _cliConsole.WriteKeyword("node");
+                _cliConsole.WriteLine(".switch(\"ip:port\") to change the target machine");
+                
+                _cliConsole.WriteLine("  Make sure that JSON RPC is enabled on the target machine (--JsonRpc.Enabled true)");
+                _cliConsole.WriteLine("  Make sure that firewall is open for the JSON RPC port on the target machine");
             }
             catch (Exception e)
             {
-                CliConsole.WriteException(e);
+                _cliConsole.WriteException(e);
             }
 
             return JsValue.Null;
@@ -107,16 +118,22 @@ namespace Nethermind.Cli
                 T result = await _currentClient.Post<T>(method, parameters);
                 stopwatch.Stop();
                 decimal totalMicroseconds = stopwatch.ElapsedTicks * (1_000_000m / Stopwatch.Frequency);
-                Console.WriteLine($"Request complete in {totalMicroseconds}μs");
+                Colorful.Console.WriteLine($"Request complete in {totalMicroseconds}μs");
                 return result;
             }
             catch (HttpRequestException e)
             {
-                CliConsole.WriteErrorLine(e.Message);
+                _cliConsole.WriteErrorLine("  " + e.Message);
+                _cliConsole.Write("  Use ");
+                _cliConsole.WriteKeyword("node");
+                _cliConsole.WriteLine(".switch(\"ip:port\") to change the target machine");
+                
+                _cliConsole.WriteLine("  Make sure that JSON RPC is enabled on the target machine (--JsonRpc.Enabled true)");
+                _cliConsole.WriteLine("  Make sure that firewall is open for the JSON RPC port on the target machine");
             }
             catch (Exception e)
             {
-                CliConsole.WriteException(e);
+                _cliConsole.WriteException(e);
             }
 
             return default;

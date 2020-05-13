@@ -1,20 +1,18 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System.Threading.Tasks;
 using Nethermind.Stats;
@@ -23,6 +21,7 @@ using NUnit.Framework;
 
 namespace Nethermind.Network.Test
 {
+    [Parallelizable(ParallelScope.Self)]
     [TestFixture]
     public class NodeStatsTests
     {
@@ -38,26 +37,30 @@ namespace Nethermind.Network.Test
             _config.CaptureNodeLatencyStatsEventHistory = true;
         }
 
-        [Test]
-        public void LatencyCaptureTest()
+        [TestCase(TransferSpeedType.Bodies)]
+        [TestCase(TransferSpeedType.Headers)]
+        [TestCase(TransferSpeedType.Receipts)]
+        [TestCase(TransferSpeedType.Latency)]
+        [TestCase(TransferSpeedType.NodeData)]
+        public void TransferSpeedCaptureTest(TransferSpeedType speedType)
         {
             _nodeStats = new NodeStatsLight(_node, _config);
             
-            _nodeStats.AddLatencyCaptureEvent(NodeLatencyStatType.BlockHeaders, 30);
-            _nodeStats.AddLatencyCaptureEvent(NodeLatencyStatType.BlockHeaders, 51);
-            _nodeStats.AddLatencyCaptureEvent(NodeLatencyStatType.BlockHeaders, 140);
-            _nodeStats.AddLatencyCaptureEvent(NodeLatencyStatType.BlockHeaders, 110);
-            _nodeStats.AddLatencyCaptureEvent(NodeLatencyStatType.BlockHeaders, 133);
-            _nodeStats.AddLatencyCaptureEvent(NodeLatencyStatType.BlockHeaders, 51);
-            _nodeStats.AddLatencyCaptureEvent(NodeLatencyStatType.BlockHeaders, 140);
-            _nodeStats.AddLatencyCaptureEvent(NodeLatencyStatType.BlockHeaders, 110);
-            _nodeStats.AddLatencyCaptureEvent(NodeLatencyStatType.BlockHeaders, 133);
-            _nodeStats.AddLatencyCaptureEvent(NodeLatencyStatType.BlockHeaders, 51);
-            _nodeStats.AddLatencyCaptureEvent(NodeLatencyStatType.BlockHeaders, 140);
-            _nodeStats.AddLatencyCaptureEvent(NodeLatencyStatType.BlockHeaders, 110);
-            _nodeStats.AddLatencyCaptureEvent(NodeLatencyStatType.BlockHeaders, 133);
+            _nodeStats.AddTransferSpeedCaptureEvent(speedType, 30);
+            _nodeStats.AddTransferSpeedCaptureEvent(speedType, 51);
+            _nodeStats.AddTransferSpeedCaptureEvent(speedType, 140);
+            _nodeStats.AddTransferSpeedCaptureEvent(speedType, 110);
+            _nodeStats.AddTransferSpeedCaptureEvent(speedType, 133);
+            _nodeStats.AddTransferSpeedCaptureEvent(speedType, 51);
+            _nodeStats.AddTransferSpeedCaptureEvent(speedType, 140);
+            _nodeStats.AddTransferSpeedCaptureEvent(speedType, 110);
+            _nodeStats.AddTransferSpeedCaptureEvent(speedType, 133);
+            _nodeStats.AddTransferSpeedCaptureEvent(speedType, 51);
+            _nodeStats.AddTransferSpeedCaptureEvent(speedType, 140);
+            _nodeStats.AddTransferSpeedCaptureEvent(speedType, 110);
+            _nodeStats.AddTransferSpeedCaptureEvent(speedType, 133);
 
-            var av = _nodeStats.GetAverageLatency(NodeLatencyStatType.BlockHeaders);
+            var av = _nodeStats.GetAverageTransferSpeed(speedType);
             Assert.AreEqual(102, av);
         }
 

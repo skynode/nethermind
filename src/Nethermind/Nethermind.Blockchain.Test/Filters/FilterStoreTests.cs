@@ -1,27 +1,25 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using FluentAssertions;
 using Nethermind.Blockchain.Filters;
-using Nethermind.Blockchain.Filters.Topics;
+using Nethermind.Blockchain.Find;
 using Nethermind.Core;
 using Nethermind.Core.Test.Builders;
 using NUnit.Framework;
@@ -45,7 +43,7 @@ namespace Nethermind.Blockchain.Test.Filters
         public void Can_save_and_load_log_filter()
         {
             FilterStore store = new FilterStore();
-            LogFilter filter = store.CreateLogFilter(new FilterBlock(1), new FilterBlock(2));
+            LogFilter filter = store.CreateLogFilter(new BlockParameter(1), new BlockParameter(2));
             store.SaveFilter(filter);
             Assert.True(store.FilterExists(0), "exists");
             Assert.AreEqual(FilterType.LogFilter, store.GetFilterType(filter.Id), "type");
@@ -68,7 +66,7 @@ namespace Nethermind.Blockchain.Test.Filters
 
             BlockFilter externalFilter = new BlockFilter(100, 1);
             store.SaveFilter(externalFilter);
-            LogFilter filter = store.CreateLogFilter(new FilterBlock(1), new FilterBlock(2));
+            LogFilter filter = store.CreateLogFilter(new BlockParameter(1), new BlockParameter(2));
             store.SaveFilter(filter);
 
             Assert.True(store.FilterExists(100), "exists 100");
@@ -96,7 +94,7 @@ namespace Nethermind.Blockchain.Test.Filters
             FilterStore store = new FilterStore();
             BlockFilter filter1 = store.CreateBlockFilter(1);
             store.SaveFilter(filter1);
-            LogFilter filter2 = store.CreateLogFilter(new FilterBlock(1), new FilterBlock(2));
+            LogFilter filter2 = store.CreateLogFilter(new BlockParameter(1), new BlockParameter(2));
             store.SaveFilter(filter2);
 
             LogFilter[] logFilters = store.GetFilters<LogFilter>();
@@ -122,8 +120,8 @@ namespace Nethermind.Blockchain.Test.Filters
         [TestCaseSource(nameof(CorrectlyCreatesAddressFilterTestCases))]
         public void Correctly_creates_address_filter(object address, AddressFilter expected)
         {
-            FilterBlock from = new FilterBlock(100);
-            FilterBlock to = new FilterBlock(FilterBlockType.Latest);
+            BlockParameter from = new BlockParameter(100);
+            BlockParameter to = new BlockParameter(BlockParameterType.Latest);
             FilterStore store = new FilterStore();
             LogFilter filter = store.CreateLogFilter(from, to, address);
             filter.AddressFilter.Should().BeEquivalentTo(expected);
@@ -144,8 +142,8 @@ namespace Nethermind.Blockchain.Test.Filters
         [TestCaseSource(nameof(CorrectlyCreatesTopicsFilterTestCases))]
         public void Correctly_creates_topics_filter(IEnumerable<object> topics)
         {
-            FilterBlock from = new FilterBlock(100);
-            FilterBlock to = new FilterBlock(FilterBlockType.Latest);
+            BlockParameter from = new BlockParameter(100);
+            BlockParameter to = new BlockParameter(BlockParameterType.Latest);
             FilterStore store = new FilterStore();
             LogFilter filter = store.CreateLogFilter(from, to, null, topics);
         }

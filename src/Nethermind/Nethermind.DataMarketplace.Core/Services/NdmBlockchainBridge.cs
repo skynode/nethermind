@@ -16,12 +16,12 @@
 
 using System;
 using System.Threading.Tasks;
-using Nethermind.Blockchain.TxPools;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
 using Nethermind.DataMarketplace.Core.Domain;
 using Nethermind.Dirichlet.Numerics;
 using Nethermind.Facade;
+using Nethermind.TxPool;
 
 namespace Nethermind.DataMarketplace.Core.Services
 {
@@ -45,18 +45,17 @@ namespace Nethermind.DataMarketplace.Core.Services
 
         public Task<byte[]> GetCodeAsync(Address address) => Task.FromResult(_blockchainBridge.GetCode(address));
 
-        public Task<Block> FindBlockAsync(Keccak blockHash) => Task.FromResult(_blockchainBridge.FindBlock(blockHash));
+        public Task<Block?> FindBlockAsync(Keccak blockHash) => Task.FromResult<Block?>(_blockchainBridge.FindBlock(blockHash));
 
-        public Task<Block> FindBlockAsync(long blockNumber) =>
-            Task.FromResult(_blockchainBridge.FindBlock(blockNumber));
+        public Task<Block?> FindBlockAsync(long blockNumber) =>
+            Task.FromResult<Block?>(_blockchainBridge.FindBlock(blockNumber));
 
-        public Task<Block> GetLatestBlockAsync()
+        public Task<Block?> GetLatestBlockAsync()
         {
-            var head = _blockchainBridge.Head;
-
+            Block head = _blockchainBridge.Head;
             return head is null
-                ? Task.FromResult<Block>(null)
-                : Task.FromResult(_blockchainBridge.FindBlock(head.Hash));
+                ? Task.FromResult<Block?>(null)
+                : Task.FromResult<Block?>(_blockchainBridge.FindBlock(head.Hash));
         }
 
         public Task<UInt256> GetNonceAsync(Address address) => Task.FromResult(_blockchainBridge.GetNonce(address));
@@ -64,24 +63,25 @@ namespace Nethermind.DataMarketplace.Core.Services
         public Task<UInt256> ReserveOwnTransactionNonceAsync(Address address)
             => Task.FromResult(_txPool.ReserveOwnTransactionNonce(address));
 
-        public Task<NdmTransaction> GetTransactionAsync(Keccak transactionHash)
+        public Task<NdmTransaction?> GetTransactionAsync(Keccak transactionHash)
         {
-            var (receipt, transaction) = _blockchainBridge.GetTransaction(transactionHash);
-            if (receipt is null || transaction is null)
+            (TxReceipt receipt, Transaction transaction) = _blockchainBridge.GetTransaction(transactionHash);
+            if (transaction is null)
             {
-                return Task.FromResult<NdmTransaction>(null);
+                return Task.FromResult<NdmTransaction?>(null);
             }
 
-            return Task.FromResult(new NdmTransaction(transaction, receipt.BlockNumber, receipt.BlockHash,
-                receipt.GasUsed));
+            var isPending = receipt is null;
+
+            return Task.FromResult<NdmTransaction?>(new NdmTransaction(transaction, isPending, receipt?.BlockNumber ?? 0,
+                receipt?.BlockHash, receipt?.GasUsed ?? 0));
         }
 
         public Task<int> GetNetworkIdAsync() => Task.FromResult(_blockchainBridge.GetNetworkId());
 
         public Task<byte[]> CallAsync(Transaction transaction)
         {
-            var callOutput = _blockchainBridge.Call(_blockchainBridge.Head, transaction);
-
+            var callOutput = _blockchainBridge.Call(_blockchainBridge.Head?.Header, transaction);
             return Task.FromResult(callOutput.OutputData ?? new byte[] {0});
         }
 
@@ -98,7 +98,7 @@ namespace Nethermind.DataMarketplace.Core.Services
             return Task.FromResult(callOutput.OutputData ?? new byte[] {0});
         }
 
-        public Task<Keccak> SendOwnTransactionAsync(Transaction transaction)
-            => Task.FromResult(_blockchainBridge.SendTransaction(transaction, true));
+        public Task<Keccak?> SendOwnTransactionAsync(Transaction transaction)
+            => Task.FromResult<Keccak?>(_blockchainBridge.SendTransaction(transaction, TxHandlingOptions.ManagedNonce | TxHandlingOptions.PersistentBroadcast));
     }
 }

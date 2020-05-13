@@ -3,6 +3,8 @@ Download
 
 You can download the latest packages for all supported platforms from `here <http://downloads.nethermind.io>`_.
 
+All available platforms can be found `here <https://nethermind.readthedocs.io/en/latest/platforms.html>`_.
+
 Windows
 ^^^^^^^
 
@@ -16,14 +18,21 @@ Linux (Ubuntu 16.04 or above)
 
 You have to replace ``[LINUX_PACKAGE_URL]`` and ``[LINUX_PACKAGE_FILENAME]`` with the actual values.
 
-**Ubuntu 19.04 has an unresolved compatibility issue!**
-
 Install dependencies
 --------------------
 
 ::
 
  sudo apt update && sudo apt install libsnappy-dev libc6-dev libc6 unzip
+
+Additionally for Ubuntu 16.04
+
+::
+
+    sudo add-apt-repository ppa:ubuntu-toolchain-r/test && \
+    sudo apt-get update && \
+    sudo apt-get install gcc-6 g++-6 && \
+    sudo apt install libzstd1
 
 Create a new user
 -----------------
@@ -126,7 +135,7 @@ enable autorun **(optional)**
 
  sudo systemctl enable nethermind
 
-MacOS (10.12+)
+MacOS (10.14+)
 ^^^^^^^^^^^^^^
 
  * brew install gmp && brew install snappy && brew install lz4
@@ -134,3 +143,4 @@ MacOS (10.12+)
  * unzip
  * cd into the folder
  * ./Nethermind.Launcher
+ * you may need to call brew install rocksdb if you have prblems with launching

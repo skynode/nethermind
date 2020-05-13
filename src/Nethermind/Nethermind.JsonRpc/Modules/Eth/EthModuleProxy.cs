@@ -15,19 +15,20 @@
 //  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Nethermind.Blockchain;
 using Nethermind.Blockchain.Filters;
+using Nethermind.Blockchain.Find;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
-using Nethermind.Core.Encoding;
 using Nethermind.Dirichlet.Numerics;
 using Nethermind.Facade.Proxy;
 using Nethermind.Facade.Proxy.Models;
 using Nethermind.JsonRpc.Data;
-using Nethermind.JsonRpc.Eip1186;
+using Nethermind.Serialization.Rlp;
+using Nethermind.State.Proofs;
 using Nethermind.Wallet;
 
 namespace Nethermind.JsonRpc.Modules.Eth
@@ -100,10 +101,8 @@ namespace Nethermind.JsonRpc.Modules.Eth
             throw new NotSupportedException();
         }
 
-        public ResultWrapper<UInt256?> eth_getTransactionCount(Address address, BlockParameter blockParameter)
-        {
-            throw new NotSupportedException();
-        }
+        public async Task<ResultWrapper<UInt256?>> eth_getTransactionCount(Address address, BlockParameter blockParameter)
+            => ResultWrapper<UInt256?>.From(await _proxy.eth_getTransactionCount(address, MapBlockParameter(blockParameter)));
 
         public ResultWrapper<UInt256?> eth_getBlockTransactionCountByHash(Keccak blockHash)
         {
@@ -137,7 +136,7 @@ namespace Nethermind.JsonRpc.Modules.Eth
 
         public async Task<ResultWrapper<Keccak>> eth_sendTransaction(TransactionForRpc transactionForRpc)
         {
-            var transaction = transactionForRpc.ToTransaction();
+            var transaction = transactionForRpc.ToTransactionWithDefaults();
             if (transaction.Signature is null)
             {
                 var chainIdResult = await _proxy.eth_chainId();
@@ -155,7 +154,7 @@ namespace Nethermind.JsonRpc.Modules.Eth
             => ResultWrapper<Keccak>.From(await _proxy.eth_sendRawTransaction(Rlp.Encode(transaction).Bytes));
 
 
-        public ResultWrapper<byte[]> eth_call(TransactionForRpc transactionCall, BlockParameter blockParameter = null)
+        public ResultWrapper<string> eth_call(TransactionForRpc transactionCall, BlockParameter blockParameter = null)
         {
             throw new NotSupportedException();
         }
@@ -177,6 +176,11 @@ namespace Nethermind.JsonRpc.Modules.Eth
         }
 
         public ResultWrapper<TransactionForRpc> eth_getTransactionByHash(Keccak transactionHash)
+        {
+            throw new NotSupportedException();
+        }
+
+        public ResultWrapper<TransactionForRpc[]> eth_pendingTransactions()
         {
             throw new NotSupportedException();
         }
@@ -290,7 +294,7 @@ namespace Nethermind.JsonRpc.Modules.Eth
                 To = receipt.To,
                 TransactionHash = receipt.TransactionHash,
                 TransactionIndex = (long)receipt.TransactionIndex,
-                LogsBloom = receipt.LogsBloom is null ? null : new Bloom(new BitArray(receipt.LogsBloom))
+                LogsBloom = receipt.LogsBloom is null ? null : new Bloom(receipt.LogsBloom)
             };
         }
 

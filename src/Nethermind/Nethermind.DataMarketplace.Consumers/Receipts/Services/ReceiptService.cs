@@ -1,27 +1,25 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System.Linq;
 using System.Threading.Tasks;
 using Nethermind.Abi;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
-using Nethermind.Core.Encoding;
+using Nethermind.Crypto;
 using Nethermind.DataMarketplace.Consumers.Deposits;
 using Nethermind.DataMarketplace.Consumers.Deposits.Domain;
 using Nethermind.DataMarketplace.Consumers.Providers;
@@ -31,6 +29,7 @@ using Nethermind.DataMarketplace.Consumers.Sessions.Repositories;
 using Nethermind.DataMarketplace.Core.Domain;
 using Nethermind.DataMarketplace.Core.Repositories;
 using Nethermind.Logging;
+using Nethermind.Serialization.Rlp;
 using Nethermind.Wallet;
 
 namespace Nethermind.DataMarketplace.Consumers.Receipts.Services
@@ -94,7 +93,7 @@ namespace Nethermind.DataMarketplace.Consumers.Receipts.Services
             }
 
             var receiptId = Keccak.Compute(Rlp.Encode(Rlp.Encode(depositId), Rlp.Encode(request.Number),
-                Rlp.Encode(_timestamper.EpochSeconds)));
+                Rlp.Encode(_timestamper.EpochSeconds)).Bytes);
             if (!_receiptRequestValidator.IsValid(request, session.UnpaidUnits, session.ConsumedUnits,
                 deposit.Deposit.Units))
             {
@@ -155,10 +154,10 @@ namespace Nethermind.DataMarketplace.Consumers.Receipts.Services
             if (_logger.IsInfo) _logger.Info($"Sent data delivery receipt for deposit: '{depositId}', range: [{request.UnitsRange.From}, {request.UnitsRange.To}].");
         }
 
-        private async Task<(DepositDetails deposit, ConsumerSession session)> TryGetDepositAndSessionAsync(
-            Keccak depositId, int fetchSessionRetries = 3, int fetchSessionRetryDelayMilliseconds = 3000)
+        private async Task<(DepositDetails? deposit, ConsumerSession? session)> TryGetDepositAndSessionAsync(
+            Keccak depositId, int fetchSessionRetries = 5, int fetchSessionRetryDelayMilliseconds = 3000)
         {
-            var deposit = await _depositProvider.GetAsync(depositId);
+            DepositDetails? deposit = await _depositProvider.GetAsync(depositId);
             if (deposit is null)
             {
                 if (_logger.IsInfo) _logger.Info($"Deposit: '{depositId}' was not found.");

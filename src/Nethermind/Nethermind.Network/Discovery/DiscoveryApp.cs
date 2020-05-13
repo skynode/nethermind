@@ -1,20 +1,18 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Collections.Generic;
@@ -28,8 +26,11 @@ using DotNetty.Handlers.Logging;
 using DotNetty.Transport.Bootstrapping;
 using DotNetty.Transport.Channels;
 using DotNetty.Transport.Channels.Sockets;
+using Nethermind.Config;
 using Nethermind.Core;
+using Nethermind.Core.Attributes;
 using Nethermind.Core.Crypto;
+using Nethermind.Crypto;
 using Nethermind.Logging;
 using Nethermind.Network.Config;
 using Nethermind.Network.Discovery.Lifecycle;
@@ -52,7 +53,6 @@ namespace Nethermind.Network.Discovery
         private readonly ICryptoRandom _cryptoRandom;
         private readonly INetworkStorage _discoveryStorage;
         private readonly INetworkConfig _networkConfig;
-        private readonly IPerfService _perfService;
 
         private Timer _discoveryTimer;
         private Timer _discoveryPersistenceTimer;
@@ -62,8 +62,7 @@ namespace Nethermind.Network.Discovery
         private NettyDiscoveryHandler _discoveryHandler;
         private Task _storageCommitTask;
 
-        public DiscoveryApp(
-            INodesLocator nodesLocator,
+        public DiscoveryApp(INodesLocator nodesLocator,
             IDiscoveryManager discoveryManager,
             INodeTable nodeTable,
             IMessageSerializationService messageSerializationService,
@@ -72,12 +71,10 @@ namespace Nethermind.Network.Discovery
             INetworkConfig networkConfig,
             IDiscoveryConfig discoveryConfig,
             ITimestamper timestamper,
-            ILogManager logManager,
-            IPerfService perfService)
+            ILogManager logManager)
         {
             _logManager = logManager ?? throw new ArgumentNullException(nameof(logManager));
             _logger = _logManager.GetClassLogger();
-            _perfService = perfService ?? throw new ArgumentNullException(nameof(perfService));
             _discoveryConfig = discoveryConfig ?? throw new ArgumentNullException(nameof(discoveryConfig));
             _timestamper = timestamper ?? throw new ArgumentNullException(nameof(timestamper));
             _nodesLocator = nodesLocator ?? throw new ArgumentNullException(nameof(nodesLocator));
@@ -91,7 +88,7 @@ namespace Nethermind.Network.Discovery
         }
 
         public event EventHandler<NodeEventArgs> NodeDiscovered;
-        
+
         public void Initialize(PublicKey masterPublicKey)
         {
             _discoveryManager.NodeDiscovered += OnNewNodeDiscovered;
@@ -114,7 +111,6 @@ namespace Nethermind.Network.Discovery
 
         public async Task StopAsync()
         {
-            var key = _perfService.StartPerfCalc();
             _appShutdownSource.Cancel();
             StopDiscoveryTimer();
             //StopRefreshTimer();
@@ -126,14 +122,13 @@ namespace Nethermind.Network.Discovery
                 {
                     if (x.IsFaulted)
                     {
-                        if (_logger.IsError) _logger.Error("Error during discovery persisntance stop.", x.Exception);
+                        if (_logger.IsError) _logger.Error("Error during discovery persistence stop.", x.Exception);
                     }
                 });
             }
 
             await StopUdpChannelAsync();
-            if(_logger.IsInfo) _logger.Info("Discovery shutdown complete.. please wait for all components to close");
-            _perfService.EndPerfCalc(key, "Close: DiscoveryApp");
+            if (_logger.IsInfo) _logger.Info("Discovery shutdown complete.. please wait for all components to close");
         }
 
         public void AddNodeToDiscovery(Node node)
@@ -143,22 +138,21 @@ namespace Nethermind.Network.Discovery
 
         private void InitializeUdpChannel()
         {
-            if(_logger.IsInfo) _logger.Info($"Discovery    : udp://{_networkConfig.ExternalIp}:{_networkConfig.DiscoveryPort}");
+            if(_logger.IsDebug) _logger.Debug($"Discovery    : udp://{_networkConfig.ExternalIp}:{_networkConfig.DiscoveryPort}");
+            ThisNodeInfo.AddInfo("Discovery    :", $"udp://{_networkConfig.ExternalIp}:{_networkConfig.DiscoveryPort}");
+            
             _group = new MultithreadEventLoopGroup(1);
-            var bootstrap = new Bootstrap();
-            bootstrap
-                .Group(_group);
+            Bootstrap bootstrap = new Bootstrap();
+            bootstrap.Group(_group);
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
-                bootstrap
-                    .ChannelFactory(() => new SocketDatagramChannel(AddressFamily.InterNetwork))
+                bootstrap.ChannelFactory(() => new SocketDatagramChannel(AddressFamily.InterNetwork))
                     .Handler(new ActionChannelInitializer<IDatagramChannel>(InitializeChannel));
             }
             else
             {
-                bootstrap
-                    .Channel<SocketDatagramChannel>()
+                bootstrap.Channel<SocketDatagramChannel>()
                     .Handler(new ActionChannelInitializer<IDatagramChannel>(InitializeChannel));
             }
 
@@ -173,15 +167,18 @@ namespace Nethermind.Network.Discovery
             _discoveryHandler = new NettyDiscoveryHandler(_discoveryManager, channel, _messageSerializationService, _timestamper, _logManager);
             _discoveryManager.MessageSender = _discoveryHandler;
             _discoveryHandler.OnChannelActivated += OnChannelActivated;
+            
             channel.Pipeline
                 .AddLast(new LoggingHandler(DotNetty.Handlers.Logging.LogLevel.INFO))
                 .AddLast(_discoveryHandler);
         }
 
         private CancellationTokenSource _appShutdownSource = new CancellationTokenSource();
-        
+
         private void OnChannelActivated(object sender, EventArgs e)
         {
+            if (_logger.IsDebug) _logger.Debug("Activated discovery channel.");
+
             //Make sure this is non blocking code, otherwise netty will not process messages
             Task.Run(() => OnChannelActivated(_appShutdownSource.Token)).ContinueWith
             (
@@ -192,7 +189,7 @@ namespace Nethermind.Network.Discovery
                         _logger.Info("Cannot activate channel.");
                         throw t.Exception;
                     }
-                    
+
                     if (t.IsCompleted && !_appShutdownSource.IsCancellationRequested)
                     {
                         _logger.Debug("Discovery App initialized.");
@@ -209,14 +206,14 @@ namespace Nethermind.Network.Discovery
                 AddPersistedNodes(cancellationToken);
 
                 //Step 2 - initialize bootnodes
-                if(_logger.IsDebug) _logger.Debug("Initializing bootnodes.");
+                if (_logger.IsDebug) _logger.Debug("Initializing bootnodes.");
                 while (true)
                 {
                     if (cancellationToken.IsCancellationRequested)
                     {
                         break;
                     }
-                    
+
                     if (await InitializeBootnodes(cancellationToken))
                     {
                         break;
@@ -228,31 +225,22 @@ namespace Nethermind.Network.Discovery
                     {
                         break;
                     }
-                    
+
                     _logger.Warn("Could not communicate with any nodes (bootnodes, trusted nodes, persisted nodes).");
-                    await Task.Delay(1000, cancellationToken); 
+                    await Task.Delay(1000, cancellationToken);
                 }
 
                 if (cancellationToken.IsCancellationRequested)
                 {
                     return;
                 }
-                
+
                 InitializeDiscoveryPersistenceTimer();
                 InitializeDiscoveryTimer();
-
-                await RunDiscoveryAsync(cancellationToken).ContinueWith(
-                    t =>
-                    {
-                        if (t.IsFaulted)
-                        {
-                            _logger.Error("Discovery error", t.Exception);            
-                        }
-                    });
             }
             catch (Exception e)
             {
-                _logger.Error("Error during discovery initialization", e);
+                if (_logger.IsDebug) _logger.Error("DEBUG/ERROR Error during discovery initialization", e);
             }
         }
 
@@ -263,14 +251,14 @@ namespace Nethermind.Network.Discovery
                 return;
             }
 
-            var nodes = _discoveryStorage.GetPersistedNodes();
-            foreach (var networkNode in nodes)
+            NetworkNode[] nodes = _discoveryStorage.GetPersistedNodes();
+            foreach (NetworkNode networkNode in nodes)
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
                     break;
                 }
-                
+
                 Node node;
                 try
                 {
@@ -278,38 +266,40 @@ namespace Nethermind.Network.Discovery
                 }
                 catch (Exception)
                 {
-                    if(_logger.IsDebug) _logger.Error($"ERROR/DEBUG peer could not be loaded for {networkNode.NodeId}@{networkNode.Host}:{networkNode.Port}");
+                    if (_logger.IsDebug) _logger.Error($"ERROR/DEBUG peer could not be loaded for {networkNode.NodeId}@{networkNode.Host}:{networkNode.Port}");
                     continue;
                 }
-                
-                var manager = _discoveryManager.GetNodeLifecycleManager(node, true);
+
+                INodeLifecycleManager manager = _discoveryManager.GetNodeLifecycleManager(node, true);
                 if (manager == null)
                 {
                     if (_logger.IsDebug)
                     {
                         _logger.Debug($"Skiping persisted node {networkNode.NodeId}@{networkNode.Host}:{networkNode.Port}, manager couldnt be created");
                     }
-                    
-                    continue;;
+
+                    continue;
+                    ;
                 }
+
                 manager.NodeStats.CurrentPersistedNodeReputation = networkNode.Reputation;
                 if (_logger.IsTrace) _logger.Trace($"Adding persisted node {networkNode.NodeId}@{networkNode.Host}:{networkNode.Port}");
             }
 
-            if (_logger.IsInfo) _logger.Info($"Added persisted discovery nodes: {nodes.Length}");
+            if (_logger.IsDebug) _logger.Debug($"Added persisted discovery nodes: {nodes.Length}");
         }
 
         private void InitializeDiscoveryTimer()
         {
-            if(_logger.IsDebug) _logger.Debug("Starting discovery timer");
-            _discoveryTimer = new Timer(1000) {AutoReset = false};
+            if (_logger.IsDebug) _logger.Debug("Starting discovery timer");
+            _discoveryTimer = new Timer(10) {AutoReset = false};
             _discoveryTimer.Elapsed += (sender, e) =>
             {
                 try
                 {
                     _discoveryTimer.Enabled = false;
                     RunDiscoveryProcess();
-                    var nodesCountAfterDiscovery = _nodeTable.Buckets.Sum(x => x.Items.Count);
+                    int nodesCountAfterDiscovery = _nodeTable.Buckets.Sum(x => x.BondedItems.Count);
                     _discoveryTimer.Interval = nodesCountAfterDiscovery < 100 ? 10 : nodesCountAfterDiscovery < 1000 ? 100 : _discoveryConfig.DiscoveryInterval;
                 }
                 catch (Exception exception)
@@ -323,12 +313,12 @@ namespace Nethermind.Network.Discovery
             };
             _discoveryTimer.Start();
         }
-        
+
         private void StopDiscoveryTimer()
         {
             try
             {
-                if(_logger.IsDebug) _logger.Debug("Stopping discovery timer");
+                if (_logger.IsDebug) _logger.Debug("Stopping discovery timer");
                 _discoveryTimer?.Stop();
             }
             catch (Exception e)
@@ -339,7 +329,7 @@ namespace Nethermind.Network.Discovery
 
         private void InitializeDiscoveryPersistenceTimer()
         {
-            if(_logger.IsDebug) _logger.Debug("Starting discovery persistence timer");
+            if (_logger.IsDebug) _logger.Debug("Starting discovery persistence timer");
             _discoveryPersistenceTimer = new Timer(_discoveryConfig.DiscoveryPersistenceInterval) {AutoReset = false};
             _discoveryPersistenceTimer.Elapsed += (sender, e) =>
             {
@@ -364,7 +354,7 @@ namespace Nethermind.Network.Discovery
         {
             try
             {
-                if(_logger.IsDebug) _logger.Debug("Stopping discovery persistence timer");
+                if (_logger.IsDebug) _logger.Debug("Stopping discovery persistence timer");
                 _discoveryPersistenceTimer?.Stop();
             }
             catch (Exception e)
@@ -381,7 +371,7 @@ namespace Nethermind.Network.Discovery
                 {
                     _discoveryHandler.OnChannelActivated -= OnChannelActivated;
                 }
-                
+
                 if (_bindingTask != null)
                 {
                     await _bindingTask; // if we are still starting
@@ -392,7 +382,8 @@ namespace Nethermind.Network.Discovery
                 {
                     return;
                 }
-                var closeTask = _channel.CloseAsync();
+
+                Task closeTask = _channel.CloseAsync();
                 CancellationTokenSource delayCancellation = new CancellationTokenSource();
                 if (await Task.WhenAny(closeTask, Task.Delay(_discoveryConfig.UdpChannelCloseTimeout, delayCancellation.Token)) != closeTask)
                 {
@@ -411,21 +402,21 @@ namespace Nethermind.Network.Discovery
 
         private async Task<bool> InitializeBootnodes(CancellationToken cancellationToken)
         {
-            var bootnodes = NetworkNode.ParseNodes(_discoveryConfig.Bootnodes, _logger);
+            NetworkNode[] bootnodes = NetworkNode.ParseNodes(_discoveryConfig.Bootnodes, _logger);
             if (!bootnodes.Any())
             {
                 if (_logger.IsWarn) _logger.Warn("No bootnodes specified in configuration");
                 return true;
             }
-            
-            var managers = new List<INodeLifecycleManager>();
-            for (var i = 0; i < bootnodes.Length; i++)
+
+            List<INodeLifecycleManager> managers = new List<INodeLifecycleManager>();
+            for (int i = 0; i < bootnodes.Length; i++)
             {
-                var bootnode = bootnodes[i];
-                var node = bootnode.NodeId == null
+                NetworkNode bootnode = bootnodes[i];
+                Node node = bootnode.NodeId == null
                     ? new Node(bootnode.Host, bootnode.Port)
                     : new Node(bootnode.NodeId, bootnode.Host, bootnode.Port, true);
-                var manager = _discoveryManager.GetNodeLifecycleManager(node);
+                INodeLifecycleManager manager = _discoveryManager.GetNodeLifecycleManager(node);
                 if (manager != null)
                 {
                     managers.Add(manager);
@@ -437,15 +428,15 @@ namespace Nethermind.Network.Discovery
             }
 
             //Wait for pong message to come back from Boot nodes
-            var maxWaitTime = _discoveryConfig.BootnodePongTimeout;
-            var itemTime = maxWaitTime / 100;
-            for (var i = 0; i < 100; i++)
+            int maxWaitTime = _discoveryConfig.BootnodePongTimeout;
+            int itemTime = maxWaitTime / 100;
+            for (int i = 0; i < 100; i++)
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
                     break;
                 }
-                
+
                 if (managers.Any(x => x.State == NodeLifecycleState.Active))
                 {
                     break;
@@ -453,12 +444,12 @@ namespace Nethermind.Network.Discovery
 
                 if (_discoveryManager.GetOrAddNodeLifecycleManagers(x => x.State == NodeLifecycleState.Active).Any())
                 {
-                    if(_logger.IsTrace) _logger.Trace("Was not able to connect to any of the bootnodes, but successfully connected to at least one persisted node.");
+                    if (_logger.IsTrace) _logger.Trace("Was not able to connect to any of the bootnodes, but successfully connected to at least one persisted node.");
                     break;
                 }
 
                 if (_logger.IsTrace) _logger.Trace($"Waiting {itemTime} ms for bootnodes to respond");
-                
+
                 try
                 {
                     await Task.Delay(itemTime, cancellationToken);
@@ -469,10 +460,10 @@ namespace Nethermind.Network.Discovery
                 }
             }
 
-            var reachedNodeCounter = 0;
-            for (var i = 0; i < managers.Count; i++)
+            int reachedNodeCounter = 0;
+            for (int i = 0; i < managers.Count; i++)
             {
-                var manager = managers[i];
+                INodeLifecycleManager manager = managers[i];
                 if (manager.State != NodeLifecycleState.Active)
                 {
                     if (_logger.IsTrace) _logger.Trace($"Could not reach bootnode: {manager.ManagedNode.Host}:{manager.ManagedNode.Port}");
@@ -490,18 +481,25 @@ namespace Nethermind.Network.Discovery
 
         private void RunDiscoveryProcess()
         {
-            var task = Task.Run(async () =>
+            Task disc =RunDiscoveryAsync(_appShutdownSource.Token).ContinueWith(t =>
             {
-                await RunDiscoveryAsync(_appShutdownSource.Token);
-                await RunRefreshAsync(_appShutdownSource.Token);
-            }).ContinueWith(x =>
-            {
-                if (x.IsFaulted && _logger.IsError)
+                if (t.IsFaulted)
                 {
-                    _logger.Error($"Error during discovery process: {x.Exception}");
+                    _logger.Error($"Error during discovery process: {t.Exception}");
                 }
             });
-            task.Wait();
+
+            disc.Wait();
+            
+            Task refresh = RunRefreshAsync(_appShutdownSource.Token).ContinueWith(t =>
+            {
+                if (t.IsFaulted)
+                {
+                    _logger.Error($"Error during discovery refresh process: {t.Exception}");
+                }
+            });
+            
+            refresh.Wait();
         }
 
         private async Task RunDiscoveryAsync(CancellationToken cancellationToken)
@@ -512,8 +510,8 @@ namespace Nethermind.Network.Discovery
 
         private async Task RunRefreshAsync(CancellationToken cancellationToken)
         {
-            if (_logger.IsTrace) _logger.Trace("Running refresh process.");            
-            var randomId = _cryptoRandom.GenerateRandomBytes(64);
+            if (_logger.IsTrace) _logger.Trace("Running refresh process.");
+            byte[] randomId = _cryptoRandom.GenerateRandomBytes(64);
             await _nodesLocator.LocateNodesAsync(randomId, cancellationToken);
         }
 
@@ -522,7 +520,7 @@ namespace Nethermind.Network.Discovery
         {
             try
             {
-                var managers = _discoveryManager.GetOrAddNodeLifecycleManagers();
+                IReadOnlyCollection<INodeLifecycleManager> managers = _discoveryManager.GetOrAddNodeLifecycleManagers();
                 //we need to update all notes to update reputation
                 _discoveryStorage.UpdateNodes(managers.Select(x => new NetworkNode(x.ManagedNode.Id, x.ManagedNode.Host, x.ManagedNode.Port, x.NodeStats.NewPersistedNodeReputation)).ToArray());
 
@@ -538,7 +536,7 @@ namespace Nethermind.Network.Discovery
                     _discoveryStorage.StartBatch();
                 });
 
-                var task = _storageCommitTask.ContinueWith(x =>
+                Task task = _storageCommitTask.ContinueWith(x =>
                 {
                     if (x.IsFaulted && _logger.IsError)
                     {
@@ -553,7 +551,7 @@ namespace Nethermind.Network.Discovery
                 _logger.Error($"Error during discovery commit: {ex}");
             }
         }
-        
+
         private void OnNewNodeDiscovered(object sender, NodeEventArgs e)
         {
             e.Node.AddedToDiscovery = true;

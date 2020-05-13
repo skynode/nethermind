@@ -1,20 +1,18 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Collections.Generic;
@@ -24,9 +22,10 @@ using System.Reflection;
 using System.Runtime.Loader;
 using Microsoft.Extensions.CommandLineUtils;
 using Nethermind.Config;
+using Nethermind.Core;
 using Nethermind.Logging;
 using NLog;
-using ILogger = Nethermind.Logging.ILogger;
+using NLog.Config;
 
 namespace Nethermind.Runner
 {
@@ -35,22 +34,22 @@ namespace Nethermind.Runner
         private const string DefaultConfigsDirectory = "configs";
         private readonly string _defaultConfigFile = Path.Combine(DefaultConfigsDirectory, "mainnet.cfg");
 
-        public RunnerApp(ILogger logger) : base(logger)
+        protected override (CommandLineApplication, Func<IConfigProvider>, Func<string?>) BuildCommandLineApp()
         {
-        }
- 
-        protected override (CommandLineApplication, Func<IConfigProvider>, Func<string>) BuildCommandLineApp()
-        {
-            var pluginsDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "plugins");
+            string pluginsDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory ?? string.Empty, "plugins");
             if (Directory.Exists(pluginsDirectory))
             {
                 var plugins = Directory.GetFiles(pluginsDirectory, "*.dll");
-                foreach (var plugin in plugins)
+                foreach (string plugin in plugins)
                 {
-                    var pluginName = plugin.Contains("/") ? plugin.Split("/").Last() : plugin.Split("\\").Last();
-                    if (Logger.IsInfo) Logger.Info($"Loading an external assembly: {pluginName}");
+                    Console.WriteLine($"Loading plugin {plugin} from {pluginsDirectory}");
+                    string pluginName = plugin.Contains("/") ? plugin.Split("/").Last() : plugin.Split("\\").Last();
                     AssemblyLoadContext.Default.LoadFromAssemblyPath(plugin);
                 }
+            }
+            else
+            {
+                Console.WriteLine($"Could not find plugins directory at: {pluginsDirectory}");
             }
 
             var loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies().ToList();
@@ -60,29 +59,61 @@ namespace Nethermind.Runner
                 .Where(y => loadedAssemblies.Any((a) => a.FullName == y.FullName) == false)
                 .ToList()
                 .ForEach(x => loadedAssemblies.Add(AppDomain.CurrentDomain.Load(x)));
-            
-            var configurationType = typeof(IConfig);
-            var configs = AppDomain.CurrentDomain.GetAssemblies()
+
+            Type configurationType = typeof(IConfig);
+            List<Type> configTypes = AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(a => a.GetTypes())
                 .Where(t => configurationType.IsAssignableFrom(t) && !t.IsInterface)
                 .ToList();
-            
-            var app = new CommandLineApplication {Name = "Nethermind.Runner"};
+
+            CommandLineApplication app = new CommandLineApplication {Name = "Nethermind.Runner"};
             app.HelpOption("-?|-h|--help");
-            var configFile = app.Option("-c|--config <configFile>", "config file path", CommandOptionType.SingleValue);
-            var dbBasePath = app.Option("-d|--baseDbPath <baseDbPath>", "base db path", CommandOptionType.SingleValue);
-            var logLevelOverride = app.Option("-l|--log <logLevel>", "log level", CommandOptionType.SingleValue);
-            
-            foreach (Type configType in configs)
+            app.VersionOption("-v|--version", () => ClientVersion.Version, () => ClientVersion.Description);
+            CommandOption configFile = app.Option("-c|--config <configFile>", "config file path", CommandOptionType.SingleValue);
+            CommandOption dbBasePath = app.Option("-d|--baseDbPath <baseDbPath>", "base db path", CommandOptionType.SingleValue);
+            CommandOption logLevelOverride = app.Option("-l|--log <logLevel>", "log level", CommandOptionType.SingleValue);
+            CommandOption configsDirectory = app.Option("-cd|--configsDirectory <configsDirectory>", "configs directory", CommandOptionType.SingleValue);
+            CommandOption loggerConfigSource = app.Option("-lcs|--loggerConfigSource <loggerConfigSource>", "path to the NLog config file", CommandOptionType.SingleValue);
+
+            foreach (Type configType in configTypes)
             {
+                if (configType == null)
+                {
+                    continue;
+                }
+                
                 foreach (PropertyInfo propertyInfo in configType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
                 {
-                    app.Option($"--{configType.Name.Replace("Config", String.Empty)}.{propertyInfo.Name}", $"{configType.Name}.{propertyInfo.Name}", CommandOptionType.SingleValue);
+                    Type? interfaceType = configType.GetInterface("I" + configType.Name);
+                    PropertyInfo? interfaceProperty = interfaceType?.GetProperty(propertyInfo.Name);
+
+                    ConfigItemAttribute? configItemAttribute = interfaceProperty?.GetCustomAttribute<ConfigItemAttribute>();
+                    app.Option($"--{configType.Name.Replace("Config", String.Empty)}.{propertyInfo.Name}", $"{(configItemAttribute == null ? "<missing documentation>" : configItemAttribute.Description ?? "<missing documentation>")}", CommandOptionType.SingleValue);
                 }
             }
 
             IConfigProvider BuildConfigProvider()
             {
+                if (loggerConfigSource.HasValue())
+                {
+                    string nLogPath = loggerConfigSource.Value();
+                    Console.WriteLine($"Loading NLog configuration file from {nLogPath}.");
+
+                    try
+                    {
+                        LogManager.Configuration = new XmlLoggingConfiguration(nLogPath);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine($"Failed to load NLog configuration from {nLogPath}. {e}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"Loading standard NLog.config file from {"NLog.config".GetApplicationResourcePath()}.");
+                    LogManager.Configuration = new XmlLoggingConfiguration("NLog.config".GetApplicationResourcePath());
+                }
+
                 // TODO: dynamically switch log levels from CLI!
                 if (logLevelOverride.HasValue())
                 {
@@ -109,10 +140,10 @@ namespace Nethermind.Runner
                             nLogLevel = NLog.LogLevel.Trace;
                             break;
                     }
-                    
+
                     Console.WriteLine($"Enabling log level override: {logLevel.ToUpperInvariant()}");
 
-                    foreach (var rule in LogManager.Configuration.LoggingRules)
+                    foreach (LoggingRule rule in LogManager.Configuration.LoggingRules)
                     {
                         rule.DisableLoggingForLevels(NLog.LogLevel.Trace, nLogLevel);
                         rule.EnableLoggingForLevels(nLogLevel, NLog.LogLevel.Off);
@@ -136,19 +167,26 @@ namespace Nethermind.Runner
                 configProvider.AddSource(argsSource);
                 configProvider.AddSource(new EnvConfigSource());
 
+                string configDir = configsDirectory.HasValue() ? configsDirectory.Value() : DefaultConfigsDirectory;
                 string configFilePath = configFile.HasValue() ? configFile.Value() : _defaultConfigFile;
-                var configPathVariable = Environment.GetEnvironmentVariable("NETHERMIND_CONFIG");
+                string? configPathVariable = Environment.GetEnvironmentVariable("NETHERMIND_CONFIG");
                 if (!string.IsNullOrWhiteSpace(configPathVariable))
                 {
                     configFilePath = configPathVariable;
                 }
 
-                configFilePath = configFilePath.GetApplicationResourcePath();
+                if (configDir == DefaultConfigsDirectory)
+                {
+                    configFilePath = configFilePath.GetApplicationResourcePath();
+                }
+                else
+                {
+                    configFilePath = Path.Combine(configDir, string.Concat(configFilePath));
+                }
 
                 if (!Path.HasExtension(configFilePath) && !configFilePath.Contains(Path.DirectorySeparatorChar))
                 {
-                    string redirectedConfigPath = Path.Combine(DefaultConfigsDirectory, string.Concat(configFilePath, ".cfg"));
-                    Console.WriteLine($"Redirecting config {configFilePath} to {redirectedConfigPath}");
+                    string redirectedConfigPath = Path.Combine(configDir, string.Concat(configFilePath, ".cfg"));
                     configFilePath = redirectedConfigPath;
                     if (!File.Exists(configFilePath))
                     {
@@ -160,14 +198,13 @@ namespace Nethermind.Runner
                 {
                     configFilePath = string.Concat(configFilePath, ".cfg");
                 }
-                
+
                 // Fallback to "{executingDirectory}/configs/{configFile}" if "configs" catalog was not specified.
                 if (!File.Exists(configFilePath))
                 {
-                    var configName = Path.GetFileName(configFilePath);
-                    var configDirectory = Path.GetDirectoryName(configFilePath);
-                    string redirectedConfigPath = Path.Combine(configDirectory, DefaultConfigsDirectory, configName);
-                    Console.WriteLine($"Redirecting config {configFilePath} to {redirectedConfigPath}");
+                    string configName = Path.GetFileName(configFilePath);
+                    string? configDirectory = Path.GetDirectoryName(configFilePath);
+                    string redirectedConfigPath = Path.Combine(configDirectory ?? string.Empty, configDir, configName);
                     configFilePath = redirectedConfigPath;
                     if (!File.Exists(configFilePath))
                     {
@@ -177,10 +214,12 @@ namespace Nethermind.Runner
 
                 Console.WriteLine($"Reading config file from {configFilePath}");
                 configProvider.AddSource(new JsonConfigSource(configFilePath));
+                configTypes.ForEach(configType => configProvider.RegisterCategory(configType.Name, configType));
+
                 return configProvider;
             }
 
-            string GetBaseDbPath()
+            string? GetBaseDbPath()
             {
                 return dbBasePath.HasValue() ? dbBasePath.Value() : null;
             }

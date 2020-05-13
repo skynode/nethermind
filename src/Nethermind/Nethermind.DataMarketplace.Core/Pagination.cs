@@ -1,20 +1,18 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Collections.Generic;
@@ -25,12 +23,12 @@ namespace Nethermind.DataMarketplace.Core
 {
     public static class Pagination
     {
-        public static PagedResult<T> Paginate<T>(this IEnumerable<T> values, PagedQueryBase query)
+        public static PagedResult<T> Paginate<T>(this T[] values, PagedQueryBase query)
             => Paginate(values, query.Page, query.Results);
 
-        public static PagedResult<T> Paginate<T>(this IEnumerable<T> values, int page = 1, int results = 10)
+        public static PagedResult<T> Paginate<T>(this T[] values, int page = 1, int results = 10)
         {
-            var totalResults = values.Count();
+            int totalResults = values.Count();
             if (totalResults == 0)
             {
                 return PagedResult<T>.Empty;
@@ -46,9 +44,9 @@ namespace Nethermind.DataMarketplace.Core
                 results = 10;
             }
 
-            var totalPages = (int) Math.Ceiling((double) totalResults / results);
-            var skip = (page - 1) * results;
-            var items = values.Skip(skip).Take(results).ToList();
+            int totalPages = (int) Math.Ceiling((double) totalResults / results);
+            int skip = (page - 1) * results;
+            List<T> items = values.Skip(skip).Take(results).ToList();
 
             return PagedResult<T>.Create(items, page, results, totalPages, totalResults);
         }

@@ -1,20 +1,18 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Collections.Concurrent;
@@ -22,7 +20,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using Nethermind.Core;
-using Nethermind.Dirichlet.Numerics;
 
 namespace Nethermind.Evm
 {
@@ -58,7 +55,7 @@ namespace Nethermind.Evm
                         throw new Exception();
                     }
 
-                    _bytesOnStackPool.Push(new byte[VirtualMachine.MaxStackSize * 32]);
+                    _bytesOnStackPool.Push(new byte[(EvmStack.MaxStackSize + EvmStack.RegisterLength) * 32]);
                 }
 
                 _bytesOnStackPool.TryPop(out byte[] result);
@@ -75,7 +72,7 @@ namespace Nethermind.Evm
         public int StackHead = 0;
 
         public EvmState(long gasAvailable, ExecutionEnvironment env, ExecutionType executionType, bool isPrecompile, bool isTopLevel, bool isContinuation)
-            : this(gasAvailable, env, executionType, isPrecompile, isTopLevel, -1, -1, 0L, 0L, false, isContinuation)
+            : this(gasAvailable, env, executionType, isPrecompile, isTopLevel, -1, -1, 0L, 0L, false, isContinuation, false)
         {
             GasAvailable = gasAvailable;
             Env = env;
@@ -92,7 +89,8 @@ namespace Nethermind.Evm
             long outputDestination,
             long outputLength,
             bool isStatic,
-            bool isContinuation)
+            bool isContinuation,
+            bool isCreateOnPreExistingAccount)
         {
             GasAvailable = gasAvailable;
             ExecutionType = executionType;
@@ -105,6 +103,7 @@ namespace Nethermind.Evm
             OutputLength = outputLength;
             IsStatic = isStatic;
             IsContinuation = isContinuation;
+            IsCreateOnPreExistingAccount = isCreateOnPreExistingAccount;
         }
 
         public Address From
@@ -118,6 +117,8 @@ namespace Nethermind.Evm
                     case ExecutionType.Call:
                     case ExecutionType.CallCode:
                     case ExecutionType.Create:
+                        return Env.Sender;
+                    case ExecutionType.Create2:
                         return Env.Sender;
                     case ExecutionType.DelegateCall:
                         return Env.ExecutingAccount;
@@ -141,6 +142,7 @@ namespace Nethermind.Evm
         internal long OutputLength { get; }
         public bool IsStatic { get; }
         public bool IsContinuation { get; set; }
+        public bool IsCreateOnPreExistingAccount { get; }
         public int StateSnapshot { get; }
         public int StorageSnapshot { get; }
         public long Refund { get; set; }

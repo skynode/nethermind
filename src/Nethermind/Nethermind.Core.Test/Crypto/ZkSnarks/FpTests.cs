@@ -1,23 +1,21 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System.Numerics;
-using Nethermind.Core.Crypto.ZkSnarks;
+using Nethermind.Crypto.ZkSnarks;
 using NUnit.Framework;
 
 namespace Nethermind.Core.Test.Crypto.ZkSnarks
@@ -26,13 +24,13 @@ namespace Nethermind.Core.Test.Crypto.ZkSnarks
     public class FpTests
     {
         [Test]
-        public void InverseOf2_intiializes()
+        public void InverseOf2_initializes()
         {
             Fp _ = Fp.InverseOf2;
         }
 
         [Test]
-        public void NonResidue_intiializes()
+        public void NonResidue_initializes()
         {
             Fp _ = Fp.NonResidue;
         }
@@ -47,34 +45,6 @@ namespace Nethermind.Core.Test.Crypto.ZkSnarks
         public void One_initializes()
         {
             Fp _ = Fp.One;
-        }
-
-        [Test]
-        public void One_is_reused()
-        {
-            // ReSharper disable once EqualExpressionComparison
-            Assert.True(ReferenceEquals(Fp.One, Fp.One));
-        }
-
-        [Test]
-        public void Zero_is_reused()
-        {
-            // ReSharper disable once EqualExpressionComparison
-            Assert.True(ReferenceEquals(Fp.Zero, Fp.Zero));
-        }
-
-        [Test]
-        public void InverseOf2_is_reused()
-        {
-            // ReSharper disable once EqualExpressionComparison
-            Assert.True(ReferenceEquals(Fp.InverseOf2, Fp.InverseOf2));
-        }
-
-        [Test]
-        public void NonResidue_is_reused()
-        {
-            // ReSharper disable once EqualExpressionComparison
-            Assert.True(ReferenceEquals(Fp.NonResidue, Fp.NonResidue));
         }
 
         [Test]
@@ -100,38 +70,6 @@ namespace Nethermind.Core.Test.Crypto.ZkSnarks
             Fp e = new BigInteger(1);
 
             Assert.True(a == b && a == c && a == d && a == e);
-        }
-
-        [Test]
-        public void Implicit_operators_reuse_zero()
-        {
-            Fp a = 0;
-            Fp b = 0U;
-            Fp c = 0L;
-            Fp d = 0UL;
-            Fp e = new BigInteger(0);
-
-            Assert.True(ReferenceEquals(a, Fp.Zero), a.GetType().Name);
-            Assert.True(ReferenceEquals(b, Fp.Zero), a.GetType().Name);
-            Assert.True(ReferenceEquals(c, Fp.Zero), a.GetType().Name);
-            Assert.True(ReferenceEquals(d, Fp.Zero), a.GetType().Name);
-            Assert.True(ReferenceEquals(e, Fp.Zero), a.GetType().Name);
-        }
-
-        [Test]
-        public void Implicit_operators_reuse_one()
-        {
-            Fp a = 1;
-            Fp b = 1U;
-            Fp c = 1L;
-            Fp d = 1UL;
-            Fp e = new BigInteger(1);
-
-            Assert.True(ReferenceEquals(a, Fp.One), a.GetType().Name);
-            Assert.True(ReferenceEquals(b, Fp.One), a.GetType().Name);
-            Assert.True(ReferenceEquals(c, Fp.One), a.GetType().Name);
-            Assert.True(ReferenceEquals(d, Fp.One), a.GetType().Name);
-            Assert.True(ReferenceEquals(e, Fp.One), a.GetType().Name);
         }
 
         [Test]
@@ -204,7 +142,6 @@ namespace Nethermind.Core.Test.Crypto.ZkSnarks
         {
             Assert.False((Fp)0 == null, "null to the right");
             Assert.False(null == (Fp)0, "null to the left");
-            Assert.True((Fp)null == null, "null both sides");
         }
 
         [Test]

@@ -24,7 +24,9 @@ using Ethereum.Test.Base;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
 using Nethermind.Core.Extensions;
-using Nethermind.Store;
+using Nethermind.Db;
+using Nethermind.State;
+using Nethermind.Trie;
 using NUnit.Framework;
 
 namespace Ethereum.Trie.Test
@@ -134,12 +136,18 @@ namespace Ethereum.Trie.Test
 
         private void RunTest(TrieTest test, bool secure)
         {
+            if (secure)
+            {
+                // removed the implementation of secure trie as it was not used outside of tests
+                return;
+            }
+            
             string permutationDescription =
                 string.Join(Environment.NewLine, test.Input.Select(p => $"{p.Key} -> {p.Value}"));
 
             TestContext.WriteLine(Surrounded(permutationDescription));
 
-            PatriciaTree patriciaTree = secure ? new SecurePatriciaTree(_db) : new PatriciaTree(_db, Keccak.EmptyTreeHash, false);
+            PatriciaTree patriciaTree = new PatriciaTree(_db, Keccak.EmptyTreeHash, false, true);
             foreach (KeyValuePair<string, string> keyValuePair in test.Input)
             {
                 string keyString = keyValuePair.Key;
@@ -155,7 +163,7 @@ namespace Ethereum.Trie.Test
 
                 TestContext.WriteLine();
                 TestContext.WriteLine($"Setting {keyString} -> {valueString}");
-                patriciaTree.Set(key, value);
+                patriciaTree.Set(key.ToPackedByteArray(), value);
             }
 
             patriciaTree.UpdateRootHash();
@@ -301,14 +309,14 @@ namespace Ethereum.Trie.Test
         [Test]
         public void Quick_empty()
         {
-            PatriciaTree patriciaTree = new PatriciaTree(_db, Keccak.EmptyTreeHash, false);
+            PatriciaTree patriciaTree = new PatriciaTree(_db, Keccak.EmptyTreeHash, false, true);
             Assert.AreEqual(PatriciaTree.EmptyTreeHash, patriciaTree.RootHash);
         }
 
         [Test]
         public void Delete_on_empty()
         {
-            PatriciaTree patriciaTree = new PatriciaTree(_db, Keccak.EmptyTreeHash, false);
+            PatriciaTree patriciaTree = new PatriciaTree(_db, Keccak.EmptyTreeHash, false, true);
             patriciaTree.Set(Keccak.Compute("1").Bytes, new byte[0]);
             patriciaTree.Commit();
             Assert.AreEqual(PatriciaTree.EmptyTreeHash, patriciaTree.RootHash);
@@ -317,7 +325,7 @@ namespace Ethereum.Trie.Test
         [Test]
         public void Delete_missing_resolved_on_branch()
         {
-            PatriciaTree patriciaTree = new PatriciaTree(_db, Keccak.EmptyTreeHash, false);
+            PatriciaTree patriciaTree = new PatriciaTree(_db, Keccak.EmptyTreeHash, false, true);
             patriciaTree.Set(Keccak.Compute("1123").Bytes, new byte[] { 1 });
             patriciaTree.Set(Keccak.Compute("1124").Bytes, new byte[] { 2 });
             Keccak rootBefore = patriciaTree.RootHash;
@@ -328,12 +336,12 @@ namespace Ethereum.Trie.Test
         [Test]
         public void Delete_missing_resolved_on_extension()
         {
-            PatriciaTree patriciaTree = new PatriciaTree(_db, Keccak.EmptyTreeHash, false);
-            patriciaTree.Set(new Nibble[] { 1, 2, 3, 4 }, new byte[] { 1 });
-            patriciaTree.Set(new Nibble[] { 1, 2, 3, 4, 5 }, new byte[] { 2 });
+            PatriciaTree patriciaTree = new PatriciaTree(_db, Keccak.EmptyTreeHash, false, true);
+            patriciaTree.Set(new Nibble[] { 1, 2, 3, 4 }.ToPackedByteArray(), new byte[] { 1 });
+            patriciaTree.Set(new Nibble[] { 1, 2, 3, 4, 5 }.ToPackedByteArray(), new byte[] { 2 });
             patriciaTree.UpdateRootHash();
             Keccak rootBefore = patriciaTree.RootHash;
-            patriciaTree.Set(new Nibble[] { 1, 2, 3 }, new byte[] { });
+            patriciaTree.Set(new Nibble[] { 1, 2, 3 }.ToPackedByteArray(), new byte[] { });
             patriciaTree.UpdateRootHash();
             Assert.AreEqual(rootBefore, patriciaTree.RootHash);
         }
@@ -341,7 +349,7 @@ namespace Ethereum.Trie.Test
         [Test]
         public void Delete_missing_resolved_on_leaf()
         {
-            PatriciaTree patriciaTree = new PatriciaTree(_db, Keccak.EmptyTreeHash, false);
+            PatriciaTree patriciaTree = new PatriciaTree(_db, Keccak.EmptyTreeHash, false, true);
             patriciaTree.Set(Keccak.Compute("1234567").Bytes, new byte[] { 1 });
             patriciaTree.Set(Keccak.Compute("1234501").Bytes, new byte[] { 2 });
             patriciaTree.UpdateRootHash();
@@ -354,7 +362,7 @@ namespace Ethereum.Trie.Test
         [Test]
         public void Lookup_in_empty_tree()
         {
-            PatriciaTree tree = new PatriciaTree(new MemDb(), Keccak.EmptyTreeHash, false);
+            PatriciaTree tree = new PatriciaTree(new MemDb(), Keccak.EmptyTreeHash, false, true);
             Assert.AreEqual(tree.RootRef, null);
             tree.Get(new byte[] { 1 });
             Assert.AreEqual(tree.RootRef, null);

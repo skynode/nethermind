@@ -1,35 +1,35 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Numerics;
 using Nethermind.Blockchain;
-using Nethermind.Blockchain.TxPools;
 using Nethermind.Blockchain.Validators;
+using Nethermind.Consensus;
+using Nethermind.Consensus.Ethash;
 using Nethermind.Core.Crypto;
-using Nethermind.Core.Specs;
-using Nethermind.Core.Specs.Forks;
+using Nethermind.Specs;
+using Nethermind.Specs.Forks;
 using Nethermind.Core.Test.Builders;
+using Nethermind.Crypto;
+using Nethermind.Db;
 using Nethermind.Logging;
-using Nethermind.Mining;
-using Nethermind.Mining.Difficulty;
-using Nethermind.Store;
-using Nethermind.Store.Repositories;
+using Nethermind.State.Repositories;
+using Nethermind.Store.Bloom;
+using Nethermind.TxPool;
 using NSubstitute;
 using NUnit.Framework;
 
@@ -47,11 +47,11 @@ namespace Nethermind.Core.Test
         [SetUp]
         public void Setup()
         {
-            DifficultyCalculator calculator = new DifficultyCalculator(new SingleReleaseSpecProvider(Frontier.Instance, ChainId.MainNet));
-            _ethash = new EthashSealValidator(NullLogManager.Instance, calculator, new Ethash(NullLogManager.Instance));
+            DifficultyCalculator calculator = new DifficultyCalculator(new SingleReleaseSpecProvider(Frontier.Instance, ChainId.Mainnet));
+            _ethash = new EthashSealValidator(LimboLogs.Instance, calculator, new CryptoRandom(), new Ethash(LimboLogs.Instance));
             _testLogger = new TestLogger();
             var blockInfoDb = new MemDb();
-            BlockTree blockStore = new BlockTree(new MemDb(), new MemDb(), blockInfoDb, new ChainLevelInfoRepository(blockInfoDb), FrontierSpecProvider.Instance, Substitute.For<ITxPool>(), NullLogManager.Instance);
+            BlockTree blockStore = new BlockTree(new MemDb(), new MemDb(), blockInfoDb, new ChainLevelInfoRepository(blockInfoDb), FrontierSpecProvider.Instance, Substitute.For<ITxPool>(), Substitute.For<IBloomStorage>(), LimboLogs.Instance);
             
             _validator = new HeaderValidator(blockStore, _ethash, new SingleReleaseSpecProvider(Byzantium.Instance, 3), new OneLoggerLogManager(_testLogger));
             _parentBlock = Build.A.Block.WithDifficulty(1).TestObject;
@@ -85,7 +85,7 @@ namespace Nethermind.Core.Test
         {
             _block.Header.GasLimit = _parentBlock.Header.GasLimit + (long)BigInteger.Divide(_parentBlock.Header.GasLimit, 1024) + 1;
             _block.Header.SealEngineType = SealEngineType.None;
-            _block.Hash = BlockHeader.CalculateHash(_block);
+            _block.Header.Hash = _block.CalculateHash();
             
             bool result = _validator.Validate(_block.Header);
             Assert.False(result);
@@ -96,7 +96,7 @@ namespace Nethermind.Core.Test
         {
             _block.Header.GasLimit = _parentBlock.Header.GasLimit + (long)BigInteger.Divide(_parentBlock.Header.GasLimit, 1024);
             _block.Header.SealEngineType = SealEngineType.None;
-            _block.Hash = BlockHeader.CalculateHash(_block);
+            _block.Header.Hash = _block.CalculateHash();
             
             bool result = _validator.Validate(_block.Header);
             Assert.True(result);
@@ -107,7 +107,7 @@ namespace Nethermind.Core.Test
         {
             _block.Header.GasLimit = _parentBlock.Header.GasLimit - (long)BigInteger.Divide(_parentBlock.Header.GasLimit, 1024) - 1;
             _block.Header.SealEngineType = SealEngineType.None;
-            _block.Hash = BlockHeader.CalculateHash(_block);
+            _block.Header.Hash = _block.CalculateHash();
             
             bool result = _validator.Validate(_block.Header);
             Assert.False(result);
@@ -118,7 +118,7 @@ namespace Nethermind.Core.Test
         {
             _block.Header.GasLimit = _parentBlock.Header.GasLimit - (long)BigInteger.Divide(_parentBlock.Header.GasLimit, 1024);
             _block.Header.SealEngineType = SealEngineType.None;
-            _block.Hash = BlockHeader.CalculateHash(_block);
+            _block.Header.Hash = _block.CalculateHash();
             
             bool result = _validator.Validate(_block.Header);
             Assert.True(result);
@@ -129,7 +129,7 @@ namespace Nethermind.Core.Test
         {
             _block.Header.GasUsed = _parentBlock.Header.GasLimit + 1;
             _block.Header.SealEngineType = SealEngineType.None;
-            _block.Hash = BlockHeader.CalculateHash(_block);
+            _block.Header.Hash = _block.CalculateHash();
             
             bool result = _validator.Validate(_block.Header);
             Assert.False(result);
@@ -140,7 +140,8 @@ namespace Nethermind.Core.Test
         {
             _block.Header.ParentHash = Keccak.Zero;
             _block.Header.SealEngineType = SealEngineType.None;
-            _block.Hash = BlockHeader.CalculateHash(_block);
+            _block.Header.Hash = _block.CalculateHash();
+            _block.Header.MaybeParent = null;
             
             bool result = _validator.Validate(_block.Header);
             Assert.False(result);
@@ -151,7 +152,7 @@ namespace Nethermind.Core.Test
         {
             _block.Header.Timestamp = _parentBlock.Header.Timestamp;
             _block.Header.SealEngineType = SealEngineType.None;
-            _block.Hash = BlockHeader.CalculateHash(_block);
+            _block.Header.Hash = _block.CalculateHash();
             
             bool result = _validator.Validate(_block.Header);
             Assert.False(result);
@@ -162,7 +163,7 @@ namespace Nethermind.Core.Test
         {
             _block.Header.ExtraData = new byte[33];
             _block.Header.SealEngineType = SealEngineType.None;
-            _block.Hash = BlockHeader.CalculateHash(_block);
+            _block.Header.Hash = _block.CalculateHash();
             
             bool result = _validator.Validate(_block.Header);
             Assert.False(result);
@@ -173,7 +174,7 @@ namespace Nethermind.Core.Test
         {
             _block.Header.Difficulty = 1;
             _block.Header.SealEngineType = SealEngineType.None;
-            _block.Hash = BlockHeader.CalculateHash(_block);
+            _block.Header.Hash = _block.CalculateHash();
             
             bool result = _validator.Validate(_block.Header);
             Assert.False(result);
@@ -184,7 +185,7 @@ namespace Nethermind.Core.Test
         {
             _block.Header.Number += 1;
             _block.Header.SealEngineType = SealEngineType.None;
-            _block.Hash = BlockHeader.CalculateHash(_block);
+            _block.Header.Hash = _block.CalculateHash();
             
             bool result = _validator.Validate(_block.Header);
             Assert.False(result);

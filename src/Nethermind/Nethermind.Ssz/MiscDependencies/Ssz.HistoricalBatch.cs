@@ -15,30 +15,38 @@
 //  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
+using System.Linq;
+using Nethermind.Core2;
 using Nethermind.Core2.Containers;
+using Nethermind.Core2.Crypto;
 
 namespace Nethermind.Ssz
 {
     public static partial class Ssz
     {
-        public static void Encode(Span<byte> span, HistoricalBatch container)
+        public static int HistoricalBatchLength()
         {
-            if (span.Length != HistoricalBatch.SszLength)
-            {
-                ThrowTargetLength<HistoricalBatch>(span.Length, HistoricalBatch.SszLength);
-            }
-
-            Encode(span.Slice(0, HistoricalBatch.SszLength / 2), container.BlockRoots);
-            Encode(span.Slice(HistoricalBatch.SszLength / 2), container.StateRoots);
+            return 2 * SlotsPerHistoricalRoot * Ssz.RootLength;
         }
 
-        public static HistoricalBatch DecodeHistoricalBatch(Span<byte> span)
+        public static void Encode(Span<byte> span, HistoricalBatch container)
         {
-            if (span.Length != HistoricalBatch.SszLength) ThrowSourceLength<HistoricalBatch>(span.Length, HistoricalBatch.SszLength);
+            if (span.Length != Ssz.HistoricalBatchLength())
+            {
+                ThrowTargetLength<HistoricalBatch>(span.Length, Ssz.HistoricalBatchLength());
+            }
 
-            HistoricalBatch container = new HistoricalBatch();
-            container.BlockRoots = DecodeHashes(span.Slice(0, HistoricalBatch.SszLength / 2));
-            container.StateRoots = DecodeHashes(span.Slice(HistoricalBatch.SszLength / 2));
+            Encode(span.Slice(0, Ssz.HistoricalBatchLength() / 2), container.BlockRoots);
+            Encode(span.Slice(Ssz.HistoricalBatchLength() / 2), container.StateRoots);
+        }
+
+        public static HistoricalBatch? DecodeHistoricalBatch(Span<byte> span)
+        {
+            if (span.Length != Ssz.HistoricalBatchLength()) ThrowSourceLength<HistoricalBatch>(span.Length, Ssz.HistoricalBatchLength());
+
+            Root[] blockRoots = DecodeRoots(span.Slice(0, Ssz.HistoricalBatchLength() / 2));
+            Root[] stateRoots = DecodeRoots(span.Slice(Ssz.HistoricalBatchLength() / 2));
+            HistoricalBatch container = new HistoricalBatch(blockRoots, stateRoots);
             return container;
         }
     }

@@ -1,43 +1,43 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using Nethermind.Blockchain;
+using Nethermind.Blockchain.Processing;
+using Nethermind.Blockchain.Tracing;
 using Nethermind.Config;
+using Nethermind.Core;
 using Nethermind.Core.Crypto;
-using Nethermind.Core.Encoding;
-using Nethermind.Evm.Tracing;
-using Nethermind.Store;
+using Nethermind.Db;
+using Nethermind.Evm.Tracing.GethStyle;
+using Nethermind.Serialization.Rlp;
 
 namespace Nethermind.JsonRpc.Modules.DebugModule
 {
     public class DebugBridge : IDebugBridge
     {
         private readonly IConfigProvider _configProvider;
-        private readonly ITracer _tracer;
+        private readonly IGethStyleTracer _tracer;
         private readonly IBlockTree _blockTree;
         private Dictionary<string, IDb> _dbMappings;
 
-        public DebugBridge(IConfigProvider configProvider, IReadOnlyDbProvider dbProvider, ITracer tracer, IBlockchainProcessor receiptsProcessor, IBlockTree blockTree)
+        public DebugBridge(IConfigProvider configProvider, IReadOnlyDbProvider dbProvider, IGethStyleTracer tracer, IBlockProcessingQueue receiptsBlockQueue, IBlockTree blockTree)
         {
-            receiptsProcessor.ProcessingQueueEmpty += (sender, args) => _receiptProcessedEvent.Set();
             _configProvider = configProvider ?? throw new ArgumentNullException(nameof(configProvider));
             _tracer = tracer ?? throw new ArgumentNullException(nameof(tracer));
             _blockTree = blockTree ?? throw new ArgumentNullException(nameof(blockTree));
@@ -48,7 +48,6 @@ namespace Nethermind.JsonRpc.Modules.DebugModule
             IDb receiptsDb = dbProvider.ReceiptsDb ?? throw new ArgumentNullException(nameof(dbProvider.ReceiptsDb));
             IDb codeDb = dbProvider.CodeDb ?? throw new ArgumentNullException(nameof(dbProvider.CodeDb));
             IDb pendingTxsDb = dbProvider.PendingTxsDb ?? throw new ArgumentNullException(nameof(dbProvider.PendingTxsDb));
-            IDb traceDb = dbProvider.TraceDb ?? throw new ArgumentNullException(nameof(dbProvider.TraceDb));
 
             _dbMappings = new Dictionary<string, IDb>(StringComparer.InvariantCultureIgnoreCase)
             {
@@ -60,7 +59,6 @@ namespace Nethermind.JsonRpc.Modules.DebugModule
                 {DbNames.Code, codeDb},
                 {DbNames.Receipts, receiptsDb},
                 {DbNames.PendingTxs, pendingTxsDb},
-                {DbNames.Trace, traceDb}
             };
         }
 
@@ -69,6 +67,16 @@ namespace Nethermind.JsonRpc.Modules.DebugModule
             return _dbMappings[dbName][key];
         }
 
+        public ChainLevelInfo GetLevelInfo(long number)
+        {
+            return _blockTree.FindLevel(number);
+        }
+        
+        public int DeleteChainSlice(long startNumber)
+        {
+            return _blockTree.DeleteChainSlice(startNumber);
+        }
+        
         public GethLikeTxTrace GetTransactionTrace(Keccak transactionHash, GethTraceOptions gethTraceOptions = null)
         {
             return _tracer.Trace(transactionHash, gethTraceOptions ?? GethTraceOptions.Default);
@@ -119,12 +127,10 @@ namespace Nethermind.JsonRpc.Modules.DebugModule
 
             return _dbMappings[DbNames.Blocks].Get(hash);
         }
-
-        public string GetConfigValue(string category, string name)
+    
+        public object GetConfigValue(string category, string name)
         {
             return _configProvider.GetRawValue(category, name);
         }
-
-        private AutoResetEvent _receiptProcessedEvent = new AutoResetEvent(false);
     }
 }

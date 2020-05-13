@@ -23,12 +23,14 @@ using Nethermind.Core;
 using Nethermind.Core.Crypto;
 using Nethermind.Core.Extensions;
 using Nethermind.Core.Specs;
-using Nethermind.Core.Specs.Forks;
+using Nethermind.Db;
 using Nethermind.Dirichlet.Numerics;
 using Nethermind.Evm;
 using Nethermind.Evm.Tracing;
 using Nethermind.Logging;
-using Nethermind.Store;
+using Nethermind.Specs;
+using Nethermind.Specs.Forks;
+using Nethermind.State;
 using NUnit.Framework;
 
 namespace Ethereum.Test.Base
@@ -36,7 +38,7 @@ namespace Ethereum.Test.Base
     public abstract class BlockchainTestBase
     {
         private static ILogger _logger = new SimpleConsoleLogger();
-        private static ILogManager _logManager = NullLogManager.Instance;
+        private static ILogManager _logManager = LimboLogs.Instance;
 
         [SetUp]
         public void Setup()
@@ -45,7 +47,7 @@ namespace Ethereum.Test.Base
 
         protected void Setup(ILogManager logManager)
         {
-            _logManager = logManager ?? NullLogManager.Instance;
+            _logManager = logManager ?? LimboLogs.Instance;
             _logger = _logManager.GetClassLogger();
         }
         
@@ -95,13 +97,21 @@ namespace Ethereum.Test.Base
             header.StateRoot = test.PostHash;
             header.Hash = Keccak.Compute("1");
             
+            stateProvider.Commit(specProvider.GenesisSpec);
+            stateProvider.CommitTree();
+            
             transactionProcessor.Execute(test.Transaction, header, txTracer);
+            
+            stateProvider.Commit(specProvider.GenesisSpec);
+            stateProvider.CommitTree();
 
             // '@winsvega added a 0-wei reward to the miner , so we had to add that into the state test execution phase. He needed it for retesteth.'
             if (!stateProvider.AccountExists(test.CurrentCoinbase))
             {
                 stateProvider.CreateAccount(test.CurrentCoinbase, 0);
             }
+            
+            stateProvider.RecalculateStateRoot();
 
             List<string> differences = RunAssertions(test, stateProvider);
             EthereumTestResult testResult = new EthereumTestResult();
@@ -121,7 +131,7 @@ namespace Ethereum.Test.Base
             {
                 foreach (KeyValuePair<UInt256, byte[]> storageItem in accountState.Value.Storage)
                 {
-                    storageProvider.Set(new StorageAddress(accountState.Key, storageItem.Key), storageItem.Value.WithoutLeadingZeros().ToArray());
+                    storageProvider.Set(new StorageCell(accountState.Key, storageItem.Key), storageItem.Value.WithoutLeadingZeros().ToArray());
                 }
 
                 stateProvider.CreateAccount(accountState.Key, accountState.Value.Balance);

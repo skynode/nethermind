@@ -1,76 +1,127 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Nethermind.Logging;
+using Nethermind.Blockchain;
+using Nethermind.Config;
+using Nethermind.Core;
+using Nethermind.Core.Crypto;
 using Nethermind.Network;
+using Nethermind.Network.Config;
 
 namespace Nethermind.JsonRpc.Modules.Admin
 {
     public class AdminModule : IAdminModule
     {
-        private readonly ILogger _logger;
+        private readonly IBlockTree _blockTree;
+        private readonly INetworkConfig _networkConfig;
         private readonly IPeerManager _peerManager;
         private readonly IStaticNodesManager _staticNodesManager;
+        private readonly IEnode _enode;
+        private readonly string _dataDir;
+        private NodeInfo _nodeInfo;
 
-        public AdminModule(ILogManager logManager, IPeerManager peerManager, IStaticNodesManager staticNodesManager)
+        public AdminModule(IBlockTree blockTree, INetworkConfig networkConfig, IPeerManager peerManager, IStaticNodesManager staticNodesManager, IEnode enode, string dataDir)
         {
-            _logger = logManager.GetClassLogger();
+            _blockTree = blockTree ?? throw new ArgumentNullException(nameof(blockTree));
+            _networkConfig = networkConfig ?? throw new ArgumentNullException(nameof(networkConfig));
             _peerManager = peerManager ?? throw new ArgumentNullException(nameof(peerManager));
             _staticNodesManager = staticNodesManager ?? throw new ArgumentNullException(nameof(staticNodesManager));
+            _enode = enode ?? throw new ArgumentNullException(nameof(enode));
+            _dataDir = dataDir ?? throw new ArgumentNullException(nameof(dataDir));
+
+            BuildNodeInfo();
         }
-        
-        public async Task<ResultWrapper<string>> admin_addPeer(string enode)
+
+        private void BuildNodeInfo()
         {
-            var added = await _staticNodesManager.AddAsync(enode);
+            _nodeInfo = new NodeInfo();
+            _nodeInfo.Name = ClientVersion.Description;
+            _nodeInfo.Enode = _enode.Info;
+            byte[] publicKeyBytes = _enode?.PublicKey?.Bytes;
+            _nodeInfo.Id = (publicKeyBytes == null ? Keccak.Zero : Keccak.Compute(publicKeyBytes)).ToString(false);
+            _nodeInfo.Ip = _enode?.HostIp?.ToString();
+            _nodeInfo.ListenAddress = $"{_enode.HostIp}:{_enode.Port}";
+            _nodeInfo.Ports.Discovery = _networkConfig.DiscoveryPort;
+            _nodeInfo.Ports.Listener = _networkConfig.P2PPort;
+            UpdateEthProtocolInfo();
+        }
+
+        private void UpdateEthProtocolInfo()
+        {
+            _nodeInfo.Protocols["eth"].Difficulty = _blockTree.Head?.TotalDifficulty ?? 0;
+            _nodeInfo.Protocols["eth"].ChainId = _blockTree.ChainId;
+            _nodeInfo.Protocols["eth"].HeadHash = _blockTree.HeadHash;
+            _nodeInfo.Protocols["eth"].GenesisHash = _blockTree.GenesisHash;
+        }
+
+        public async Task<ResultWrapper<string>> admin_addPeer(string enode, bool addToStaticNodes = false)
+        {
+            bool added;
+            if (addToStaticNodes)
+            {
+                added = await _staticNodesManager.AddAsync(enode);
+            }
+            else
+            {
+                _peerManager.AddPeer(new NetworkNode(enode));
+                added = true;
+            }
 
             return added
                 ? ResultWrapper<string>.Success(enode)
-                : ResultWrapper<string>.Fail("Static node already exists.");
+                : ResultWrapper<string>.Fail("Failed to add peer.");
         }
 
-        public async Task<ResultWrapper<string>> admin_removePeer(string enode)
+        public async Task<ResultWrapper<string>> admin_removePeer(string enode, bool removeFromStaticNodes = false)
         {
-            var removed = await _staticNodesManager.RemoveAsync(enode);
-
+            bool removed;
+            if (removeFromStaticNodes)
+            {
+                removed = await _staticNodesManager.RemoveAsync(enode);
+            }
+            else
+            {
+                removed = _peerManager.RemovePeer(new NetworkNode(enode));
+            }
+            
             return removed
                 ? ResultWrapper<string>.Success(enode)
-                : ResultWrapper<string>.Fail("Static node was not found.");
+                : ResultWrapper<string>.Fail("Failed to remove peer.");
         }
 
         public ResultWrapper<PeerInfo[]> admin_peers()
             => ResultWrapper<PeerInfo[]>.Success(_peerManager.ActivePeers.Select(p => new PeerInfo(p)).ToArray());
 
-        public ResultWrapper<PeerInfo[]> admin_nodeInfo()
+        public ResultWrapper<NodeInfo> admin_nodeInfo()
         {
-            throw new System.NotImplementedException();
+            UpdateEthProtocolInfo();
+            return ResultWrapper<NodeInfo>.Success(_nodeInfo);
         }
 
-        public ResultWrapper<PeerInfo[]> admin_dataDir()
+        public ResultWrapper<string> admin_dataDir()
         {
-            throw new System.NotImplementedException();
+            return ResultWrapper<string>.Success(_dataDir);
         }
 
-        public ResultWrapper<PeerInfo[]> admin_setSolc()
+        public ResultWrapper<bool> admin_setSolc()
         {
-            throw new System.NotImplementedException();
+            return ResultWrapper<bool>.Success(true);
         }
     }
 }

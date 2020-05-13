@@ -1,21 +1,18 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
-
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Collections.Generic;
@@ -23,20 +20,26 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Nethermind.Blockchain;
+using Nethermind.Consensus.Clique;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
-using Nethermind.Core.Encoding;
 using Nethermind.Core.Extensions;
-using Nethermind.Core.Specs;
+using Nethermind.Specs;
 using Nethermind.Core.Test.Builders;
+using Nethermind.Crypto;
+using Nethermind.Db;
 using Nethermind.Dirichlet.Numerics;
 using Nethermind.Logging;
+using Nethermind.Serialization.Rlp;
 using Nethermind.Store;
+using Nethermind.Trie;
 using Nethermind.Wallet;
 using NUnit.Framework;
+using BlockTree = Nethermind.Blockchain.BlockTree;
 
 namespace Nethermind.Clique.Test
 {
+    [Parallelizable(ParallelScope.Self)]
     [TestFixture]
     public class CliqueSealEngineTests
     {
@@ -98,7 +101,7 @@ namespace Nethermind.Clique.Test
             Block block6 = CreateBlock(2, 6, _lastBlock);
             Block signed = await _clique.SealBlock(block6, CancellationToken.None);
             bool validHeader = _sealValidator.ValidateParams(_blockTree.FindHeader(signed.ParentHash, BlockTreeLookupOptions.None), signed.Header);
-            bool validSeal = _sealValidator.ValidateSeal(signed.Header);
+            bool validSeal = _sealValidator.ValidateSeal(signed.Header, true);
             Assert.True(validHeader);
             Assert.True(validSeal);
         }
@@ -114,13 +117,13 @@ namespace Nethermind.Clique.Test
             UInt256 timestamp = new UInt256(1492009146);
             byte[] extraData = Bytes.FromHexString(GetGenesisExtraData());
             BlockHeader header = new BlockHeader(parentHash, ommersHash, beneficiary, difficulty, number, gasLimit, timestamp, extraData);
-            Block genesis = new Block(header, new BlockHeader[0]);            
-            genesis.Hash = BlockHeader.CalculateHash(genesis);
+            Block genesis = new Block(header);            
+            genesis.Header.Hash = genesis.CalculateHash();
             
             // this would need to be loaded from rinkeby chainspec to include allocations
 //            Assert.AreEqual(new Keccak("0x6341fd3daf94b748c72ced5a5b26028f2474f5f00d824504e4fa37a75767e177"), genesis.Hash);
             
-            genesis.Header.Hash = BlockHeader.CalculateHash(genesis.Header);
+            genesis.Header.Hash = genesis.Header.CalculateHash();
             return genesis;
         }
 
@@ -155,9 +158,8 @@ namespace Nethermind.Clique.Test
             byte[] extraData = Bytes.FromHexString("d883010812846765746888676f312e31312e31856c696e75780000000000000028eb026ab5355b45499053382886754f1db544618d45edc979de1864d83a626b77513bd34d7f21059e79e303c3ab210e1424e71bcb8347835cbd378a785a06f800");
             BlockHeader header = new BlockHeader(parentHash, ommersHash, beneficiary, difficulty, number, gasLimit, timestamp, extraData);
             header.MixHash = Keccak.Zero;
-            Block block = new Block(header, new BlockHeader[0]);
-            block.Hash = BlockHeader.CalculateHash(block);
-            block.Header.Hash = BlockHeader.CalculateHash(block.Header);
+            Block block = new Block(header);
+            block.Header.Hash = block.CalculateHash();
             return block;
         }
 

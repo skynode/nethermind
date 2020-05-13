@@ -4,7 +4,26 @@ Configuration
 Use '/' as the path separator so the configs can be shared between all platforms supported (Linux, Windows, MacOS).
 '--config', '--baseDbPath', and '--log' options are available from the command line to select config file, base DB directory prefix and log level respectively. 
 
-DbConfig
+BloomConfig
+^^^^^^^^^^^
+
+ Index
+   Defines whether the Bloom index is used. Bloom index speeds up rpc log searches.
+   default value: true
+
+ IndexLevelBucketSizes
+   Defines multipliers for index levels. Can be tweaked per chain to boost performance.
+   default value: [4, 8, 8]
+
+ Migration
+   Defines if migration of previously downloaded blocks to Bloom index will be done.
+   default value: false
+
+ MigrationStatistics
+   Defines if migration statistics are to be calculated and output.
+   default value: false
+
+DbConfig (https://github.com/facebook/rocksdb/wiki/Memory-usage-in-RocksDB)
 ^^^^^^^^
 
  BlockCacheSize
@@ -24,6 +43,14 @@ DbConfig
  BlocksDbWriteBufferNumber
 
  BlocksDbWriteBufferSize
+
+ BloomDbBlockCacheSize
+
+ BloomDbCacheIndexAndFilterBlocks
+
+ BloomDbWriteBufferNumber
+
+ BloomDbWriteBufferSize
 
  CacheIndexAndFilterBlocks
 
@@ -109,14 +136,6 @@ DbConfig
 
  RecycleLogFileNum
 
- TraceDbBlockCacheSize
-
- TraceDbCacheIndexAndFilterBlocks
-
- TraceDbWriteBufferNumber
-
- TraceDbWriteBufferSize
-
  WriteAheadLogSync
 
  WriteBufferNumber
@@ -153,8 +172,6 @@ DiscoveryConfig
  MaxNodeLifecycleManagersCount
 
  NodeLifecycleManagersCleanupCount
-
- PingMessageVersion
 
  PingRetryCount
 
@@ -211,10 +228,6 @@ InitConfig
    Base directoy path for all the nethermind databases.
    default value: "db"
 
- ChainSpecFormat
-   Format of the chain definition file - genesis (Geth style - not tested recently / may fail) or chainspec (Parity style).
-   default value: "chainspec"
-
  ChainSpecPath
    Path to the chain definition file (Parity chainspec or Geth genesis file).
    default value: null
@@ -222,8 +235,6 @@ InitConfig
  DiscoveryEnabled
    If 'false' then the node does not try to find nodes beyond the bootnodes configured.
    default value: true
-
- EnableRc7Fix
 
  EnableUnsecuredDevWallet
    If 'true' then it enables the wallet / key store in the application.
@@ -262,38 +273,54 @@ InitConfig
    default value: "Data/static-nodes.json"
 
  StoreReceipts
-   If set to 'false' then transaction receipts will not be stored in the database.
+   If set to 'false' then transaction receipts will not be stored in the database after a new block is processed. This setting is independent from downloading receipts in fast sync mode.
    default value: true
 
- StoreTraces
-   If set to 'true' then the detailed VM trace data will be stored in teh DB (huge data sets).
+ UseMemDb
+   Diagnostics mode which uses an in-memory DB
    default value: false
 
- SynchronizationEnabled
-   If 'false' then the node does not download/process new blocks..
-   default value: true
-
  WebSocketsEnabled
-   Defines whether the WebSockets service is enabled on node startup at the 'HttpPort'
+   Defines whether the WebSockets service is enabled on node startup at the 'HttpPort' - e.g. ws://localhost:8545/ws/json-rpc
    default value: false
 
 JsonRpcConfig
 ^^^^^^^^^^^^^
 
  Enabled
-   Defines whether the JSON RPC service is enabled on node startuo. Configure host nad port if default values do not work for you.
+   Defines whether the JSON RPC service is enabled on node startup. Configure host nad port if default values do not work for you.
    default value: false
 
  EnabledModules
    Defines which RPC modules should be enabled.
    default value: all
 
+ FindLogBlockDepthLimit
+   Defines block depth when finding logs.
+   default value: 1000
+
+ GasCap
+   Gas limit for eth_call and eth_estimateGas
+   default value: 
+
  Host
-   Host for JSON RPC calls. Ensure the firewall is configured when enabling JSON RPC.
+   Host for JSON RPC calls. Ensure the firewall is configured when enabling JSON RPC. If it does not work with 117.0.0.1 try something like 10.0.0.4 or 192.168.0.1
    default value: "127.0.0.1"
 
  Port
    Port number for JSON RPC calls. Ensure the firewall is configured when enabling JSON RPC.
+   default value: 8545
+
+ RpcRecorderBaseFilePath
+   Base file path for diagnostic JSON RPC recorder.
+   default value: "logs/rpc.log_1.txt"
+
+ RpcRecorderEnabled
+   Defines whether the JSON RPC diagnostic recording is enabled on node startup. Do not enable unless you are a DEV diagnosing issues with JSON RPC.
+   default value: false
+
+ WebSocketsPort
+   Port number for JSON RPC web sockets calls. By default same port is used as regular JSON RPC. Ensure the firewall is configured when enabling JSON RPC.
    default value: 8545
 
 KeyStoreConfig
@@ -357,6 +384,10 @@ NetworkConfig
    
    default value: 11000
 
+ DiagTracerEnabled
+   Enabled very verbose diag network tracing files for DEV purposes (Nethermind specific)
+   default value: false
+
  DiscoveryPort
    UDP port number for incoming discovery connections.
    default value: 30303
@@ -380,6 +411,10 @@ NetworkConfig
  MaxPersistedPeerCount
    
    default value: 2000
+
+ NettyArenaOrder
+   [TECHNICAL] Defines the size of a buffer allocated to each peer - default is 8192 << 11 so 16MB where order is 11.
+   default value: 11
 
  P2PPingInterval
    
@@ -412,21 +447,29 @@ NetworkConfig
 SyncConfig
 ^^^^^^^^^^
 
+ BeamSync
+   Beam Sync - only for DEBUG / DEV - not working in prod yet.
+   default value: false
+
  DownloadBodiesInFastSync
    If set to 'true' then the block bodies will be downloaded in the Fast Sync mode.
    default value: true
 
  DownloadReceiptsInFastSync
-   If set to 'true' then the receipts will be downloaded in the Fast Sync mode.
+   If set to 'true' then the receipts will be downloaded in the Fast Sync mode. This will slow down the process by a few hours but will allow you to interact with dApps that execute extensive historical logs searches (like Maker CDPs).
    default value: true
 
  FastBlocks
-   If set to 'true' then in the Fast Sync mode blocks will be first downloaded from the provided PivotNumber downwards.
+   If set to 'true' then in the Fast Sync mode blocks will be first downloaded from the provided PivotNumber downwards. This allows for parallelization of requests with many sync peers and with no need to worry about syncing a valid branch (syncing downwards to 0). You need to enter the pivot block number, hash and total difficulty from a trusted source (you can use etherscan and confirm with other sources if you wan to change it).
    default value: false
 
  FastSync
    If set to 'true' then the Fast Sync (eth/63) synchronization algorithm will be used.
    default value: false
+
+ FastSyncCatchUpHeightDelta
+   Relevant only if 'FastSync' is 'true'. If set to a value, then it will set a minimum height threshold limit up to which FullSync, if already on, will stay on when chain will be behind network. If this limit will be exceeded, it will switch back to FastSync. Please note that last 32 blocks will always be processed in FullSync, so setting it to less or equal to 32 will have no effect.
+   default value: null
 
  PivotHash
    Hash of the pivot block for the Fast Blocks sync.
@@ -437,8 +480,16 @@ SyncConfig
    default value: null
 
  PivotTotalDifficulty
-   Total Difficulty of the pivot block for the Fast Blocks sync.
+   Total Difficulty of the pivot block for the Fast Blocks sync (not - this is total difficulty and not difficulty).
    default value: null
+
+ SynchronizationEnabled
+   If 'false' then the node does not download/process new blocks..
+   default value: true
+
+ UseGethLimitsInFastBlocks
+   If set to 'true' then in the Fast Blocks mode Nethermind generates smaller requests to avoid Geth from disconnecting. On the Geth heavy networks (mainnet) it is desired while on Parity or Nethermind heavy networks (Goerli, AuRa) it slows down the sync by a factor of ~4
+   default value: true
 
 TxPoolConfig
 ^^^^^^^^^^^^
@@ -461,6 +512,12 @@ Sample configuration (mainnet)
 ::
 
     {
+        "Bloom": {
+              "Index" : true,
+              "IndexLevelBucketSizes" : [4, 8, 8],
+              "Migration" : false,
+              "MigrationStatistics" : false
+        },
         "Db": {
               "BlockCacheSize" : [MISSING_DOCS],
               "BlockInfosDbBlockCacheSize" : [MISSING_DOCS],
@@ -471,6 +528,10 @@ Sample configuration (mainnet)
               "BlocksDbCacheIndexAndFilterBlocks" : [MISSING_DOCS],
               "BlocksDbWriteBufferNumber" : [MISSING_DOCS],
               "BlocksDbWriteBufferSize" : [MISSING_DOCS],
+              "BloomDbBlockCacheSize" : [MISSING_DOCS],
+              "BloomDbCacheIndexAndFilterBlocks" : [MISSING_DOCS],
+              "BloomDbWriteBufferNumber" : [MISSING_DOCS],
+              "BloomDbWriteBufferSize" : [MISSING_DOCS],
               "CacheIndexAndFilterBlocks" : [MISSING_DOCS],
               "CodeDbBlockCacheSize" : [MISSING_DOCS],
               "CodeDbCacheIndexAndFilterBlocks" : [MISSING_DOCS],
@@ -513,10 +574,6 @@ Sample configuration (mainnet)
               "ReceiptsDbWriteBufferNumber" : [MISSING_DOCS],
               "ReceiptsDbWriteBufferSize" : [MISSING_DOCS],
               "RecycleLogFileNum" : [MISSING_DOCS],
-              "TraceDbBlockCacheSize" : [MISSING_DOCS],
-              "TraceDbCacheIndexAndFilterBlocks" : [MISSING_DOCS],
-              "TraceDbWriteBufferNumber" : [MISSING_DOCS],
-              "TraceDbWriteBufferSize" : [MISSING_DOCS],
               "WriteAheadLogSync" : [MISSING_DOCS],
               "WriteBufferNumber" : [MISSING_DOCS],
               "WriteBufferSize" : [MISSING_DOCS]
@@ -536,7 +593,6 @@ Sample configuration (mainnet)
               "MaxDiscoveryRounds" : [MISSING_DOCS],
               "MaxNodeLifecycleManagersCount" : [MISSING_DOCS],
               "NodeLifecycleManagersCleanupCount" : [MISSING_DOCS],
-              "PingMessageVersion" : [MISSING_DOCS],
               "PingRetryCount" : [MISSING_DOCS],
               "PongTimeout" : [MISSING_DOCS],
               "SendNodeTimeout" : [MISSING_DOCS],
@@ -556,10 +612,8 @@ Sample configuration (mainnet)
         },
         "Init": {
               "BaseDbPath" : "db",
-              "ChainSpecFormat" : "chainspec",
               "ChainSpecPath" : null,
               "DiscoveryEnabled" : true,
-              "EnableRc7Fix" : [MISSING_DOCS],
               "EnableUnsecuredDevWallet" : false,
               "GenesisHash" : null,
               "IsMining" : false,
@@ -570,15 +624,19 @@ Sample configuration (mainnet)
               "ProcessingEnabled" : true,
               "StaticNodesPath" : "Data/static-nodes.json",
               "StoreReceipts" : true,
-              "StoreTraces" : false,
-              "SynchronizationEnabled" : true,
+              "UseMemDb" : false,
               "WebSocketsEnabled" : false
         },
         "JsonRpc": {
               "Enabled" : false,
               "EnabledModules" : all,
+              "FindLogBlockDepthLimit" : 1000,
+              "GasCap" : ,
               "Host" : "127.0.0.1",
-              "Port" : 8545
+              "Port" : 8545,
+              "RpcRecorderBaseFilePath" : "logs/rpc.log_1.txt",
+              "RpcRecorderEnabled" : false,
+              "WebSocketsPort" : 8545
         },
         "KeyStore": {
               "Cipher" : [MISSING_DOCS],
@@ -604,12 +662,14 @@ Sample configuration (mainnet)
         "Network": {
               "ActivePeersMaxCount" : 25,
               "CandidatePeerCountCleanupThreshold" : 11000,
+              "DiagTracerEnabled" : false,
               "DiscoveryPort" : 30303,
               "ExternalIp" : null,
               "IsPeersPersistenceOn" : true,
               "LocalIp" : null,
               "MaxCandidatePeerCount" : 10000,
               "MaxPersistedPeerCount" : 2000,
+              "NettyArenaOrder" : 11,
               "P2PPingInterval" : 10000,
               "P2PPort" : 30303,
               "PeersPersistenceInterval" : 5000,
@@ -619,13 +679,17 @@ Sample configuration (mainnet)
               "TrustedPeers" : null
         },
         "Sync": {
+              "BeamSync" : false,
               "DownloadBodiesInFastSync" : true,
               "DownloadReceiptsInFastSync" : true,
               "FastBlocks" : false,
               "FastSync" : false,
+              "FastSyncCatchUpHeightDelta" : null,
               "PivotHash" : null,
               "PivotNumber" : null,
-              "PivotTotalDifficulty" : null
+              "PivotTotalDifficulty" : null,
+              "SynchronizationEnabled" : true,
+              "UseGethLimitsInFastBlocks" : true
         },
         "TxPool": {
               "ObsoletePendingTransactionInterval" : 15,

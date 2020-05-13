@@ -15,6 +15,7 @@
 //  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
+using Nethermind.Core2;
 using Nethermind.Core2.Containers;
 using Nethermind.Core2.Crypto;
 using Nethermind.Core2.Types;
@@ -23,16 +24,18 @@ namespace Nethermind.Ssz
 {
     public static partial class Ssz
     {
-          public static void Encode(Span<byte> span, AttestationData container)
+        public const int AttestationDataLength = Ssz.SlotLength + Ssz.CommitteeIndexLength + Ssz.RootLength + 2 * Ssz.CheckpointLength;
+
+        public static void Encode(Span<byte> span, AttestationData container)
         {
-            if (span.Length != AttestationData.SszLength)
+            if (span.Length != Ssz.AttestationDataLength)
             {
-                ThrowTargetLength<AttestationData>(span.Length, AttestationData.SszLength);
+                ThrowTargetLength<AttestationData>(span.Length, Ssz.AttestationDataLength);
             }
 
             int offset = 0;
             Encode(span, container.Slot, ref offset);
-            Encode(span, container.CommitteeIndex, ref offset);
+            Encode(span, container.Index, ref offset);
             Encode(span, container.BeaconBlockRoot, ref offset);
             Encode(span, container.Source, ref offset);
             Encode(span, container.Target, ref offset);
@@ -40,36 +43,41 @@ namespace Nethermind.Ssz
 
         public static AttestationData DecodeAttestationData(Span<byte> span)
         {
-            if (span.Length != AttestationData.SszLength)
+            if (span.Length != Ssz.AttestationDataLength)
             {
-                ThrowSourceLength<AttestationData>(span.Length, AttestationData.SszLength);
+                ThrowSourceLength<AttestationData>(span.Length, Ssz.AttestationDataLength);
             }
             
             int offset = 0;
-            AttestationData container = new AttestationData();
-            container.Slot = DecodeSlot(span, ref offset);
-            container.CommitteeIndex = DecodeCommitteeIndex(span, ref offset);
-            container.BeaconBlockRoot = DecodeSha256(span, ref offset);
-            container.Source = DecodeCheckpoint(span, ref offset);
-            container.Target = DecodeCheckpoint(span, ref offset);
+            AttestationData container = new AttestationData(
+                DecodeSlot(span, ref offset),
+                DecodeCommitteeIndex(span, ref offset),
+                DecodeRoot(span, ref offset),
+                DecodeCheckpoint(span, ref offset),
+                DecodeCheckpoint(span, ref offset));
             return container;
         }
 
-        private static AttestationData DecodeAttestationData(Span<byte> span, ref int offset)
+        private static AttestationData DecodeAttestationData(ReadOnlySpan<byte> span, ref int offset)
         {
-            AttestationData container = new AttestationData();
-            container.Slot = DecodeSlot(span, ref offset);
-            container.CommitteeIndex = DecodeCommitteeIndex(span, ref offset);
-            container.BeaconBlockRoot = DecodeSha256(span, ref offset);
-            container.Source = DecodeCheckpoint(span, ref offset);
-            container.Target = DecodeCheckpoint(span, ref offset);
+            Slot slot = DecodeSlot(span, ref offset);
+            CommitteeIndex index = DecodeCommitteeIndex(span, ref offset);
+            Root beaconBlockRoot = DecodeRoot(span, ref offset);
+            Checkpoint source = DecodeCheckpoint(span, ref offset);
+            Checkpoint target = DecodeCheckpoint(span, ref offset);
+            AttestationData container = new AttestationData(slot, index, beaconBlockRoot, source, target);
             return container;
         }
         
-        private static void Encode(Span<byte> span, AttestationData value, ref int offset)
+        private static void Encode(Span<byte> span, AttestationData? value, ref int offset)
         {
-            Encode(span.Slice(offset, AttestationData.SszLength), value);
-            offset += AttestationData.SszLength;
+            if (value is null)
+            {
+                return;
+            }
+            
+            Encode(span.Slice(offset, Ssz.AttestationDataLength), value);
+            offset += Ssz.AttestationDataLength;
         }
     }
 }

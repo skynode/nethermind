@@ -1,27 +1,26 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Net.Http.Headers;
+using System.Linq;
 using System.Numerics;
+using FluentAssertions;
 using Nethermind.Core.Extensions;
 using NUnit.Framework;
 
@@ -125,18 +124,21 @@ namespace Nethermind.Core.Test
         [Test]
         public void Reversal()
         {
-            byte[] bytes = Bytes.FromHexString("0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
-            byte[] before = bytes.Clone() as byte[];
-            Assert.AreEqual(32, bytes.Length);
-
-            Bytes.Avx2Reverse256InPlace(bytes);
-            for (int i = 0; i < 32; i++)
+            if (System.Runtime.Intrinsics.X86.Avx2.IsSupported)
             {
-                Assert.AreEqual(before[i], bytes[32 - 1 - i]);
-            }
+                byte[] bytes = Bytes.FromHexString("0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
+                byte[] before = bytes.Clone() as byte[];
+                Assert.AreEqual(32, bytes.Length);
 
-            TestContext.WriteLine(before.ToHexString());
-            TestContext.WriteLine(bytes.ToHexString());
+                Bytes.Avx2Reverse256InPlace(bytes);
+                for (int i = 0; i < 32; i++)
+                {
+                    Assert.AreEqual(before[i], bytes[32 - 1 - i]);
+                }
+
+                TestContext.WriteLine(before.ToHexString());
+                TestContext.WriteLine(bytes.ToHexString());
+            }
         }
 
         [TestCase("0x00000000", 0U)]
@@ -279,6 +281,42 @@ namespace Nethermind.Core.Test
             byte[] input = Bytes.FromHexString(hex);
             Bytes.ReverseInPlace(input);
             Assert.AreEqual(input, Bytes.FromHexString(expectedResult));
+        }
+
+        public static IEnumerable OrTests
+        {
+            get
+            {
+                byte[] GenerateRandom(int length)
+                {
+                    var bytes = new byte[length];
+                    TestContext.CurrentContext.Random.NextBytes(bytes);
+                    return bytes;
+                }
+
+                TestCaseData GenerateTest(int length)
+                {
+                    var thisArray = GenerateRandom(length);
+                    var valueArray = GenerateRandom(length);
+                    var resultArray = thisArray.Zip(valueArray, (b1, b2) => b1 | b2).Select(b => (byte) b).ToArray();
+                    return new TestCaseData(thisArray, valueArray, resultArray);
+                }
+                
+                yield return GenerateTest(1);
+                yield return GenerateTest(10);
+                yield return GenerateTest(32);
+                yield return GenerateTest(33);
+                yield return GenerateTest(48);
+                yield return GenerateTest(128);
+                yield return GenerateTest(200);
+            }
+        }
+        
+        [TestCaseSource(nameof(OrTests))]
+        public void Or(byte[] first, byte[] second, byte[] expected)
+        {
+            first.AsSpan().Or(second);
+            first.Should().Equal(expected);
         }
     }
 }

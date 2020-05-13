@@ -1,44 +1,46 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
-
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System.Collections.Generic;
 using System.Numerics;
 using System.Threading;
+using DotNetty.Buffers;
 using DotNetty.Transport.Channels;
 using Nethermind.Blockchain;
 using Nethermind.Blockchain.Synchronization;
-using Nethermind.Blockchain.TxPools;
-using Nethermind.Core;
 using Nethermind.Core.Crypto;
 using Nethermind.Core.Test.Builders;
 using Nethermind.Logging;
 using Nethermind.Network.Discovery;
 using Nethermind.Network.P2P;
 using Nethermind.Network.P2P.Subprotocols.Eth;
+using Nethermind.Network.P2P.Subprotocols.Eth.V62;
 using Nethermind.Network.Rlpx;
+using Nethermind.Specs;
 using Nethermind.Stats;
 using Nethermind.Stats.Model;
+using Nethermind.Synchronization;
+using Nethermind.Synchronization.Peers;
+using Nethermind.TxPool;
 using NSubstitute;
 using NUnit.Framework;
 
 namespace Nethermind.Network.Test
 {
+    [Parallelizable(ParallelScope.Self)]
     [TestFixture]
     public class ProtocolsManagerTests
     {
@@ -60,11 +62,10 @@ namespace Nethermind.Network.Test
             private ProtocolsManager _manager;
             private INodeStatsManager _nodeStatsManager;
             private INetworkStorage _peerStorage;
-            private IPerfService _perfService;
             private IProtocolValidator _protocolValidator;
             private IMessageSerializationService _serializer;
             private ISyncServer _syncServer;
-            private IEthSyncPeerPool _syncPeerPool;
+            private ISyncPeerPool _syncPeerPool;
             private ITxPool _txPool;
             private IChannelHandlerContext _channelHandlerContext;
             private IChannel _channel;
@@ -97,8 +98,7 @@ namespace Nethermind.Network.Test
                 _blockTree.Genesis.Returns(Build.A.Block.Genesis.TestObject.Header);
                 _protocolValidator = new ProtocolValidator(_nodeStatsManager, _blockTree, LimboLogs.Instance);
                 _peerStorage = Substitute.For<INetworkStorage>();
-                _perfService = new PerfService(LimboLogs.Instance);
-                _syncPeerPool = Substitute.For<IEthSyncPeerPool>();
+                _syncPeerPool = Substitute.For<ISyncPeerPool>();
                 _manager = new ProtocolsManager(
                     _syncPeerPool,
                     _syncServer,
@@ -109,7 +109,7 @@ namespace Nethermind.Network.Test
                     _nodeStatsManager,
                     _protocolValidator,
                     _peerStorage,
-                    _perfService,
+                    MainnetSpecProvider.Instance, 
                     LimboLogs.Instance);
 
                 _serializer.Register(new HelloMessageSerializer());
@@ -187,7 +187,7 @@ namespace Nethermind.Network.Test
 
             public Context Disconnect()
             {
-                _currentSession.Disconnect(DisconnectReason.TooManyPeers, DisconnectType.Local, "test");
+                _currentSession.MarkDisconnected(DisconnectReason.TooManyPeers, DisconnectType.Local, "test");
                 return this;
             }
 
@@ -198,8 +198,16 @@ namespace Nethermind.Network.Test
                 msg.ChainId = 1;
                 msg.GenesisHash = _blockTree.Genesis.Hash;
                 msg.ProtocolVersion = 63;
+                
+                return ReceiveStatus(msg);
+            }
 
-                _currentSession.ReceiveMessage(new Packet("eth", Eth62MessageCode.Status + 16, _serializer.Serialize(msg)));
+            private Context ReceiveStatus(StatusMessage msg)
+            {
+                IByteBuffer statusPacket = _serializer.ZeroSerialize(msg);
+                statusPacket.ReadByte();
+
+                _currentSession.ReceiveMessage(new ZeroPacket(statusPacket) {PacketType = Eth62MessageCode.Status + 16});
                 return this;
             }
 
@@ -264,8 +272,7 @@ namespace Nethermind.Network.Test
                 msg.GenesisHash = TestItem.KeccakA;
                 msg.ProtocolVersion = 63;
 
-                _currentSession.ReceiveMessage(new Packet("eth", Eth62MessageCode.Status + 16, _serializer.Serialize(msg)));
-                return this;
+                return ReceiveStatus(msg);
             }
 
             public Context ReceiveStatusWrongGenesis()
@@ -276,8 +283,7 @@ namespace Nethermind.Network.Test
                 msg.GenesisHash = TestItem.KeccakB;
                 msg.ProtocolVersion = 63;
 
-                _currentSession.ReceiveMessage(new Packet("eth", Eth62MessageCode.Status + 16, _serializer.Serialize(msg)));
-                return this;
+                return ReceiveStatus(msg);
             }
 
             public Context VerifyNotAddedToDiscovery()

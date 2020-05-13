@@ -1,20 +1,18 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Linq;
@@ -29,11 +27,13 @@ using Nethermind.DataMarketplace.Consumers.DataStreams.Services;
 using Nethermind.DataMarketplace.Consumers.Deposits;
 using Nethermind.DataMarketplace.Consumers.Deposits.Domain;
 using Nethermind.DataMarketplace.Consumers.Notifiers;
+using Nethermind.DataMarketplace.Consumers.Notifiers.Services;
 using Nethermind.DataMarketplace.Consumers.Providers;
 using Nethermind.DataMarketplace.Consumers.Sessions;
 using Nethermind.DataMarketplace.Consumers.Sessions.Domain;
 using Nethermind.DataMarketplace.Consumers.Sessions.Repositories;
 using Nethermind.DataMarketplace.Core.Domain;
+using Nethermind.DataMarketplace.Core.Services;
 using Nethermind.Logging;
 using Nethermind.Wallet;
 using NSubstitute;
@@ -518,8 +518,9 @@ namespace Nethermind.DataMarketplace.Consumers.Test.Services.DataStreams
 
         private static DepositDetails GetDepositDetails()
             => new DepositDetails(new Deposit(Keccak.Zero, 1, 1, 1),
-                GetDataAsset(), TestItem.AddressB, Array.Empty<byte>(), 1, TestItem.KeccakA, 1);
-        
+                GetDataAsset(), TestItem.AddressB, Array.Empty<byte>(), 1,
+                new []{TransactionInfo.Default(TestItem.KeccakA, 1, 1, 1, 1)}, 1);
+
         private static DataAsset GetDataAsset()
             => new DataAsset(Keccak.OfAnEmptyString, "test", "test", 1,
                 DataAssetUnitType.Unit, 0, 10, new DataAssetRules(new DataAssetRule(1)),

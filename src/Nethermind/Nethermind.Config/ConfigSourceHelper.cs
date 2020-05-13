@@ -1,20 +1,18 @@
-/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
 using System.Collections;
@@ -44,7 +42,8 @@ namespace Nethermind.Config
                 }
                 else
                 {
-                    var valueItems = valueString.Split(',').ToArray();
+                    valueString = valueString.Trim().RemoveStart('[').RemoveEnd(']');
+                    var valueItems = valueString.Split(',').Select(s => s.Trim()).ToArray();
                     var collection = valueType.IsGenericType
                         ? (IList) Activator.CreateInstance(typeof(List<>).MakeGenericType(itemType))
                         : (IList) Activator.CreateInstance(valueType, valueItems.Length);
@@ -101,8 +100,14 @@ namespace Nethermind.Config
 
                 throw new IOException($"Cannot parse enum value: {itemValue}, type: {valueType.Name}");
             }
+
+            var nullableType = Nullable.GetUnderlyingType(valueType);
             
-            return Convert.ChangeType(itemValue, valueType);
+            return nullableType == null
+                ? Convert.ChangeType(itemValue, valueType)
+                : !string.IsNullOrEmpty(itemValue) && !itemValue.Equals("null", StringComparison.InvariantCultureIgnoreCase) 
+                    ? Convert.ChangeType(itemValue, nullableType) 
+                    : null;
         }
     }
 }

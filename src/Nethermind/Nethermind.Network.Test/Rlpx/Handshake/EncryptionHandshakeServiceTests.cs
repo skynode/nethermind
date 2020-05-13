@@ -1,35 +1,33 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System.Text;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
 using Nethermind.Core.Extensions;
-using Nethermind.Core.Model;
-using Nethermind.Core.Specs;
+using Nethermind.Crypto;
+using Nethermind.Specs;
 using Nethermind.Logging;
-using Nethermind.Network.Crypto;
 using Nethermind.Network.Rlpx;
 using Nethermind.Network.Rlpx.Handshake;
 using NUnit.Framework;
 
 namespace Nethermind.Network.Test.Rlpx.Handshake
 {
+    [Parallelizable(ParallelScope.Self)]
     [TestFixture]
     public class EncryptionHandshakeServiceTests
     {
@@ -48,8 +46,8 @@ namespace Nethermind.Network.Test.Rlpx.Handshake
 
             _eciesCipher = new EciesCipher(_trueCryptoRandom); // TODO: provide a separate test random with specific IV and epehemeral key for testing
 
-            _initiatorService = new HandshakeService(_messageSerializationService, _eciesCipher, _testRandom, _ecdsa, NetTestVectors.StaticKeyA, NullLogManager.Instance);
-            _recipientService = new HandshakeService(_messageSerializationService, _eciesCipher, _testRandom, _ecdsa, NetTestVectors.StaticKeyB, NullLogManager.Instance);
+            _initiatorService = new HandshakeService(_messageSerializationService, _eciesCipher, _testRandom, _ecdsa, NetTestVectors.StaticKeyA, LimboLogs.Instance);
+            _recipientService = new HandshakeService(_messageSerializationService, _eciesCipher, _testRandom, _ecdsa, NetTestVectors.StaticKeyB, LimboLogs.Instance);
 
             _initiatorHandshake = new EncryptionHandshake();
             _recipientHandshake = new EncryptionHandshake();
@@ -58,7 +56,7 @@ namespace Nethermind.Network.Test.Rlpx.Handshake
             _ack = null;
         }
 
-        private readonly IEthereumEcdsa _ecdsa = new EthereumEcdsa(RopstenSpecProvider.Instance, NullLogManager.Instance); // TODO: separate general crypto signer from Ethereum transaction signing
+        private readonly IEthereumEcdsa _ecdsa = new EthereumEcdsa(RopstenSpecProvider.Instance, LimboLogs.Instance); // TODO: separate general crypto signer from Ethereum transaction signing
 
         private IMessageSerializationService _messageSerializationService;
 

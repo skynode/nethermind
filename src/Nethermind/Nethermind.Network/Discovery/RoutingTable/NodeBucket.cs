@@ -1,23 +1,23 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Nethermind.Stats.Model;
 
 namespace Nethermind.Network.Discovery.RoutingTable
@@ -29,7 +29,7 @@ namespace Nethermind.Network.Discovery.RoutingTable
 
         public NodeBucket(int distance, int bucketSize)
         {
-            _items = new SortedSet<NodeBucketItem>(new LastContactTimeComparer());
+            _items = new SortedSet<NodeBucketItem>(LastContactTimeComparer.Instance);
             Distance = distance;
             BucketSize = bucketSize;
         }
@@ -50,6 +50,17 @@ namespace Nethermind.Network.Discovery.RoutingTable
                 }
             }
         }
+        
+        public IReadOnlyCollection<NodeBucketItem> BondedItems
+        {
+            get
+            {
+                lock (_nodeBucketLock)
+                {
+                    return _items.Where(i => (DateTime.UtcNow - i.LastContactTime) < TimeSpan.FromDays(2)).ToArray();
+                }
+            }
+        }
 
         public NodeAddResult AddNode(Node node)
         {
@@ -57,7 +68,7 @@ namespace Nethermind.Network.Discovery.RoutingTable
             {
                 if (_items.Count < BucketSize)
                 {
-                    var item = new NodeBucketItem(node);
+                    NodeBucketItem item = new NodeBucketItem(node);
                     if (!_items.Contains(item))
                     {
                         _items.Add(item);
@@ -65,7 +76,7 @@ namespace Nethermind.Network.Discovery.RoutingTable
                     return NodeAddResult.Added();
                 }
 
-                var evictionCandidate = GetEvictionCandidate();
+                NodeBucketItem evictionCandidate = GetEvictionCandidate();
                 return NodeAddResult.Full(evictionCandidate);
             }  
         }
@@ -74,7 +85,7 @@ namespace Nethermind.Network.Discovery.RoutingTable
         {
             lock (_nodeBucketLock)
             {
-                var item = new NodeBucketItem(node);
+                NodeBucketItem item = new NodeBucketItem(node);
                 if (_items.Contains(item))
                 {
                     _items.Remove(item);
@@ -86,7 +97,7 @@ namespace Nethermind.Network.Discovery.RoutingTable
         {
             lock (_nodeBucketLock)
             {
-                var item = new NodeBucketItem(nodeToRemove);
+                NodeBucketItem item = new NodeBucketItem(nodeToRemove);
                 if (_items.Contains(item))
                 {
                     _items.Remove(item);
@@ -103,8 +114,8 @@ namespace Nethermind.Network.Discovery.RoutingTable
         {
             lock (_nodeBucketLock)
             {
-                var item = new NodeBucketItem(node);
-                var bucketItem = _items.FirstOrDefault(x => x.Equals(item));
+                NodeBucketItem item = new NodeBucketItem(node);
+                NodeBucketItem bucketItem = _items.FirstOrDefault(x => x.Equals(item));
                 bucketItem?.OnContactReceived();
             }
         }
@@ -116,6 +127,25 @@ namespace Nethermind.Network.Discovery.RoutingTable
 
         private class LastContactTimeComparer : IComparer<NodeBucketItem>
         {
+            private LastContactTimeComparer()
+            {
+            }
+            
+            private static LastContactTimeComparer _lastContactTimeComparer;
+
+            public static LastContactTimeComparer Instance
+            {
+                get
+                {
+                    if (_lastContactTimeComparer == null)
+                    {
+                        LazyInitializer.EnsureInitialized(ref _lastContactTimeComparer, () => new LastContactTimeComparer());
+                    }
+
+                    return _lastContactTimeComparer;
+                }
+            }
+            
             public int Compare(NodeBucketItem x, NodeBucketItem y)
             {
                 if (ReferenceEquals(x, y))
@@ -139,7 +169,7 @@ namespace Nethermind.Network.Discovery.RoutingTable
                     return 0;
                 }
 
-                var timeComparison = x.LastContactTime.CompareTo(y.LastContactTime);
+                int timeComparison = x.LastContactTime.CompareTo(y.LastContactTime);
                 if (timeComparison == 0)
                 {
                     //last contact time is the same, but items are not the same, selecting higher id as higher item

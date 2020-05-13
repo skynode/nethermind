@@ -17,12 +17,15 @@
 using System;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
+using Nethermind.Core2;
 using Nethermind.Core2.Types;
 
 namespace Nethermind.Ssz
 {
     public static partial class Ssz
     {
+        public const int EpochLength = sizeof(ulong);
+        
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Encode(Span<byte> span, Epoch value)
         {
@@ -30,10 +33,10 @@ namespace Nethermind.Ssz
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static Epoch DecodeEpoch(Span<byte> span, ref int offset)
+        private static Epoch DecodeEpoch(ReadOnlySpan<byte> span, ref int offset)
         {
             Epoch epoch = new Epoch(BinaryPrimitives.ReadUInt64LittleEndian(span.Slice(offset)));
-            offset += Epoch.SszLength;
+            offset += Ssz.EpochLength;
             return epoch;
         }
         
@@ -46,7 +49,7 @@ namespace Nethermind.Ssz
         private static void Encode(Span<byte> span, Epoch value, ref int offset)
         {
             BinaryPrimitives.WriteUInt64LittleEndian(span.Slice(offset), value.Number);
-            offset += Epoch.SszLength;
+            offset += Ssz.EpochLength;
         }
     }
 }

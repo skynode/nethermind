@@ -21,6 +21,7 @@ using System.Collections.Generic;
 using System.IO;
 using Ethereum.Test.Base;
 using Nethermind.Logging;
+using Nethermind.Logging.NLog;
 using NUnit.Framework;
 
 namespace Nethermind.Blockchain.Test.Runner
@@ -43,7 +44,7 @@ namespace Nethermind.Blockchain.Test.Runner
             IEnumerable<BlockchainTest> tests = _testsSource.LoadTests();
             foreach (BlockchainTest test in tests)
             {
-                Setup(NullLogManager.Instance);
+                Setup(LimboLogs.Instance);
 
                 Console.Write($"{test,-120} ");
                 if (test.LoadFailure != null)

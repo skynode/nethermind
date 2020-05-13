@@ -19,33 +19,36 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Nethermind.Blockchain;
+using Nethermind.Blockchain.Find;
+using Nethermind.Blockchain.Processing;
 using Nethermind.Blockchain.Receipts;
 using Nethermind.Blockchain.Rewards;
-using Nethermind.Blockchain.TxPools;
-using Nethermind.Blockchain.TxPools.Storages;
 using Nethermind.Blockchain.Validators;
+using Nethermind.Consensus;
+using Nethermind.Consensus.Ethash;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
-using Nethermind.Core.Encoding;
 using Nethermind.Core.Extensions;
 using Nethermind.Core.Specs;
-using Nethermind.Core.Specs.Forks;
+using Nethermind.Crypto;
+using Nethermind.Db;
 using Nethermind.Dirichlet.Numerics;
 using Nethermind.Evm;
 using Nethermind.Logging;
-using Nethermind.Mining;
-using Nethermind.Mining.Difficulty;
-using Nethermind.Store;
-using Nethermind.Store.Repositories;
-using Newtonsoft.Json;
+using Nethermind.Serialization.Rlp;
+using Nethermind.Specs;
+using Nethermind.Specs.Forks;
+using Nethermind.State;
+using Nethermind.State.Repositories;
+using Nethermind.Store.Bloom;
+using Nethermind.TxPool;
+using Nethermind.TxPool.Storages;
 using NUnit.Framework;
 
 namespace Ethereum.Test.Base
@@ -53,14 +56,14 @@ namespace Ethereum.Test.Base
     public abstract class LegacyBlockchainTestBase
     {
         private static ILogger _logger = new SimpleConsoleLogger();
-        private static ILogManager _logManager = NullLogManager.Instance;
+        private static ILogManager _logManager = LimboLogs.Instance;
         private static ISealValidator Sealer { get; }
         private static DifficultyCalculatorWrapper DifficultyCalculator { get; }
 
         static LegacyBlockchainTestBase()
         {
             DifficultyCalculator = new DifficultyCalculatorWrapper();
-            Sealer = new EthashSealValidator(_logManager, DifficultyCalculator, new Ethash(_logManager)); // temporarily keep reusing the same one as otherwise it would recreate cache for each test    
+            Sealer = new EthashSealValidator(_logManager, DifficultyCalculator, new CryptoRandom(), new Ethash(_logManager)); // temporarily keep reusing the same one as otherwise it would recreate cache for each test    
         }
 
         [SetUp]
@@ -87,7 +90,7 @@ namespace Ethereum.Test.Base
 
         protected void Setup(ILogManager logManager)
         {
-            _logManager = logManager ?? NullLogManager.Instance;
+            _logManager = logManager ?? LimboLogs.Instance;
             _logger = _logManager.GetClassLogger();
         }
 
@@ -108,7 +111,6 @@ namespace Ethereum.Test.Base
 
             ISnapshotableDb stateDb = new StateDb();
             ISnapshotableDb codeDb = new StateDb();
-            IDb traceDb = new MemDb();
 
             ISpecProvider specProvider;
             if (test.NetworkAfterTransition != null)
@@ -138,9 +140,9 @@ namespace Ethereum.Test.Base
             ITxPool transactionPool = new TxPool(NullTxStorage.Instance, new Timestamper(), ecdsa, specProvider, new TxPoolConfig(), stateProvider, _logManager);
             IReceiptStorage receiptStorage = NullReceiptStorage.Instance;
             var blockInfoDb = new MemDb();
-            IBlockTree blockTree = new BlockTree(new MemDb(), new MemDb(), blockInfoDb, new ChainLevelInfoRepository(blockInfoDb), specProvider, transactionPool, _logManager);
+            IBlockTree blockTree = new BlockTree(new MemDb(), new MemDb(), blockInfoDb, new ChainLevelInfoRepository(blockInfoDb), specProvider, transactionPool, NullBloomStorage.Instance,  _logManager);
             IBlockhashProvider blockhashProvider = new BlockhashProvider(blockTree, _logManager);
-            ITxValidator txValidator = new TxValidator(ChainId.MainNet);
+            ITxValidator txValidator = new TxValidator(ChainId.Mainnet);
             IHeaderValidator headerValidator = new HeaderValidator(blockTree, Sealer, specProvider, _logManager);
             IOmmersValidator ommersValidator = new OmmersValidator(blockTree, headerValidator, _logManager);
             IBlockValidator blockValidator = new BlockValidator(txValidator, headerValidator, ommersValidator, specProvider, _logManager);
@@ -164,7 +166,6 @@ namespace Ethereum.Test.Base
                     _logManager),
                 stateDb,
                 codeDb,
-                traceDb,
                 stateProvider,
                 storageProvider,
                 transactionPool,
@@ -176,12 +177,11 @@ namespace Ethereum.Test.Base
                 blockProcessor,
                 new TxSignaturesRecoveryStep(ecdsa, NullTxPool.Instance, _logManager),
                 _logManager,
-                false,
                 false);
 
             InitializeTestState(test, stateProvider, storageProvider, specProvider);
 
-            List<(Block Block, string ExpectedException)> correctRlpsBlocks = new List<(Block, string)>();
+            List<(Block Block, string ExpectedException)> correctRlp = new List<(Block, string)>();
             for (int i = 0; i < test.Blocks.Length; i++)
             {
                 try
@@ -197,7 +197,7 @@ namespace Ethereum.Test.Base
                         Assert.AreEqual(new Keccak(testBlockJson.UncleHeaders[ommerIndex].Hash), suggestedBlock.Ommers[ommerIndex].Hash, "hash of the ommer");
                     }
 
-                    correctRlpsBlocks.Add((suggestedBlock, testBlockJson.ExpectedException));
+                    correctRlp.Add((suggestedBlock, testBlockJson.ExpectedException));
                 }
                 catch (Exception)
                 {
@@ -205,7 +205,7 @@ namespace Ethereum.Test.Base
                 }
             }
 
-            if (correctRlpsBlocks.Count == 0)
+            if (correctRlp.Count == 0)
             {
                 Assert.AreEqual(new Keccak(test.GenesisBlockHeader.Hash), test.LastBlockHash);
                 return;
@@ -234,25 +234,25 @@ namespace Ethereum.Test.Base
 
             genesisProcessed.WaitOne();
 
-            for (int i = 0; i < correctRlpsBlocks.Count; i++)
+            for (int i = 0; i < correctRlp.Count; i++)
             {
                 stopwatch?.Start();
                 try
                 {
-                    if (correctRlpsBlocks[i].ExpectedException != null)
+                    if (correctRlp[i].ExpectedException != null)
                     {
-                        _logger.Info($"Expecting block exception: {correctRlpsBlocks[i].ExpectedException}");
+                        _logger.Info($"Expecting block exception: {correctRlp[i].ExpectedException}");
                     }
 
-                    if (correctRlpsBlocks[i].Block.Hash == null)
+                    if (correctRlp[i].Block.Hash == null)
                     {
                         throw new Exception($"null hash in {test.Name} block {i}");
                     }
 
                     // TODO: mimic the actual behaviour where block goes through validating sync manager?
-                    if (!test.SealEngineUsed || blockValidator.ValidateSuggestedBlock(correctRlpsBlocks[i].Block))
+                    if (!test.SealEngineUsed || blockValidator.ValidateSuggestedBlock(correctRlp[i].Block))
                     {
-                        blockTree.SuggestBlock(correctRlpsBlocks[i].Block);
+                        blockTree.SuggestBlock(correctRlp[i].Block);
                     }
                     else
                     {
@@ -287,7 +287,7 @@ namespace Ethereum.Test.Base
             {
                 foreach (KeyValuePair<UInt256, byte[]> storageItem in accountState.Value.Storage)
                 {
-                    storageProvider.Set(new StorageAddress(accountState.Key, storageItem.Key), storageItem.Value);
+                    storageProvider.Set(new StorageCell(accountState.Key, storageItem.Key), storageItem.Value);
                 }
 
                 stateProvider.CreateAccount(accountState.Key, accountState.Value.Balance);
@@ -376,7 +376,7 @@ namespace Ethereum.Test.Base
 
                 foreach (KeyValuePair<UInt256, byte[]> clearedStorage in clearedStorages)
                 {
-                    byte[] value = !stateProvider.AccountExists(accountState.Key) ? Bytes.Empty : storageProvider.Get(new StorageAddress(accountState.Key, clearedStorage.Key));
+                    byte[] value = !stateProvider.AccountExists(accountState.Key) ? Bytes.Empty : storageProvider.Get(new StorageCell(accountState.Key, clearedStorage.Key));
                     if (!value.IsZero())
                     {
                         differences.Add($"{accountState.Key} storage[{clearedStorage.Key}] exp: 0x00, actual: {value.ToHexString(true)}");
@@ -385,7 +385,7 @@ namespace Ethereum.Test.Base
 
                 foreach (KeyValuePair<UInt256, byte[]> storageItem in accountState.Value.Storage)
                 {
-                    byte[] value = !stateProvider.AccountExists(accountState.Key) ? Bytes.Empty : storageProvider.Get(new StorageAddress(accountState.Key, storageItem.Key)) ?? new byte[0];
+                    byte[] value = !stateProvider.AccountExists(accountState.Key) ? Bytes.Empty : storageProvider.Get(new StorageCell(accountState.Key, storageItem.Key)) ?? new byte[0];
                     if (!Bytes.AreEqual(storageItem.Value, value))
                     {
                         differences.Add($"{accountState.Key} storage[{storageItem.Key}] exp: {storageItem.Value.ToHexString(true)}, actual: {value.ToHexString(true)}");

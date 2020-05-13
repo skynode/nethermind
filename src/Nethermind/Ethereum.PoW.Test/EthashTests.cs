@@ -23,12 +23,13 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using Ethereum.Test.Base;
+using Nethermind.Consensus.Ethash;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
-using Nethermind.Core.Encoding;
 using Nethermind.Core.Extensions;
+using Nethermind.Crypto;
 using Nethermind.Logging;
-using Nethermind.Mining;
+using Nethermind.Serialization.Rlp;
 using Newtonsoft.Json;
 using NUnit.Framework;
 
@@ -75,11 +76,11 @@ namespace Ethereum.PoW.Test
             Assert.AreEqual(test.Nonce, blockHeader.Nonce, "header nonce vs test nonce");
             Assert.AreEqual(test.MixHash.Bytes, blockHeader.MixHash.Bytes, "header mix hash vs test mix hash");
             
-            Keccak headerHash = Keccak.Compute(Rlp.Encode(blockHeader, RlpBehaviors.ForSealing));
+            Keccak headerHash = Keccak.Compute(Rlp.Encode(blockHeader, RlpBehaviors.ForSealing).Bytes);
             Assert.AreEqual(test.HeaderHash, headerHash, "header hash");
 
             // seed is correct
-            Ethash ethash = new Ethash(NullLogManager.Instance);
+            Ethash ethash = new Ethash(LimboLogs.Instance);
             uint epoch = Ethash.GetEpoch(blockHeader.Number);
             Assert.AreEqual(test.Seed, Ethash.GetSeedHash(epoch), "seed");
 
@@ -98,7 +99,7 @@ namespace Ethereum.PoW.Test
             Assert.AreEqual(resultHalfTest, test.Result.Bytes, "half test");
 
             // here we confirm that the whole mix hash calculation is fine
-            (byte[] mixHash, byte[] result) = ethash.Hashimoto((ulong)test.FullSize, cache, headerHash, blockHeader.MixHash, test.Nonce);
+            (byte[] mixHash, byte[] result, bool success) = ethash.Hashimoto((ulong)test.FullSize, cache, headerHash, blockHeader.MixHash, test.Nonce);
             Assert.AreEqual(test.MixHash.Bytes, mixHash, "mix hash");
             Assert.AreEqual(test.Result.Bytes, result, "result");
 

@@ -1,23 +1,22 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
-using Nethermind.Core.Model;
+using Nethermind.Core;
 using Nethermind.Facade.Proxy;
+using Nethermind.JsonRpc.Modules;
 
 namespace Nethermind.JsonRpc
 {
@@ -25,25 +24,30 @@ namespace Nethermind.JsonRpc
     {
         public T Data { get; set; }
         public Result Result { get; set; }
-        public ErrorType ErrorType { get; set; }
+        public int ErrorCode { get; set; }
 
         private ResultWrapper()
         {
         }
         
-        public static ResultWrapper<T> Fail(string error)
+        public static ResultWrapper<T> Fail<TSearch>(SearchResult<TSearch> searchResult) where TSearch : class
         {
-            return new ResultWrapper<T> { Result = Result.Fail(error), ErrorType = ErrorType.InternalError};
-        }
-
-        public static ResultWrapper<T> Fail(string error, ErrorType errorType, T outputData)
-        {
-            return new ResultWrapper<T> { Result = Result.Fail(error), ErrorType = errorType, Data = outputData};
+            return new ResultWrapper<T> { Result = Result.Fail(searchResult.Error), ErrorCode = searchResult.ErrorCode};
         }
         
-        public static ResultWrapper<T> Fail(string error, ErrorType errorType)
+        public static ResultWrapper<T> Fail(string error)
         {
-            return new ResultWrapper<T> { Result = Result.Fail(error), ErrorType = errorType};
+            return new ResultWrapper<T> { Result = Result.Fail(error), ErrorCode = ErrorCodes.InternalError};
+        }
+
+        public static ResultWrapper<T> Fail(string error, int errorCode, T outputData)
+        {
+            return new ResultWrapper<T> { Result = Result.Fail(error), ErrorCode = errorCode, Data = outputData};
+        }
+        
+        public static ResultWrapper<T> Fail(string error, int errorCode)
+        {
+            return new ResultWrapper<T> { Result = Result.Fail(error), ErrorCode = errorCode};
         }
 
         public static ResultWrapper<T> Success(T data)
@@ -61,9 +65,9 @@ namespace Nethermind.JsonRpc
             return Data;
         }
 
-        public ErrorType GetErrorType()
+        public int GetErrorCode()
         {
-            return ErrorType;
+            return ErrorCode;
         }
         
         public static ResultWrapper<T> From(RpcResult<T> rpcResult)

@@ -1,29 +1,29 @@
-﻿/*
- * Copyright (c) 2018 Demerzel Solutions Limited
- * This file is part of the Nethermind library.
- *
- * The Nethermind library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The Nethermind library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
- */
+﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  This file is part of the Nethermind library.
+// 
+//  The Nethermind library is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Lesser General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  The Nethermind library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Lesser General Public License for more details.
+// 
+//  You should have received a copy of the GNU Lesser General Public License
+//  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Nethermind.Blockchain;
 using Nethermind.Blockchain.Filters;
+using Nethermind.Blockchain.Find;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
 using Nethermind.Dirichlet.Numerics;
 using Nethermind.JsonRpc.Data;
-using Nethermind.JsonRpc.Eip1186;
+using Nethermind.State.Proofs;
 
 namespace Nethermind.JsonRpc.Modules.Eth
 {
@@ -66,8 +66,8 @@ namespace Nethermind.JsonRpc.Modules.Eth
         [JsonRpcMethod(IsImplemented = true, Description = "Returns storage data at address. storage_index", IsReadOnly = true)]
         ResultWrapper<byte[]> eth_getStorageAt(Address address, UInt256 positionIndex, BlockParameter blockParameter = null);
         
-        [JsonRpcMethod(IsImplemented = true, Description = "Returns number of transactions in the block", IsReadOnly = true)]
-        ResultWrapper<UInt256?> eth_getTransactionCount(Address address, BlockParameter blockParameter = null);
+        [JsonRpcMethod(IsImplemented = true, Description = "Returns account nonce (number of trnsactions from the account since genesis) at the given block number", IsReadOnly = true)]
+        Task<ResultWrapper<UInt256?>> eth_getTransactionCount(Address address, BlockParameter blockParameter = null);
         
         [JsonRpcMethod(IsImplemented = true, Description = "Returns number of transactions in the block block hash", IsReadOnly = true)]
         ResultWrapper<UInt256?> eth_getBlockTransactionCountByHash(Keccak blockHash);
@@ -94,19 +94,22 @@ namespace Nethermind.JsonRpc.Modules.Eth
         Task<ResultWrapper<Keccak>> eth_sendRawTransaction(byte[] transaction);
         
         [JsonRpcMethod(IsImplemented = true, Description = "Executes a tx call (does not create a transaction)", IsReadOnly = false)]
-        ResultWrapper<byte[]> eth_call(TransactionForRpc transactionCall, BlockParameter blockParameter = null);
+        ResultWrapper<string> eth_call(TransactionForRpc transactionCall, BlockParameter blockParameter = null);
         
         [JsonRpcMethod(IsImplemented = true, Description = "Executes a tx call and returns gas used (does not create a transaction)", IsReadOnly = false)]
         ResultWrapper<UInt256?> eth_estimateGas(TransactionForRpc transactionCall);
         
         [JsonRpcMethod(IsImplemented = true, Description = "Retrieves a block by hash", IsReadOnly = true)]
-        ResultWrapper<BlockForRpc> eth_getBlockByHash(Keccak blockHash, bool returnFullTransactionObjects);
+        ResultWrapper<BlockForRpc> eth_getBlockByHash(Keccak blockHash, bool returnFullTransactionObjects = false);
         
         [JsonRpcMethod(IsImplemented = true, Description = "Retrieves a block by number", IsReadOnly = true)]
-        ResultWrapper<BlockForRpc> eth_getBlockByNumber(BlockParameter blockParameter, bool returnFullTransactionObjects);
+        ResultWrapper<BlockForRpc> eth_getBlockByNumber(BlockParameter blockParameter, bool returnFullTransactionObjects = false);
         
         [JsonRpcMethod(IsImplemented = true, Description = "Retrieves a transaction by hash", IsReadOnly = true)]
         ResultWrapper<TransactionForRpc> eth_getTransactionByHash(Keccak transactionHash);
+        
+        [JsonRpcMethod(IsImplemented = true, Description = "Returns the pending transactions list", IsReadOnly = true)]
+        ResultWrapper<TransactionForRpc[]> eth_pendingTransactions();
         
         [JsonRpcMethod(IsImplemented = true, Description = "Retrieves a transaction by block hash and index", IsReadOnly = true)]
         ResultWrapper<TransactionForRpc> eth_getTransactionByBlockHashAndIndex(Keccak blockHash, UInt256 positionIndex);

@@ -16,18 +16,28 @@
 
 using System;
 using System.Buffers.Binary;
+using System.Collections;
+using System.Collections.Generic;
+using Nethermind.Core2;
 using Nethermind.Core2.Containers;
+using Nethermind.Core2.Crypto;
 
 namespace Nethermind.Ssz
 {
     public static partial class Ssz
     {
+        public const int AttestationDynamicOffset = sizeof(uint) + Ssz.AttestationDataLength + Ssz.BlsSignatureLength;
+
+        public static int AttestationLength(Attestation container)
+        {
+            return AttestationDynamicOffset + (container.AggregationBits.Length + 8) / 8;
+        }
+
         public static void Encode(Span<byte> span, Attestation container)
         {
-            if (span.Length != Attestation.SszLength(container)) ThrowTargetLength<Attestation>(span.Length, Attestation.SszLength(container));
-            if (container == null) return;
+            if (span.Length != Ssz.AttestationLength(container)) ThrowTargetLength<Attestation>(span.Length, Ssz.AttestationLength(container));
             int offset = 0;
-            int dynamicOffset = Attestation.SszDynamicOffset;
+            int dynamicOffset = Ssz.AttestationDynamicOffset;
             Encode(span, container.AggregationBits, ref offset, ref dynamicOffset);
             Encode(span, container.Data, ref offset);
             Encode(span, container.Signature, ref offset);
@@ -39,7 +49,7 @@ namespace Nethermind.Ssz
             int dynamicOffset = containers.Length * VarOffsetSize;
             for (int i = 0; i < containers.Length; i++)
             {
-                int currentLength = Attestation.SszLength(containers[i]);
+                int currentLength = Ssz.AttestationLength(containers[i]);
                 Encode(span.Slice(offset, VarOffsetSize), dynamicOffset);
                 Encode(span.Slice(dynamicOffset, currentLength), containers[i]);
                 offset += VarOffsetSize;
@@ -47,7 +57,7 @@ namespace Nethermind.Ssz
             }
         }
 
-        public static Attestation[] DecodeAttestations(Span<byte> span)
+        public static Attestation[] DecodeAttestations(ReadOnlySpan<byte> span)
         {
             if (span.Length == 0)
             {
@@ -73,35 +83,39 @@ namespace Nethermind.Ssz
             return containers;
         }
 
-        public static Attestation DecodeAttestation(Span<byte> span)
+        public static Attestation DecodeAttestation(ReadOnlySpan<byte> span)
         {
-            if (span.Length == 0) return null;
             int offset = 0;
-            Attestation container = new Attestation();
 
             // static part
             DecodeDynamicOffset(span, ref offset, out int dynamicOffset1);
-            container.Data = DecodeAttestationData(span, ref offset);
-            container.Signature = DecodeBlsSignature(span, ref offset);
+            AttestationData data = DecodeAttestationData(span, ref offset);
+            BlsSignature signature = DecodeBlsSignature(span, ref offset);
 
             // var part
-            container.AggregationBits = span.Slice(dynamicOffset1, span.Length - dynamicOffset1).ToArray();
+            BitArray aggregationBits = DecodeBitlist(span.Slice(dynamicOffset1, span.Length - dynamicOffset1));
+            
+            Attestation container = new Attestation(aggregationBits, data, signature);
 
             return container;
         }
 
-        private static void Encode(Span<byte> span, Attestation[] attestations, ref int offset, ref int dynamicOffset)
+        private static void Encode(Span<byte> span, IReadOnlyList<Attestation> attestations, ref int offset)
         {
-            int length = attestations.Length * VarOffsetSize;
-            for (int i = 0; i < attestations.Length; i++)
+            // Semantics of Encode = write container into span at offset, then increase offset by the bytes written
+            
+            // Static
+            int staticOffset = offset;
+            int dynamicOffset = attestations.Count * VarOffsetSize;
+            offset += dynamicOffset;
+            foreach (Attestation attestation in attestations)
             {
-                length += Attestation.SszLength(attestations[i]);
+                int length = Ssz.AttestationLength(attestation);
+                Encode(span, dynamicOffset, ref staticOffset);
+                dynamicOffset += length;
+                Encode(span.Slice(offset, length), attestation);
+                offset += length;
             }
-
-            Encode(span.Slice(offset, VarOffsetSize), dynamicOffset);
-            Encode(span.Slice(dynamicOffset, length), attestations);
-            dynamicOffset += length;
-            offset += VarOffsetSize;
         }
     }
 }

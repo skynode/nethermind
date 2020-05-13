@@ -12,21 +12,25 @@ ToC
 .. toctree::
    :maxdepth: 2
    
+   start
+   cloud
+   platforms
+   hardware_requirements
+   firewall_configuration
    download
    releases
-   build
+   cli
    source_code
-   cloud
-   known_issues
+   build
    runtime
    networks
    private_networks
    configuration
-   cli
+   metrics
+   enterprise
    jsonrpc
-   platforms
-   firewall_configuration
-   hardware_requirements
+   web3
    security
    docker
+   known_issues
    contact

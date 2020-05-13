@@ -20,11 +20,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Nethermind.Core;
+using Nethermind.Core.Crypto;
 using Nethermind.Core.Extensions;
 using Nethermind.Dirichlet.Numerics;
 using Nethermind.Evm;
 using Nethermind.Evm.Tracing;
-using Nethermind.Store;
+using Nethermind.State;
 
 namespace Nethermind.State.Test.Runner
 {
@@ -39,17 +40,19 @@ namespace Nethermind.State.Test.Runner
         public bool IsTracingOpLevelStorage => true;
         public bool IsTracingMemory { get; set; } = true;
         bool ITxTracer.IsTracingInstructions => true;
+        public bool IsTracingRefunds { get; } = false;
         public bool IsTracingCode => false;
         public bool IsTracingStack { get; set; } = true;
         bool ITxTracer.IsTracingState => false;
-        
-        public void MarkAsSuccess(Address recipient, long gasSpent, byte[] output, LogEntry[] logs)
+        public bool IsTracingBlockHash { get; } = false;
+
+        public void MarkAsSuccess(Address recipient, long gasSpent, byte[] output, LogEntry[] logs, Keccak stateRoot = null)
         {
             _trace.Result.Output = output;
             _trace.Result.GasUsed = gasSpent;
         }
 
-        public void MarkAsFailed(Address recipient, long gasSpent, byte[] output, string error)
+        public void MarkAsFailed(Address recipient, long gasSpent, byte[] output, string error, Keccak stateRoot = null)
         {
             _trace.Result.Error = _traceEntry?.Error ?? error;
             _trace.Result.Output = output ?? Bytes.Empty;
@@ -178,7 +181,12 @@ namespace Nethermind.State.Test.Runner
             throw new NotSupportedException();
         }
 
-        public void ReportStorageChange(StorageAddress storageAddress, byte[] before, byte[] after)
+        public void ReportAccountRead(Address address)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void ReportStorageChange(StorageCell storageAddress, byte[] before, byte[] after)
         {
             throw new NotSupportedException();
         }
@@ -203,9 +211,19 @@ namespace Nethermind.State.Test.Runner
             throw new NotSupportedException();
         }
 
+        public void ReportBlockHash(Keccak blockHash)
+        {
+            throw new NotImplementedException();
+        }
+
         public void ReportByteCode(byte[] byteCode)
         {
             throw new NotSupportedException();
+        }
+
+        public void ReportGasUpdateForVmTrace(long refund, long gasAvailable)
+        {
+            throw new NotImplementedException();
         }
 
         public void ReportRefundForVmTrace(long refund, long gasAvailable)
@@ -215,6 +233,11 @@ namespace Nethermind.State.Test.Runner
         public void ReportRefund(long refund)
         {
             _traceEntry.Refund = (int)refund;
+        }
+
+        public void ReportExtraGasPressure(long extraGasPressure)
+        {
+            throw new NotImplementedException();
         }
 
         public void SetOperationStack(List<string> stackTrace)
