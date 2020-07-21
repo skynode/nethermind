@@ -14,6 +14,7 @@
 //  You should have received a copy of the GNU Lesser General Public License
 //  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
+using System;
 using System.Numerics;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
@@ -74,7 +75,7 @@ namespace Nethermind.Evm.Test
             _stateDb = UseBeamSync ? beamSyncDb : new StateDb();
             TestState = new StateProvider(_stateDb, codeDb, logger);
             Storage = new StorageProvider(_stateDb, TestState, logger);
-            _ethereumEcdsa = new EthereumEcdsa(SpecProvider, logger);
+            _ethereumEcdsa = new EthereumEcdsa(SpecProvider.ChainId, logger);
             IBlockhashProvider blockhashProvider = TestBlockhashProvider.Instance;
             Machine = new VirtualMachine(TestState, Storage, blockhashProvider, SpecProvider, logger);
             _processor = new TransactionProcessor(SpecProvider, TestState, Storage, Machine, logger);
@@ -112,7 +113,11 @@ namespace Nethermind.Evm.Test
             return tracer;
         }
 
-        protected (Block block, Transaction transaction) PrepareTx(long blockNumber, long gasLimit, byte[] code, SenderRecipientAndMiner senderRecipientAndMiner = null)
+        protected (Block block, Transaction transaction) PrepareTx(
+            long blockNumber,
+            long gasLimit,
+            byte[] code,
+            SenderRecipientAndMiner senderRecipientAndMiner = null)
         {
             senderRecipientAndMiner ??= SenderRecipientAndMiner.Default;
             TestState.CreateAccount(senderRecipientAndMiner.Sender, 100.Ether());
@@ -127,7 +132,7 @@ namespace Nethermind.Evm.Test
                 .WithGasLimit(gasLimit)
                 .WithGasPrice(1)
                 .To(senderRecipientAndMiner.Recipient)
-                .SignedAndResolved(_ethereumEcdsa, senderRecipientAndMiner.SenderKey, blockNumber)
+                .SignedAndResolved(_ethereumEcdsa, senderRecipientAndMiner.SenderKey)
                 .TestObject;
 
             Block block = BuildBlock(blockNumber, senderRecipientAndMiner, transaction);
@@ -150,7 +155,7 @@ namespace Nethermind.Evm.Test
                 .WithData(input)
                 .WithValue(value)
                 .To(senderRecipientAndMiner.Recipient)
-                .SignedAndResolved(_ethereumEcdsa, senderRecipientAndMiner.SenderKey, blockNumber)
+                .SignedAndResolved(_ethereumEcdsa, senderRecipientAndMiner.SenderKey)
                 .TestObject;
 
             Block block = BuildBlock(blockNumber, senderRecipientAndMiner);
@@ -165,11 +170,11 @@ namespace Nethermind.Evm.Test
 
             Transaction transaction = Build.A.Transaction
                 .WithTo(null)
-                .WithData(Bytes.Empty)
+                .WithData(Array.Empty<byte>())
                 .WithGasLimit(gasLimit)
                 .WithGasPrice(1)
                 .WithInit(code)
-                .SignedAndResolved(_ethereumEcdsa, senderRecipientAndMiner.SenderKey, blockNumber)
+                .SignedAndResolved(_ethereumEcdsa, senderRecipientAndMiner.SenderKey)
                 .TestObject;
 
             Block block = BuildBlock(blockNumber, senderRecipientAndMiner);
@@ -213,10 +218,20 @@ namespace Nethermind.Evm.Test
             Assert.AreEqual(expectedValue.ToBigEndianByteArray(), actualValue, "storage");
         }
 
+        private static int _callIndex = -1;
+        
         protected void AssertStorage(StorageCell storageCell, BigInteger expectedValue)
         {
-            byte[] actualValue = Storage.Get(storageCell);
-            Assert.AreEqual(expectedValue.ToBigEndianByteArray(), actualValue, $"storage {storageCell}");
+            _callIndex++;
+            if (!TestState.AccountExists(storageCell.Address))
+            {
+                Assert.AreEqual(expectedValue.ToBigEndianByteArray(), new byte[1] {0}, $"storage {storageCell}, call {_callIndex}");
+            }
+            else
+            {
+                byte[] actualValue = Storage.Get(storageCell);
+                Assert.AreEqual(expectedValue.ToBigEndianByteArray(), actualValue, $"storage {storageCell}, call {_callIndex}");    
+            }
         }
 
         protected void AssertCodeHash(Address address, Keccak codeHash)

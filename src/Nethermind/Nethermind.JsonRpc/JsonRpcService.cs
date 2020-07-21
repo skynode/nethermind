@@ -120,25 +120,25 @@ namespace Nethermind.JsonRpc
             var providedParameters = request.Params;
             if (_logger.IsInfo) _logger.Info($"Executing JSON RPC call {methodName}{(providedParameters == null ? string.Empty : $" with params {string.Join(',', providedParameters)}")}");
 
-            int missingParamsCount = expectedParameters.Length - (providedParameters?.Length ?? 0) + providedParameters?.Count(string.IsNullOrWhiteSpace) ?? 0;
+            int missingParamsCount = expectedParameters.Length - (providedParameters?.Length ?? 0) + (providedParameters?.Count(string.IsNullOrWhiteSpace) ?? 0);
 
             if (missingParamsCount != 0)
             {
-                bool incorrectParametersCount = missingParamsCount != 0;
+                bool hasIncorrectParameters = true;
                 if (missingParamsCount > 0)
                 {
-                    incorrectParametersCount = false;
+                    hasIncorrectParameters = false;
                     for (int i = 0; i < missingParamsCount; i++)
                     {
                         if (!expectedParameters[expectedParameters.Length - missingParamsCount + i].IsOptional)
                         {
-                            incorrectParametersCount = true;
+                            hasIncorrectParameters = true;
                             break;
                         }
                     }
                 }
 
-                if (incorrectParametersCount)
+                if (hasIncorrectParameters)
                 {
                     return GetErrorResponse(methodName, ErrorCodes.InvalidParams, "Invalid params", $"Incorrect parameters count, expected: {expectedParameters.Length}, actual: {expectedParameters.Length - missingParamsCount}", request.Id);
                 }
@@ -179,6 +179,11 @@ namespace Nethermind.JsonRpc
             catch (TargetParameterCountException e)
             {
                 return GetErrorResponse(methodName, ErrorCodes.InvalidParams, e.Message, e.Data, request.Id);
+            }
+            catch (TargetInvocationException e) when (e.InnerException is OperationCanceledException operationCanceled)
+            {
+                string errorMessage = $"{methodName} request was canceled due to enabled timeout on tracers.";
+                return GetErrorResponse(methodName, ErrorCodes.TracerTimeout, errorMessage, null, request.Id);
             }
             catch (TargetInvocationException invocationException) when (invocationException.InnerException is BeamSyncException beamSyncException)
             {

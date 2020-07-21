@@ -75,16 +75,11 @@ namespace Nethermind.Blockchain.Receipts
                 txReceipt.BlockHash = block.Hash;
                 _transactions[txReceipt.TxHash] = txReceipt;
             }
-
-            if (block.Number < (LowestInsertedReceiptBlock ?? long.MaxValue))
-            {
-                LowestInsertedReceiptBlock = block.Number;
-            }
         }
 
-        public long? LowestInsertedReceiptBlock { get; set; }
+        public long? LowestInsertedReceiptBlockNumber { get; set; }
 
-        public long MigratedBlockNumber { get; set; } = 0;
+        public long MigratedBlockNumber { get; set; }
 
         public int Count => _transactions.Count;
     }

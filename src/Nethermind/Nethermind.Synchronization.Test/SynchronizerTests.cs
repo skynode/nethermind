@@ -37,7 +37,7 @@ using Nethermind.Specs.Forks;
 using Nethermind.State.Repositories;
 using Nethermind.Stats;
 using Nethermind.Stats.Model;
-using Nethermind.Store.Bloom;
+using Nethermind.Db.Blooms;
 using Nethermind.Synchronization.Blocks;
 using Nethermind.Synchronization.ParallelSync;
 using Nethermind.Synchronization.Peers;
@@ -214,16 +214,13 @@ namespace Nethermind.Synchronization.Test
                 return header;
             }
 
-            public void SendNewBlock(Block block)
+            public void NotifyOfNewBlock(Block block, SendBlockPriority priority)
             {
-                ReceivedBlocks.Push(block);
+                if (priority == SendBlockPriority.High)
+                    ReceivedBlocks.Push(block);
             }
 
-            public void HintNewBlock(Keccak blockHash, long number)
-            {
-            }
-
-            public Stack<Block> ReceivedBlocks { get; set; } = new Stack<Block>();
+            public ConcurrentStack<Block> ReceivedBlocks { get; set; } = new ConcurrentStack<Block>();
             public event EventHandler Disconnected;
 
             public PublicKey Id => Node.Id;
@@ -247,7 +244,7 @@ namespace Nethermind.Synchronization.Test
                 Block block = Blocks.Last();
                 for (long j = block.Number; j < i; j++)
                 {
-                    block = Build.A.Block.WithDifficulty(1000000).WithParent(block).WithTotalDifficulty(block.TotalDifficulty + 1000000).WithExtraData(j < branchStart ? Bytes.Empty : new byte[] {branchIndex}).TestObject;
+                    block = Build.A.Block.WithDifficulty(1000000).WithParent(block).WithTotalDifficulty(block.TotalDifficulty + 1000000).WithExtraData(j < branchStart ? Array.Empty<byte>() : new byte[] {branchIndex}).TestObject;
                     Blocks.Add(block);
                 }
                 
@@ -259,7 +256,7 @@ namespace Nethermind.Synchronization.Test
                 Block block = Blocks.Last();
                 for (long j = block.Number; j < i; j++)
                 {
-                    block = Build.A.Block.WithParent(block).WithDifficulty(2000000).WithTotalDifficulty(block.TotalDifficulty + 2000000).WithExtraData(j < branchStart ? Bytes.Empty : new byte[] {branchIndex}).TestObject;
+                    block = Build.A.Block.WithParent(block).WithDifficulty(2000000).WithTotalDifficulty(block.TotalDifficulty + 2000000).WithExtraData(j < branchStart ? Array.Empty<byte>() : new byte[] {branchIndex}).TestObject;
                     Blocks.Add(block);
                 }
                 
@@ -699,8 +696,14 @@ namespace Nethermind.Synchronization.Test
 
             Assert.AreNotEqual(peerB.HeadBlock.Hash, peerA.HeadBlock.Hash);
 
-            SpinWait.SpinUntil(() => peerB.ReceivedBlocks.Any() && peerB.ReceivedBlocks.Peek().Hash == peerA.HeadBlock.Hash, WaitTime);
-            Assert.AreEqual(peerB.ReceivedBlocks.Peek().Hash, peerA.HeadBlock.Hash);
+            Block block = null;
+            SpinWait.SpinUntil(() =>
+            {
+                bool receivedBlock = peerB.ReceivedBlocks.TryPeek(out block);
+                return receivedBlock && block.Hash == peerA.HeadBlock.Hash;
+            }, WaitTime);
+            
+            Assert.AreEqual(block?.Header.Hash, peerA.HeadBlock.Hash);
         }
 
         [Test, Retry(3)]

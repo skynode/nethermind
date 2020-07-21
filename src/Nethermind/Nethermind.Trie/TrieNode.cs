@@ -35,6 +35,10 @@ namespace Nethermind.Trie
         private object[] _data;
         private bool _isDirty;
 
+        /// <summary>
+        /// This code is not used in production and has some issues (as pointed out in the article)
+        /// It is left here as an incentive to do some more detailed real-time memory analysis of the trie in memory
+        /// </summary>
         public int MemorySize
         {
             get
@@ -143,14 +147,14 @@ namespace Nethermind.Trie
                 if (!AllowBranchValues)
                 {
                     // branches that we use for state will never have value set as all the keys are equal length
-                    return new byte[0];
+                    return Array.Empty<byte>();
                 }
 
                 if (_data[16] == null)
                 {
                     if (_rlpStream == null)
                     {
-                        _data[16] = new byte[0];
+                        _data[16] = Array.Empty<byte>();
                     }
                     else
                     {

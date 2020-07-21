@@ -14,6 +14,7 @@
 //  You should have received a copy of the GNU Lesser General Public License
 //  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
+using System.Threading.Tasks;
 using Nethermind.Blockchain;
 using Nethermind.Blockchain.Find;
 using Nethermind.Core.Crypto;
@@ -30,6 +31,11 @@ namespace Nethermind.JsonRpc.Modules.DebugModule
         
         [JsonRpcMethod(Description = "Deletes a slice of a chain from the tree on all branches (Nethermind specific).", IsReadOnly = true)]
         ResultWrapper<int> debug_deleteChainSlice(in long startNumber);
+        
+        [JsonRpcMethod(
+            Description = "Updates / resets head block - use only when the node got stuck due to DB / memory corruption (Nethermind specific).",
+            IsReadOnly = true)]
+        ResultWrapper<bool> debug_resetHead(Keccak blockHash);
         
         [JsonRpcMethod(Description = "", IsReadOnly = true)]
         ResultWrapper<GethLikeTxTrace> debug_traceTransaction(Keccak transactionHash, GethTraceOptions options = null);
@@ -84,5 +90,8 @@ namespace Nethermind.JsonRpc.Modules.DebugModule
         
         [JsonRpcMethod(Description = "", IsImplemented = true, IsReadOnly = false)]
         ResultWrapper<GethLikeTxTrace> debug_traceTransactionInBlockByIndex(byte[] blockRlp, int txIndex, GethTraceOptions options = null);
+        
+        [JsonRpcMethod(Description = "Sets the block number up to which receipts will be migrated to (Nethermind specific).")]
+        Task<ResultWrapper<bool>> debug_migrateReceipts(long blockNumber);
     }
 }

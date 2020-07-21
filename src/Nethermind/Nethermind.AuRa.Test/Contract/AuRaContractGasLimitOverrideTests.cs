@@ -29,13 +29,13 @@ using Nethermind.Consensus.AuRa.Validators;
 using Nethermind.Core.Test.Builders;
 using Nethermind.Logging;
 using Nethermind.Specs.ChainSpecStyle;
+using NSubstitute;
 using NUnit.Framework;
 
 namespace Nethermind.AuRa.Test.Contract
 {
     public class AuRaContractGasLimitOverrideTests
     {
-        
         // TestContract: 
         // pragma solidity ^0.5.0;
         // contract TestValidatorSet {
@@ -65,14 +65,27 @@ namespace Nethermind.AuRa.Test.Contract
                 };
 
                 var blockGasLimitContractTransition = this.ChainSpec.AuRa.BlockGasLimitContractTransitions.First();
-                var gasLimitContract = new BlockGasLimitContract(TxProcessor, new AbiEncoder(), blockGasLimitContractTransition.Value, blockGasLimitContractTransition.Key,
+                var gasLimitContract = new BlockGasLimitContract(new AbiEncoder(), blockGasLimitContractTransition.Value, blockGasLimitContractTransition.Key,
                     new ReadOnlyTransactionProcessorSource(DbProvider, BlockTree, SpecProvider, LimboLogs.Instance));
                 
                 GasLimitOverrideCache = new IGasLimitOverride.Cache();
                 GasLimitOverride = new AuRaContractGasLimitOverride(new[] {gasLimitContract}, GasLimitOverrideCache, false, LimboLogs.Instance);
-                
-                return new AuRaBlockProcessor(SpecProvider, Always.Valid, new RewardCalculator(SpecProvider), TxProcessor, StateDb, CodeDb, State, Storage, TxPool, ReceiptStorage, LimboLogs.Instance,
-                    new ListBasedValidator(validator, new ValidSealerStrategy(), LimboLogs.Instance), BlockTree, null, GasLimitOverride);
+
+                return new AuRaBlockProcessor(
+                    SpecProvider,
+                    Always.Valid,
+                    new RewardCalculator(SpecProvider),
+                    TxProcessor,
+                    StateDb,
+                    CodeDb,
+                    State,
+                    Storage,
+                    TxPool,
+                    ReceiptStorage,
+                    LimboLogs.Instance,
+                    BlockTree,
+                    null,
+                    GasLimitOverride);
             }
 
             protected override Task AddBlocksOnStart() => Task.CompletedTask;

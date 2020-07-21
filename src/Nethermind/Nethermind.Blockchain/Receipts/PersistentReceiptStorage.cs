@@ -16,15 +16,15 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Nethermind.Core;
+using Nethermind.Core.Caching;
 using Nethermind.Core.Crypto;
 using Nethermind.Core.Extensions;
 using Nethermind.Core.Specs;
 using Nethermind.Db;
-using Nethermind.Specs;
 using Nethermind.Serialization.Rlp;
-using Nethermind.State;
 #pragma warning disable 618
 
 namespace Nethermind.Blockchain.Receipts
@@ -40,6 +40,9 @@ namespace Nethermind.Blockchain.Receipts
         private static readonly Keccak MigrationBlockNumberKey = Keccak.Compute(nameof(MigratedBlockNumber));
         private long _migratedBlockNumber;
         private static readonly ReceiptStorageDecoder StorageDecoder = ReceiptStorageDecoder.Instance;
+        
+        private const int CacheSize = 64;
+        private readonly ICache<Keccak, TxReceipt[]> _receiptsCache = new LruCacheWithRecycling<Keccak, TxReceipt[]>(CacheSize, CacheSize, "receipts");
 
         public PersistentReceiptStorage(IColumnsDb<ReceiptsColumns> receiptsDb, ISpecProvider specProvider, IReceiptsRecovery receiptsRecovery)
         {
@@ -78,7 +81,7 @@ namespace Nethermind.Blockchain.Receipts
 
         private static TxReceipt DeserializeReceiptObsolete(Keccak hash, Span<byte> receiptData)
         {
-            if (receiptData != null)
+            if (!receiptData.IsNullOrEmpty())
             {
                 var context = new Rlp.ValueDecoderContext(receiptData);
                 try
@@ -105,13 +108,20 @@ namespace Nethermind.Blockchain.Receipts
             {
                 return Array.Empty<TxReceipt>();
             }
+
+            if (_receiptsCache.TryGet(block.Hash, out var receipts))
+            {
+                return receipts;
+            }
             
             var receiptsData = _blocksDb.GetSpan(block.Hash);
             try
             {
-                if (receiptsData != null)
+                bool shouldCache = true;
+                
+                if (!receiptsData.IsNullOrEmpty())
                 {
-                    return DecodeArray(receiptsData);
+                    receipts = DecodeArray(receiptsData);
                 }
                 else
                 {
@@ -119,14 +129,22 @@ namespace Nethermind.Blockchain.Receipts
                     // var data = _database.MultiGet(block.Transactions.Select(t => t.Hash));
                     // return data.Select(kvp => DeserializeObsolete(new Keccak(kvp.Key), kvp.Value)).ToArray();
 
-                    TxReceipt[] result = new TxReceipt[block.Transactions.Length];
+                    receipts = new TxReceipt[block.Transactions.Length];
                     for (int i = 0; i < block.Transactions.Length; i++)
                     {
-                        result[i] = FindReceiptObsolete(block.Transactions[i].Hash);
+                        receipts[i] = FindReceiptObsolete(block.Transactions[i].Hash);
+                        shouldCache &= receipts[i] != null;
                     }
-
-                    return result;
                 }
+
+                shouldCache &= receipts.Length > 0;
+                
+                if (shouldCache)
+                {
+                    _receiptsCache.Set(block.Hash, receipts);
+                }
+
+                return receipts;
             }
             finally
             {
@@ -134,7 +152,7 @@ namespace Nethermind.Blockchain.Receipts
             }
         }
 
-        private static TxReceipt[] DecodeArray(Span<byte> receiptsData)
+        private static TxReceipt[] DecodeArray(in Span<byte> receiptsData)
         {
             var decoderContext = new Rlp.ValueDecoderContext(receiptsData);
             try
@@ -150,10 +168,24 @@ namespace Nethermind.Blockchain.Receipts
 
         public TxReceipt[] Get(Keccak blockHash)
         {
+            if (_receiptsCache.TryGet(blockHash, out var receipts))
+            {
+                return receipts;
+            }
+            
             var receiptsData = _blocksDb.GetSpan(blockHash);
             try
             {
-                return receiptsData != null ? DecodeArray(receiptsData) : Array.Empty<TxReceipt>();
+                if (receiptsData.IsNullOrEmpty())
+                {
+                    return Array.Empty<TxReceipt>();
+                }
+                else
+                {
+                    receipts = DecodeArray(receiptsData);
+                    _receiptsCache.Set(blockHash, receipts);
+                    return receipts;
+                }
             }
             finally
             {
@@ -165,8 +197,20 @@ namespace Nethermind.Blockchain.Receipts
 
         public bool TryGetReceiptsIterator(long blockNumber, Keccak blockHash, out ReceiptsIterator iterator)
         {
+            if (_receiptsCache.TryGet(blockHash, out var receipts))
+            {
+                iterator = new ReceiptsIterator(receipts);
+                return true;
+            }
+            
             var result = CanGetReceiptsByHash(blockNumber);
-            iterator = result ? new ReceiptsIterator(_blocksDb.GetSpan(blockHash), _blocksDb) : new ReceiptsIterator();
+            var receiptsData = _blocksDb.GetSpan(blockHash);
+            if (receiptsData == null)
+            {
+                receiptsData = Span<byte>.Empty;
+            }
+            
+            iterator = result ? new ReceiptsIterator(receiptsData, _blocksDb) : new ReceiptsIterator();
             return result;
         }
 
@@ -176,7 +220,9 @@ namespace Nethermind.Blockchain.Receipts
             
             if (block.Transactions.Length != txReceipts.Length)
             {
-                throw new ArgumentException($"Block {block.ToString(Block.Format.FullHashAndNumber)} has different number of transactions than receipts.");
+                throw new InvalidDataException(
+                    $"Block {block.ToString(Block.Format.FullHashAndNumber)} has different numbers " +
+                    $"of transactions {block.Transactions.Length} and receipts {txReceipts.Length}.");
             }
 
             _receiptsRecovery.TryRecover(block, txReceipts);
@@ -192,18 +238,15 @@ namespace Nethermind.Blockchain.Receipts
                 _transactionDb.Set(txHash, block.Hash.Bytes);
             }
 
-            if (blockNumber < (LowestInsertedReceiptBlock ?? long.MaxValue))
-            {
-                LowestInsertedReceiptBlock = blockNumber;
-            }
-
             if (blockNumber < MigratedBlockNumber)
             {
                 MigratedBlockNumber = blockNumber;
             }
+            
+            _receiptsCache.Set(block.Hash, txReceipts);
         }
 
-        public long? LowestInsertedReceiptBlock
+        public long? LowestInsertedReceiptBlockNumber
         {
             get => _lowestInsertedReceiptBlock;
             set
@@ -224,6 +267,11 @@ namespace Nethermind.Blockchain.Receipts
                 _migratedBlockNumber = value;
                 _database.Set(MigrationBlockNumberKey, MigratedBlockNumber.ToBigEndianByteArrayWithoutLeadingZeros());
             }
+        }
+
+        internal void ClearCache()
+        {
+            _receiptsCache.Clear();
         }
     }
 }

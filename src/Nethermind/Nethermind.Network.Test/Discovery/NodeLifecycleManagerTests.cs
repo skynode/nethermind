@@ -17,6 +17,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 using Nethermind.Config;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
@@ -40,24 +41,35 @@ namespace Nethermind.Network.Test.Discovery
     {
         private Signature[] _signatureMocks;
         private PublicKey[] _nodeIds;
+        private INodeStats _nodeStatsMock;
         private Dictionary<string, PublicKey> _signatureToNodeId;
 
         private INetworkConfig _networkConfig = new NetworkConfig();
         private IDiscoveryManager _discoveryManager;
+        private IDiscoveryManager _discoveryManagerMock;
+        private IDiscoveryConfig _discoveryConfigMock;
         private IMessageSender _udpClient;
         private INodeTable _nodeTable;
         private IConfigProvider _configurationProvider;
         private ITimestamper _timestamper;
+        private IEvictionManager _evictionManagerMock;
+        private ILogger _loggerMock;
+        private IIPResolver _ipResolverMock;
         private int _port = 1;
         private string _host = "192.168.1.27";
 
         [SetUp]
         public void Initialize()
         {
+            _discoveryManagerMock = Substitute.For<IDiscoveryManager>();
+            _discoveryConfigMock = Substitute.For<IDiscoveryConfig>();
+            
+            
             NetworkNodeDecoder.Init();
             SetupNodeIds();
 
             var logManager = LimboLogs.Instance;
+            _loggerMock = Substitute.For<ILogger>();
             //setting config to store 3 nodes in a bucket and for table to have one bucket//setting config to store 3 nodes in a bucket and for table to have one bucket
 
             _configurationProvider = new ConfigProvider();
@@ -69,33 +81,71 @@ namespace Nethermind.Network.Test.Discovery
             discoveryConfig.BucketSize = 3;
             discoveryConfig.BucketsCount = 1;
 
+            _ipResolverMock = Substitute.For<IIPResolver>();
+
             IStatsConfig statsConfig = _configurationProvider.GetConfig<IStatsConfig>();
 
             var calculator = new NodeDistanceCalculator(discoveryConfig);
 
             _nodeTable = new NodeTable(calculator, discoveryConfig, _networkConfig, logManager);
             _nodeTable.Initialize(TestItem.PublicKeyA);
+            _nodeStatsMock = Substitute.For<INodeStats>();
             
-            _timestamper = new Timestamper();
+            _timestamper = Timestamper.Default;
 
             var evictionManager = new EvictionManager(_nodeTable, logManager);
+            _evictionManagerMock = Substitute.For<IEvictionManager>();
             var lifecycleFactory = new NodeLifecycleManagerFactory(_nodeTable, new DiscoveryMessageFactory(_timestamper), evictionManager, new NodeStatsManager(statsConfig, logManager), discoveryConfig, logManager);
 
             _udpClient = Substitute.For<IMessageSender>();
 
             var discoveryDb = new SimpleFilePublicKeyDb("Test","test", logManager);
-            _discoveryManager = new DiscoveryManager(lifecycleFactory, _nodeTable, new NetworkStorage(discoveryDb, logManager), discoveryConfig, logManager);
+            _discoveryManager = new DiscoveryManager(lifecycleFactory, _nodeTable, new NetworkStorage(discoveryDb, logManager), discoveryConfig, logManager, _ipResolverMock);
             _discoveryManager.MessageSender = _udpClient;
+
+            _discoveryManagerMock = Substitute.For<IDiscoveryManager>();
         }
 
-        [Test, Ignore("awaiting review")]
+        [Test]
+        public async Task sending_ping_recieving_proper_pong_sets_bounded()
+        {
+            var node = new Node(_host, _port);
+            var nodeManager = new NodeLifecycleManager(node, _discoveryManagerMock
+            , _nodeTable, new DiscoveryMessageFactory(_timestamper), _evictionManagerMock, _nodeStatsMock, _discoveryConfigMock, _loggerMock);
+
+            var sentPing = new PingMessage();
+            _discoveryManagerMock.SendMessage(Arg.Do<PingMessage>(msg => sentPing = msg));
+
+            await nodeManager.SendPingAsync();
+            nodeManager.ProcessPongMessage(new PongMessage{ PingMdc = sentPing.Mdc });
+
+            Assert.IsTrue(nodeManager.IsBonded);
+        }
+
+        [Test]
+        public async Task sending_ping_recieving_incorect_pong_does_not_bond()
+        {
+            var node = new Node(_host, _port);
+            var nodeManager = new NodeLifecycleManager(node, _discoveryManagerMock
+            , _nodeTable, new DiscoveryMessageFactory(_timestamper), _evictionManagerMock, _nodeStatsMock, _discoveryConfigMock, _loggerMock);
+
+            PingMessage sentPing = new PingMessage();
+            _discoveryManagerMock.SendMessage(Arg.Do<PingMessage>(msg => sentPing = msg));
+
+            await nodeManager.SendPingAsync();
+            nodeManager.ProcessPongMessage(new PongMessage{ PingMdc = new byte[] {1,1,1} });
+
+            Assert.IsFalse(nodeManager.IsBonded);
+        }
+
+        [Test]
         public void Wrong_pong_will_get_ignored()
         {
             var node = new Node(_host, _port);
             var manager = _discoveryManager.GetNodeLifecycleManager(node);
             Assert.AreEqual(NodeLifecycleState.New, manager.State);
             
-            manager.ProcessPongMessage(new PongMessage {FarAddress = new IPEndPoint(IPAddress.Parse(_host), _port), FarPublicKey = _nodeIds[0] });
+            manager.ProcessPongMessage(new PongMessage {FarAddress = new IPEndPoint(IPAddress.Parse(_host), _port), FarPublicKey = _nodeIds[0], PingMdc = new byte[32]});
 
             Assert.AreEqual(NodeLifecycleState.New, manager.State);
         }

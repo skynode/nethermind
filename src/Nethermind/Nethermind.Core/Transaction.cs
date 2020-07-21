@@ -16,6 +16,7 @@
 
 using System.Diagnostics;
 using System.Text;
+using System.Threading;
 using Nethermind.Core.Crypto;
 using Nethermind.Core.Extensions;
 using Nethermind.Dirichlet.Numerics;
@@ -58,6 +59,8 @@ namespace Nethermind.Core
             builder.AppendLine($"{indent}Value: {Value}");
             builder.AppendLine($"{indent}Data: {(Data ?? new byte[0]).ToHexString()}");
             builder.AppendLine($"{indent}Init: {(Init ?? new byte[0]).ToHexString()}");
+            builder.AppendLine($"{indent}Signature: {(Signature?.Bytes ?? new byte[0]).ToHexString()}");
+            builder.AppendLine($"{indent}Signature.V: {Signature?.V ?? -1}");
             builder.AppendLine($"{indent}Hash: {Hash}");
             return builder.ToString();
         }

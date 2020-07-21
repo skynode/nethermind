@@ -708,7 +708,7 @@ namespace Nethermind.Serialization.Rlp
 
         public ref struct ValueDecoderContext
         {
-            public ValueDecoderContext(Span<byte> data)
+            public ValueDecoderContext(in Span<byte> data)
             {
                 Data = data;
                 Position = 0;
@@ -1039,7 +1039,7 @@ namespace Nethermind.Serialization.Rlp
 
             public BigInteger DecodeUBigInt()
             {
-                Span<byte> bytes = DecodeByteArraySpan();
+                ReadOnlySpan<byte> bytes = DecodeByteArraySpan();
                 return bytes.ToUnsignedBigInteger();
             }
 
@@ -1163,7 +1163,7 @@ namespace Nethermind.Serialization.Rlp
 
                 if (prefix == 128)
                 {
-                    return Core.Extensions.Bytes.Empty;
+                    return Array.Empty<byte>();
                 }
 
                 if (prefix <= 183)

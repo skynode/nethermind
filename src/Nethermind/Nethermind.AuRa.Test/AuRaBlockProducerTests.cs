@@ -24,6 +24,8 @@ using Nethermind.Blockchain.Processing;
 using Nethermind.Consensus;
 using Nethermind.Consensus.AuRa;
 using Nethermind.Consensus.AuRa.Config;
+using Nethermind.Consensus.AuRa.Validators;
+using Nethermind.Consensus.Transactions;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
 using Nethermind.Core.Extensions;
@@ -31,12 +33,9 @@ using Nethermind.Core.Test.Builders;
 using Nethermind.Evm.Tracing;
 using Nethermind.Logging;
 using Nethermind.State;
-using Nethermind.Store;
 using NSubstitute;
 using NSubstitute.ReceivedExtensions;
 using NUnit.Framework;
-using NUnit.Framework.Interfaces;
-using NUnit.Framework.Internal;
 
 namespace Nethermind.AuRa.Test
 {
@@ -72,10 +71,11 @@ namespace Nethermind.AuRa.Test
             	TransactionSource.GetTransactions(Arg.Any<BlockHeader>(), Arg.Any<long>()).Returns(Array.Empty<Transaction>());
                 Sealer.CanSeal(Arg.Any<long>(), Arg.Any<Keccak>()).Returns(true);
                 Sealer.SealBlock(Arg.Any<Block>(), Arg.Any<CancellationToken>()).Returns(c => Task.FromResult(c.Arg<Block>()));
+                Sealer.Address.Returns(TestItem.AddressA);
                 BlockProcessingQueue.IsEmpty.Returns(true);
                 AuRaStepCalculator.TimeToNextStep.Returns(StepDelay);
                 BlockTree.BestKnownNumber.Returns(1);
-                BlockTree.Head.Returns(Build.A.Block.WithHeader(Build.A.BlockHeader.WithAura(10, Bytes.Empty).TestObject).TestObject);
+                BlockTree.Head.Returns(Build.A.Block.WithHeader(Build.A.BlockHeader.WithAura(10, Array.Empty<byte>()).TestObject).TestObject);
                 BlockchainProcessor.Process(Arg.Any<Block>(), ProcessingOptions.ProducingBlock, Arg.Any<IBlockTracer>()).Returns(c => c.Arg<Block>());
                 InitProducer();
             }
@@ -99,8 +99,8 @@ namespace Nethermind.AuRa.Test
                             Timestamper,
                             LimboLogs.Instance,
                             AuRaStepCalculator,
-                            auraConfig,
-                            NodeAddress);
+                            NullReportingValidator.Instance, 
+                            auraConfig);
                     }
         }
 

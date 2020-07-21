@@ -1,4 +1,4 @@
-﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  Copyright (c) 2018 Demerzel Solutions Limited
 //  This file is part of the Nethermind library.
 // 
 //  The Nethermind library is free software: you can redistribute it and/or modify
@@ -138,9 +138,9 @@ namespace Nethermind.Network.Discovery
 
         private void InitializeUdpChannel()
         {
-            if(_logger.IsDebug) _logger.Debug($"Discovery    : udp://{_networkConfig.ExternalIp}:{_networkConfig.DiscoveryPort}");
+            if (_logger.IsDebug) _logger.Debug($"Discovery    : udp://{_networkConfig.ExternalIp}:{_networkConfig.DiscoveryPort}");
             ThisNodeInfo.AddInfo("Discovery    :", $"udp://{_networkConfig.ExternalIp}:{_networkConfig.DiscoveryPort}");
-            
+
             _group = new MultithreadEventLoopGroup(1);
             Bootstrap bootstrap = new Bootstrap();
             bootstrap.Group(_group);
@@ -157,7 +157,17 @@ namespace Nethermind.Network.Discovery
             }
 
             _bindingTask = bootstrap.BindAsync(IPAddress.Parse(_networkConfig.LocalIp), _networkConfig.DiscoveryPort)
-                .ContinueWith(t => _channel = t.Result);
+                .ContinueWith(
+                    t
+                        =>
+                    {
+                        if (t.IsFaulted)
+                        {
+                            _logger.Error("Error when establishing discovery connection", t.Exception);
+                        }
+
+                        return _channel = t.Result;
+                    });
         }
 
         private Task _bindingTask;
@@ -167,7 +177,7 @@ namespace Nethermind.Network.Discovery
             _discoveryHandler = new NettyDiscoveryHandler(_discoveryManager, channel, _messageSerializationService, _timestamper, _logManager);
             _discoveryManager.MessageSender = _discoveryHandler;
             _discoveryHandler.OnChannelActivated += OnChannelActivated;
-            
+
             channel.Pipeline
                 .AddLast(new LoggingHandler(DotNetty.Handlers.Logging.LogLevel.INFO))
                 .AddLast(_discoveryHandler);
@@ -297,10 +307,18 @@ namespace Nethermind.Network.Discovery
             {
                 try
                 {
+                    if (_logger.IsDebug) _logger.Debug($"Running discovery with interval {_discoveryTimer.Interval}");
                     _discoveryTimer.Enabled = false;
                     RunDiscoveryProcess();
-                    int nodesCountAfterDiscovery = _nodeTable.Buckets.Sum(x => x.BondedItems.Count);
-                    _discoveryTimer.Interval = nodesCountAfterDiscovery < 100 ? 10 : nodesCountAfterDiscovery < 1000 ? 100 : _discoveryConfig.DiscoveryInterval;
+                    int nodesCountAfterDiscovery = _nodeTable.Buckets.Sum(x => x.BondedItemsCount);
+                    _discoveryTimer.Interval =
+                        nodesCountAfterDiscovery < 16
+                            ? 10
+                            : nodesCountAfterDiscovery < 128
+                                ? 100
+                                : nodesCountAfterDiscovery < 256
+                                    ? 1000
+                                    : _discoveryConfig.DiscoveryInterval;
                 }
                 catch (Exception exception)
                 {
@@ -481,7 +499,7 @@ namespace Nethermind.Network.Discovery
 
         private void RunDiscoveryProcess()
         {
-            Task disc =RunDiscoveryAsync(_appShutdownSource.Token).ContinueWith(t =>
+            Task disc = RunDiscoveryAsync(_appShutdownSource.Token).ContinueWith(t =>
             {
                 if (t.IsFaulted)
                 {
@@ -490,7 +508,7 @@ namespace Nethermind.Network.Discovery
             });
 
             disc.Wait();
-            
+
             Task refresh = RunRefreshAsync(_appShutdownSource.Token).ContinueWith(t =>
             {
                 if (t.IsFaulted)
@@ -498,7 +516,7 @@ namespace Nethermind.Network.Discovery
                     _logger.Error($"Error during discovery refresh process: {t.Exception}");
                 }
             });
-            
+
             refresh.Wait();
         }
 
@@ -520,7 +538,7 @@ namespace Nethermind.Network.Discovery
         {
             try
             {
-                IReadOnlyCollection<INodeLifecycleManager> managers = _discoveryManager.GetOrAddNodeLifecycleManagers();
+                IReadOnlyCollection<INodeLifecycleManager> managers = _discoveryManager.GetNodeLifecycleManagers();
                 //we need to update all notes to update reputation
                 _discoveryStorage.UpdateNodes(managers.Select(x => new NetworkNode(x.ManagedNode.Id, x.ManagedNode.Host, x.ManagedNode.Port, x.NodeStats.NewPersistedNodeReputation)).ToArray());
 

@@ -14,6 +14,7 @@
 //  You should have received a copy of the GNU Lesser General Public License
 //  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
+using System;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
@@ -56,7 +57,7 @@ namespace Nethermind.DataMarketplace.Test.Services
         public async Task Can_make_and_verify_deposit()
         {
             DepositService depositService = new DepositService(_ndmBridge, _abiEncoder, _wallet, _contractAddress);
-            Deposit deposit = new Deposit(Keccak.Compute("a secret"), 10, (uint) new Timestamper().EpochSeconds + 86000, 1.Ether());
+            Deposit deposit = new Deposit(Keccak.Compute("a secret"), 10, (uint) Timestamper.Default.EpochSeconds + 86000, 1.Ether());
             Keccak depositTxHash = await depositService.MakeDepositAsync(_consumerAccount, deposit, 20.GWei());
             _bridge.IncrementNonce(_consumerAccount);
             TxReceipt depositTxReceipt = _bridge.GetReceipt(depositTxHash);
@@ -68,7 +69,7 @@ namespace Nethermind.DataMarketplace.Test.Services
         public async Task Make_deposit_verify_incorrect_id()
         {
             DepositService depositService = new DepositService(_ndmBridge, _abiEncoder, _wallet, _contractAddress);
-            Deposit deposit = new Deposit(Keccak.Compute("a secret"), 10, (uint) new Timestamper().EpochSeconds + 86000, 1.Ether());
+            Deposit deposit = new Deposit(Keccak.Compute("a secret"), 10, (uint) Timestamper.Default.EpochSeconds + 86000, 1.Ether());
             Keccak depositTxHash = await depositService.MakeDepositAsync(_consumerAccount, deposit, 20.GWei());
             _bridge.IncrementNonce(_consumerAccount);
             TxReceipt depositTxReceipt = _bridge.GetReceipt(depositTxHash);
@@ -80,7 +81,7 @@ namespace Nethermind.DataMarketplace.Test.Services
         public async Task Can_make_and_verify_deposit_locally()
         {
             DepositService depositService = new DepositService(_ndmBridge, _abiEncoder, _wallet, _contractAddress);
-            Deposit deposit = new Deposit(Keccak.Compute("a secret"), 10, (uint) new Timestamper().EpochSeconds + 86000, 1.Ether());
+            Deposit deposit = new Deposit(Keccak.Compute("a secret"), 10, (uint) Timestamper.Default.EpochSeconds + 86000, 1.Ether());
             Keccak depositTxHash = await depositService.MakeDepositAsync(_consumerAccount, deposit, 20.GWei());
             _bridge.IncrementNonce(_consumerAccount);
             TxReceipt depositTxReceipt = _bridge.GetReceipt(depositTxHash);
@@ -99,10 +100,10 @@ namespace Nethermind.DataMarketplace.Test.Services
         public void Throws_when_no_code_deployed()
         {
             IBlockchainBridge bridge = Substitute.For<IBlockchainBridge>();
-            _ndmBridge = new NdmBlockchainBridge(bridge, _txPool);
+            _ndmBridge = new NdmBlockchainBridge(Substitute.For<ITxPoolBridge>(), bridge, _txPool);
             DepositService depositService = new DepositService(_ndmBridge, _abiEncoder, _wallet, _contractAddress);
             Address contractAddress = new Address(_ndmConfig.ContractAddress);
-            bridge.GetCode(contractAddress).Returns(Bytes.Empty);
+            bridge.GetCode(contractAddress).Returns(Array.Empty<byte>());
             Assert.ThrowsAsync<InvalidDataException>(async () => await depositService.ValidateContractAddressAsync(contractAddress));
         }
         
@@ -110,7 +111,7 @@ namespace Nethermind.DataMarketplace.Test.Services
         public void Throws_when_unexpected_code()
         {
             IBlockchainBridge bridge = Substitute.For<IBlockchainBridge>();
-            _ndmBridge = new NdmBlockchainBridge(bridge, _txPool);
+            _ndmBridge = new NdmBlockchainBridge(Substitute.For<ITxPoolBridge>(), bridge, _txPool);
             DepositService depositService = new DepositService(_ndmBridge, _abiEncoder, _wallet, _contractAddress);
             Address contractAddress = new Address(_ndmConfig.ContractAddress);
             bridge.GetCode(contractAddress).Returns(Bytes.FromHexString("0xa234"));
@@ -121,7 +122,7 @@ namespace Nethermind.DataMarketplace.Test.Services
         public async Task Ok_when_code_is_valid()
         {
             IBlockchainBridge bridge = Substitute.For<IBlockchainBridge>();
-            _ndmBridge = new NdmBlockchainBridge(bridge, _txPool);
+            _ndmBridge = new NdmBlockchainBridge(Substitute.For<ITxPoolBridge>(), bridge, _txPool);
             DepositService depositService = new DepositService(_ndmBridge, _abiEncoder, _wallet, _contractAddress);
             Address contractAddress = new Address(_ndmConfig.ContractAddress);
             bridge.GetCode(contractAddress).Returns(Bytes.FromHexString(ContractData.DeployedCode));
@@ -132,7 +133,7 @@ namespace Nethermind.DataMarketplace.Test.Services
         public async Task Returns_a_valid_balance()
         {
             DepositService depositService = new DepositService(_ndmBridge, _abiEncoder, _wallet, _contractAddress);
-            Deposit deposit = new Deposit(Keccak.Compute("a secret"), 10, (uint) new Timestamper().EpochSeconds + 86000, 1.Ether());
+            Deposit deposit = new Deposit(Keccak.Compute("a secret"), 10, (uint) Timestamper.Default.EpochSeconds + 86000, 1.Ether());
             Keccak depositTxHash = await depositService.MakeDepositAsync(_consumerAccount, deposit, 20.GWei());
             _bridge.IncrementNonce(_consumerAccount);
             TxReceipt depositTxReceipt = _bridge.GetReceipt(depositTxHash);

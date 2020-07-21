@@ -77,15 +77,6 @@ namespace Nethermind.Core
         public override string ToString()
         {
             return Bytes.ToHexString();
-            // StringBuilder stringBuilder = new StringBuilder();
-            //
-            // for (int i = 0; i < _bits.Count; i++)
-            // {
-            //     char c = _bits[i] ? '1' : '0';
-            //     stringBuilder.Append(c);
-            // }
-            //
-            // return stringBuilder.ToString();
         }
 
         public static bool operator !=(Bloom a, Bloom b)
@@ -213,6 +204,8 @@ namespace Nethermind.Core
             public int Index2 { get; }
             public int Index3 { get; }
         }
+
+        public BloomStructRef ToStructRef() => new BloomStructRef(Bytes);
     }
 
     public ref struct BloomStructRef
@@ -261,15 +254,6 @@ namespace Nethermind.Core
         public override string ToString()
         {
             return Bytes.ToHexString();
-            // StringBuilder stringBuilder = new StringBuilder();
-            //
-            // for (int i = 0; i < _bits.Count; i++)
-            // {
-            //     char c = _bits[i] ? '1' : '0';
-            //     stringBuilder.Append(c);
-            // }
-            //
-            // return stringBuilder.ToString();
         }
 
         public static bool operator !=(BloomStructRef a, Bloom b) => !(a == b);

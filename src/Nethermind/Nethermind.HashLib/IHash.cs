@@ -14,6 +14,7 @@
 //  You should have received a copy of the GNU Lesser General Public License
 //  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
+using System;
 using System.IO;
 using System.Text;
 
@@ -39,6 +40,7 @@ namespace Nethermind.HashLib
         HashResult ComputeString(string a_data);
         HashResult ComputeString(string a_data, Encoding a_encoding);
         HashResult ComputeBytes(byte[] a_data);
+        HashResult ComputeBytes(ReadOnlySpan<byte> a_data);
         HashResult ComputeChars(char[] a_data);
         HashResult ComputeShorts(short[] a_data);
         HashResult ComputeUShorts(ushort[] a_data);
@@ -76,7 +78,7 @@ namespace Nethermind.HashLib
         void TransformShorts(short[] a_data);
         void TransformUShorts(ushort[] a_data);
         void TransformInts(int[] a_data);
-        void TransformUInts(uint[] a_data);
+        void TransformUInts(Span<uint> a_data);
         void TransformLongs(long[] a_data);
         void TransformULongs(ulong[] a_data);
         void TransformDoubles(double[] a_data);

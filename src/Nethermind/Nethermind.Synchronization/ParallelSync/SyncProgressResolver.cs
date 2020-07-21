@@ -38,6 +38,7 @@ namespace Nethermind.Synchronization.ParallelSync
         private readonly IDb _stateDb;
         private readonly IDb _beamStateDb;
         private readonly ISyncConfig _syncConfig;
+        // ReSharper disable once NotAccessedField.Local
         private ILogger _logger;
 
         public SyncProgressResolver(IBlockTree blockTree, IReceiptStorage receiptStorage, IDb stateDb, IDb beamStateDb, ISyncConfig syncConfig, ILogManager logManager)
@@ -60,6 +61,7 @@ namespace Nethermind.Synchronization.ParallelSync
             return _stateDb.Innermost.Get(stateRoot) != null;
         }
 
+        // ReSharper disable once UnusedMember.Local
         private bool IsBeamSynced(Keccak stateRoot)
         {
             if (stateRoot == Keccak.EmptyTreeHash)
@@ -126,6 +128,8 @@ namespace Nethermind.Synchronization.ParallelSync
         }
 
         public long FindBestHeader() => _blockTree.BestSuggestedHeader?.Number ?? 0;
+        
+        public Keccak? FindBestHeaderHash() => _blockTree.BestSuggestedHeader?.Hash;
 
         public long FindBestFullBlock() => Math.Min(FindBestHeader(), _blockTree.BestSuggestedBody?.Number ?? 0); // avoiding any potential concurrency issue
 
@@ -137,31 +141,33 @@ namespace Nethermind.Synchronization.ParallelSync
         public long FindBestProcessedBlock() => _blockTree.Head?.Number ?? -1;
 
         public UInt256 ChainDifficulty => _blockTree.BestSuggestedBody?.TotalDifficulty ?? UInt256.Zero;
+        
+        public bool IsFastBlocksHeadersFinished() => !IsFastBlocks() || (_blockTree.LowestInsertedHeader?.Number ?? long.MaxValue) <= 1;
+        
+        public bool IsFastBlocksBodiesFinished() => !IsFastBlocks() || (!_syncConfig.DownloadBodiesInFastSync || (_blockTree.LowestInsertedBodyNumber ?? long.MaxValue) <= 1);
 
-        public bool IsFastBlocksFinished()
+        public bool IsFastBlocksReceiptsFinished() => !IsFastBlocks() || (!_syncConfig.DownloadReceiptsInFastSync || (_receiptStorage.LowestInsertedReceiptBlockNumber ?? long.MaxValue) <= 1);
+
+        private bool IsFastBlocks()
         {
             bool isFastBlocks = _syncConfig.FastBlocks;
 
             // if pivot number is 0 then it is equivalent to fast blocks disabled
             if (!isFastBlocks || _syncConfig.PivotNumberParsed == 0L)
             {
-                return true;
+                return false;
             }
             
             bool immediateBeamSync = !_syncConfig.DownloadHeadersInFastSync;
             bool anyHeaderDownloaded = _blockTree.LowestInsertedHeader != null;
             if (immediateBeamSync && anyHeaderDownloaded)
             {
-                return true;
+                return false;
             }
 
-            bool allHeadersDownloaded = (_blockTree.LowestInsertedHeader?.Number ?? long.MaxValue) <= 1;
-            bool allReceiptsDownloaded = !_syncConfig.DownloadReceiptsInFastSync
-                                         || (_receiptStorage.LowestInsertedReceiptBlock ?? long.MaxValue) <= 1;
-            bool allBodiesDownloaded = !_syncConfig.DownloadBodiesInFastSync
-                                       || (_blockTree.LowestInsertedBody?.Number ?? long.MaxValue) <= 1;
-
-            return allBodiesDownloaded && allHeadersDownloaded && allReceiptsDownloaded;
+            return true;
         }
+
+
     }
 }

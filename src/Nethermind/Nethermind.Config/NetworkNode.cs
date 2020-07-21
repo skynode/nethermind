@@ -16,8 +16,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Net;
 using Nethermind.Core.Crypto;
-using Nethermind.Core.Extensions;
 using Nethermind.Logging;
 
 namespace Nethermind.Config
@@ -27,14 +27,12 @@ namespace Nethermind.Config
     /// </summary>
     public class NetworkNode
     {
+        private readonly Enode _enode;
+
         public NetworkNode(string enode)
         {
             //enode://0d837e193233c08d6950913bf69105096457fbe204679d6c6c021c36bb5ad83d167350440670e7fec189d80abc18076f45f44bfe480c85b6c632735463d34e4b@89.197.135.74:30303
-            string publicKeyString = enode.Substring(8, 128);
-            NodeId = new PublicKey(Bytes.FromHexString(publicKeyString));
-            string[] address = enode.Substring(8 /* prefix */ + 128 /* public key */ + 1 /* @ */).Split(':');
-            Host = address[0];
-            Port = int.Parse(address[1]);
+            _enode = new Enode(enode);
         }
 
         public static NetworkNode[] ParseNodes(string enodesString, ILogger logger)
@@ -42,7 +40,7 @@ namespace Nethermind.Config
             string[] nodeStrings = enodesString?.Split(",", StringSplitOptions.RemoveEmptyEntries);
             if (nodeStrings == null)
             {
-                return new NetworkNode[0];
+                return Array.Empty<NetworkNode>();
             }
 
             List<NetworkNode> nodes = new List<NetworkNode>();
@@ -61,27 +59,17 @@ namespace Nethermind.Config
             return nodes.ToArray();
         }
 
-        public override string ToString()
-        {
-            return $"enode://{NodeId?.ToString(false)}@{Host}:{Port}";
-        }
-
-        public NetworkNode(string publicKey, string ip, int port, long reputation = 0)
-            : this(new PublicKey(publicKey), ip, port, reputation)
-        {
-        }
-
+        public override string ToString() => _enode.ToString();
+        
         public NetworkNode(PublicKey publicKey, string ip, int port, long reputation = 0)
         {
-            NodeId = publicKey;
-            Host = ip;
-            Port = port;
+            _enode = new Enode(publicKey, IPAddress.Parse(ip), port);
             Reputation = reputation;
         }
 
-        public PublicKey NodeId { get; }
-        public string Host { get; }
-        public int Port { get; }
+        public PublicKey NodeId => _enode.PublicKey;
+        public string Host => _enode.HostIp.ToString();
+        public int Port => _enode.Port;
         public long Reputation { get; set; }
     }
 }

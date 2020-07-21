@@ -56,7 +56,7 @@ namespace Nethermind.Network.Test.Discovery
             _farAddress = new IPEndPoint(IPAddress.Parse("192.168.1.2"), 1);
             _nearAddress = new IPEndPoint(IPAddress.Parse(_networkConfig.LocalIp), _networkConfig.DiscoveryPort);
             _messageSerializationService = Build.A.SerializationService().WithDiscovery(_privateKey).TestObject;
-            _timestamper = new Timestamper();
+            _timestamper = Timestamper.Default;
         }
 
         [Test]
@@ -82,7 +82,9 @@ namespace Nethermind.Network.Test.Discovery
             Assert.AreEqual(message.DestinationAddress, deserializedMessage.DestinationAddress);
             Assert.AreEqual(message.SourceAddress, deserializedMessage.SourceAddress);
             Assert.AreEqual(message.Version, deserializedMessage.Version);
-            Assert.IsNotNull(deserializedMessage.Mdc);
+            
+            byte[] expectedPingMdc = Bytes.FromHexString("0xf8c61953f3b94a91aefe611e61dd74fe26aa5c969d9f29b7e063e6169171a772"); 
+            Assert.IsNotNull(expectedPingMdc);
         }
 
         [Test]

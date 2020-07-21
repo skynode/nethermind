@@ -34,7 +34,7 @@ namespace Nethermind.Core.Test.Builders
                 To = Address.Zero,
                 Nonce = 0,
                 Value = 1,
-                Data = new byte[0],
+                Data = Array.Empty<byte>(),
                 Timestamp = 0
             };
         }
@@ -107,33 +107,34 @@ namespace Nethermind.Core.Test.Builders
             return this;
         }
         
-        public TransactionBuilder<T> Signed(IEthereumEcdsa ecdsa, PrivateKey privateKey, long blockNumber)
+        public TransactionBuilder<T> Signed(IEthereumEcdsa ecdsa, PrivateKey privateKey, bool isEip155Enabled = true)
         {
-            ecdsa.Sign(privateKey, TestObjectInternal, blockNumber);
+            ecdsa.Sign(privateKey, TestObjectInternal, isEip155Enabled);
             return this;
         }
 
         // TODO: auto create ecdsa here
-        public TransactionBuilder<T> SignedAndResolved(IEthereumEcdsa ecdsa, PrivateKey privateKey, long blockNumber)
+        public TransactionBuilder<T> SignedAndResolved(IEthereumEcdsa ecdsa, PrivateKey privateKey, bool isEip155Enabled = true)
         {
-            ecdsa.Sign(privateKey, TestObjectInternal, blockNumber);
+            // make sure that you do not change anything in the tx after signing as this will lead to a different recovered address
+            ecdsa.Sign(privateKey, TestObjectInternal, isEip155Enabled);
             TestObjectInternal.SenderAddress = privateKey.Address;
             return this;
         }
         
-        private EthereumEcdsa _ecdsa = new EthereumEcdsa(MainnetSpecProvider.Instance, LimboLogs.Instance);
+        private EthereumEcdsa _ecdsa = new EthereumEcdsa(ChainId.Mainnet, LimboLogs.Instance);
         
         public TransactionBuilder<T> SignedAndResolved(PrivateKey privateKey)
         {
-            _ecdsa.Sign(privateKey, TestObjectInternal, MainnetSpecProvider.MuirGlacierBlockNumber);
+            _ecdsa.Sign(privateKey, TestObjectInternal, true);
             TestObjectInternal.SenderAddress = privateKey.Address;
             return this;
         }
         
         public TransactionBuilder<T> SignedAndResolved()
         {
-            EthereumEcdsa ecdsa = new EthereumEcdsa(MainnetSpecProvider.Instance, LimboLogs.Instance);
-            ecdsa.Sign(TestItem.IgnoredPrivateKey, TestObjectInternal, 10000000);
+            EthereumEcdsa ecdsa = new EthereumEcdsa(ChainId.Mainnet, LimboLogs.Instance);
+            ecdsa.Sign(TestItem.IgnoredPrivateKey, TestObjectInternal, true);
             TestObjectInternal.SenderAddress = TestItem.IgnoredPrivateKey.Address;
             return this;
         }

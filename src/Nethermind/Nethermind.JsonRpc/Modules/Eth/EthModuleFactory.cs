@@ -20,16 +20,19 @@ using Nethermind.Blockchain;
 using Nethermind.Blockchain.Filters;
 using Nethermind.Blockchain.Processing;
 using Nethermind.Blockchain.Receipts;
+using Nethermind.Core;
 using Nethermind.Core.Specs;
 using Nethermind.Crypto;
 using Nethermind.Db;
 using Nethermind.Facade;
 using Nethermind.JsonRpc.Data;
 using Nethermind.Logging;
-using Nethermind.Store.Bloom;
+using Nethermind.Db.Blooms;
+using Nethermind.Facade.Transactions;
 using Nethermind.TxPool;
 using Nethermind.Wallet;
 using Newtonsoft.Json;
+using System.Threading;
 
 namespace Nethermind.JsonRpc.Modules.Eth
 {
@@ -37,6 +40,7 @@ namespace Nethermind.JsonRpc.Modules.Eth
     {
         private readonly IBlockTree _blockTree;
         private readonly IDbProvider _dbProvider;
+        private readonly IJsonRpcConfig _jsonRpcConfig; 
         private readonly IEthereumEcdsa _ethereumEcdsa;
         private readonly IReceiptFinder _receiptFinder;
         private readonly ISpecProvider _specProvider;
@@ -52,6 +56,7 @@ namespace Nethermind.JsonRpc.Modules.Eth
         public EthModuleFactory(IDbProvider dbProvider,
             ITxPool txPool,
             IWallet wallet,
+            IJsonRpcConfig jsonRpcConfig,
             IBlockTree blockTree,
             IEthereumEcdsa ethereumEcdsa,
             IBlockProcessor blockProcessor,
@@ -65,6 +70,7 @@ namespace Nethermind.JsonRpc.Modules.Eth
             _dbProvider = dbProvider ?? throw new ArgumentNullException(nameof(dbProvider));
             _txPool = txPool ?? throw new ArgumentNullException(nameof(txPool));
             _wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
+            _jsonRpcConfig = jsonRpcConfig ?? throw new ArgumentNullException(nameof(wallet));
             _blockTree = blockTree ?? throw new ArgumentNullException(nameof(blockTree));
             _ethereumEcdsa = ethereumEcdsa ?? throw new ArgumentNullException(nameof(ethereumEcdsa));
             _receiptFinder = receiptFinder ?? throw new ArgumentNullException(nameof(receiptFinder));
@@ -97,11 +103,15 @@ namespace Nethermind.JsonRpc.Modules.Eth
                 readOnlyTxProcessingEnv.TransactionProcessor,
                 _ethereumEcdsa,
                 _bloomStorage,
+                Timestamper.Default,
                 _logManager,
                 _isMining,
-                _rpcConfig.FindLogBlockDepthLimit);
+                _rpcConfig.FindLogBlockDepthLimit
+                );
             
-            return new EthModule(_rpcConfig, blockchainBridge, _logManager);
+            TxPoolBridge txPoolBridge = new TxPoolBridge(_txPool, new WalletTxSigner(_wallet, _specProvider.ChainId), Timestamper.Default);
+            
+            return new EthModule(_rpcConfig, blockchainBridge, txPoolBridge, _logManager);
         }
 
         public static List<JsonConverter> Converters = new List<JsonConverter>

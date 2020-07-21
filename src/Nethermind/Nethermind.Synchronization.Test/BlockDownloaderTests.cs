@@ -39,7 +39,7 @@ using Nethermind.Specs;
 using Nethermind.State.Proofs;
 using Nethermind.State.Repositories;
 using Nethermind.Stats.Model;
-using Nethermind.Store.Bloom;
+using Nethermind.Db.Blooms;
 using Nethermind.Synchronization.Blocks;
 using Nethermind.Synchronization.ParallelSync;
 using Nethermind.Synchronization.Peers;
@@ -169,12 +169,7 @@ namespace Nethermind.Synchronization.Test
                 throw new NotImplementedException();
             }
 
-            public void SendNewBlock(Block block)
-            {
-                throw new NotImplementedException();
-            }
-
-            public void HintNewBlock(Keccak blockHash, long number)
+            public void NotifyOfNewBlock(Block block, SendBlockPriority priority)
             {
                 throw new NotImplementedException();
             }
@@ -692,10 +687,6 @@ namespace Nethermind.Synchronization.Test
 
         private class SlowSealValidator : ISealValidator
         {
-            public void HintValidationRange(Guid guid, long start, long end)
-            {
-            }
-
             public bool ValidateParams(BlockHeader parent, BlockHeader header)
             {
                 Thread.Sleep(1000);
@@ -843,12 +834,7 @@ namespace Nethermind.Synchronization.Test
                 throw new NotImplementedException();
             }
 
-            public void SendNewBlock(Block block)
-            {
-                throw new NotImplementedException();
-            }
-
-            public void HintNewBlock(Keccak blockHash, long number)
+            public void NotifyOfNewBlock(Block block, SendBlockPriority priority)
             {
                 throw new NotImplementedException();
             }

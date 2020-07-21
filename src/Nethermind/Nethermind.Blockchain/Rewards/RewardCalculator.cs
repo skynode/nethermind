@@ -21,10 +21,11 @@ using Nethermind.Core.Attributes;
 using Nethermind.Core.Extensions;
 using Nethermind.Core.Specs;
 using Nethermind.Dirichlet.Numerics;
+using Nethermind.Evm;
 
 namespace Nethermind.Blockchain.Rewards
 {
-    public class RewardCalculator : IRewardCalculator
+    public class RewardCalculator : IRewardCalculator, IRewardCalculatorSource
     {
         private readonly ISpecProvider _specProvider;
 
@@ -32,16 +33,20 @@ namespace Nethermind.Blockchain.Rewards
         {
             _specProvider = specProvider ?? throw new ArgumentNullException(nameof(specProvider));
         }
-
-        [Todo(Improve.MissingFunctionality, "Use ChainSpec for block rewards")]
+        
         private UInt256 GetBlockReward(Block block)
         {
             IReleaseSpec spec = _specProvider.GetSpec(block.Number);
-            return spec.IsEip649Enabled ? spec.IsEip1234Enabled ? 2.Ether() : 3.Ether() : 5.Ether();
+            return spec.BlockReward;
         }
         
         public BlockReward[] CalculateRewards(Block block)
         {
+            if (block.IsGenesis)
+            {
+                return Array.Empty<BlockReward>();
+            }
+            
             UInt256 blockReward = GetBlockReward(block);
             BlockReward[] rewards = new BlockReward[1 + block.Ommers.Length];
 
@@ -63,6 +68,9 @@ namespace Nethermind.Blockchain.Rewards
             return blockReward - ((uint) (blockHeader.Number - ommer.Number) * blockReward >> 3);
         }
 
-        public static IRewardCalculatorSource GetSource(ISpecProvider specProvider) => new InstanceRewardCalculatorSource(new RewardCalculator(specProvider));
+        public IRewardCalculator Get(ITransactionProcessor processor)
+        {
+            return this;
+        }
     }
 }

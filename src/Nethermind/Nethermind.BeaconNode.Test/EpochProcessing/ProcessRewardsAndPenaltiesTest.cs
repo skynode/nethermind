@@ -38,7 +38,7 @@ namespace Nethermind.BeaconNode.Test.EpochProcessing
             BeaconState state = TestState.PrepareTestState(testServiceProvider);
 
             ChainConstants chainConstants = testServiceProvider.GetService<ChainConstants>();
-            BeaconChainUtility beaconChainUtility = testServiceProvider.GetService<BeaconChainUtility>();
+            IBeaconChainUtility beaconChainUtility = testServiceProvider.GetService<IBeaconChainUtility>();
 
             BeaconState preState = BeaconState.Clone(state);
 
@@ -65,7 +65,7 @@ namespace Nethermind.BeaconNode.Test.EpochProcessing
             ChainConstants chainConstants = testServiceProvider.GetService<ChainConstants>();
             TimeParameters timeParameters = testServiceProvider.GetService<IOptions<TimeParameters>>().Value;
 
-            BeaconChainUtility beaconChainUtility = testServiceProvider.GetService<BeaconChainUtility>();
+            IBeaconChainUtility beaconChainUtility = testServiceProvider.GetService<IBeaconChainUtility>();
 
             var attestations = new List<Attestation>();
             for (Slot slot = Slot.Zero; slot < timeParameters.SlotsPerEpoch - new Slot(1); slot += new Slot(1))
@@ -121,7 +121,7 @@ namespace Nethermind.BeaconNode.Test.EpochProcessing
             RunProcessRewardsAndPenalties(testServiceProvider, state);
 
             // Assert
-            var pendingAttestations = attestations.Select(x => new PendingAttestation(x.AggregationBits, x.Data, Slot.None, ValidatorIndex.None));
+            var pendingAttestations = attestations.Select(x => new PendingAttestation(x.AggregationBits, x.Data, Slot.Zero, ValidatorIndex.Zero));
             var attestingIndices = beaconStateTransition.GetUnslashedAttestingIndices(state, pendingAttestations).ToList();
 
             attestingIndices.Count.ShouldBeGreaterThan(0);
@@ -145,7 +145,7 @@ namespace Nethermind.BeaconNode.Test.EpochProcessing
             ChainConstants chainConstants = testServiceProvider.GetService<ChainConstants>();
             TimeParameters timeParameters = testServiceProvider.GetService<IOptions<TimeParameters>>().Value;
 
-            BeaconChainUtility beaconChainUtility = testServiceProvider.GetService<BeaconChainUtility>();
+            IBeaconChainUtility beaconChainUtility = testServiceProvider.GetService<IBeaconChainUtility>();
 
             var attestations = new List<Attestation>();
             ulong maxSlot = timeParameters.SlotsPerEpoch + timeParameters.MinimumAttestationInclusionDelay;

@@ -20,6 +20,7 @@ using Nethermind.Blockchain;
 using Nethermind.Blockchain.Processing;
 using Nethermind.Blockchain.Receipts;
 using Nethermind.Blockchain.Synchronization;
+using Nethermind.Core;
 using Nethermind.Core.Specs;
 using Nethermind.Crypto;
 using Nethermind.Db;
@@ -28,8 +29,7 @@ using Nethermind.JsonRpc.Modules;
 using Nethermind.JsonRpc.Modules.Eth;
 using Nethermind.Logging;
 using Nethermind.State.Repositories;
-using Nethermind.Store;
-using Nethermind.Store.Bloom;
+using Nethermind.Db.Blooms;
 using Nethermind.TxPool;
 using Nethermind.Wallet;
 using NUnit.Framework;
@@ -49,6 +49,7 @@ namespace Nethermind.JsonRpc.Test.Modules
             ISpecProvider specProvider = MainnetSpecProvider.Instance;
             ITxPool txPool = NullTxPool.Instance;
             MemDbProvider dbProvider = new MemDbProvider();
+            IJsonRpcConfig jsonRpcConfig = new JsonRpcConfig();
 
             BlockTree blockTree = new BlockTree(
                 dbProvider.BlocksDb,
@@ -67,8 +68,9 @@ namespace Nethermind.JsonRpc.Test.Modules
                     dbProvider, 
                     txPool, 
                     NullWallet.Instance, 
+                    jsonRpcConfig,
                     blockTree, 
-                    new EthereumEcdsa(MainnetSpecProvider.Instance, LimboLogs.Instance), 
+                    new EthereumEcdsa(ChainId.Mainnet, LimboLogs.Instance), 
                     NullBlockProcessor.Instance, 
                     new InMemoryReceiptStorage(), 
                     specProvider, 

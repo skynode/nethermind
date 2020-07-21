@@ -15,41 +15,42 @@
 //  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 // 
 
-using System;
 using Nethermind.Abi;
-using Nethermind.Blockchain.Processing;
+using Nethermind.Blockchain.Contracts;
+using Nethermind.Blockchain.Contracts.Json;
 using Nethermind.Core;
-using Nethermind.Core.Extensions;
 using Nethermind.Dirichlet.Numerics;
 using Nethermind.Evm;
-using Nethermind.Serialization.Json.Abi;
 
 namespace Nethermind.Consensus.AuRa.Contracts
 {
-    public class BlockGasLimitContract : Contract, IActivatedAtBlock
+    public interface IBlockGasLimitContract : IActivatedAtBlock
     {
-        private static readonly AbiDefinition Definition = new AbiDefinitionParser().Parse<BlockGasLimitContract>();
+        UInt256? BlockGasLimit(BlockHeader parentHeader);
+    }
+
+    public sealed class BlockGasLimitContract : Contract, IBlockGasLimitContract
+    {
         private ConstantContract Constant { get; }
-        public long ActivationBlock { get; }
+        public long Activation { get; }
         
         public BlockGasLimitContract(
-            ITransactionProcessor transactionProcessor, 
             IAbiEncoder abiEncoder, 
             Address contractAddress,
             long transitionBlock,
             IReadOnlyTransactionProcessorSource readOnlyTransactionProcessorSource) 
-            : base(transactionProcessor, abiEncoder, contractAddress)
+            : base(abiEncoder, contractAddress)
         {
-            ActivationBlock = transitionBlock;
+            Activation = transitionBlock;
             Constant = GetConstant(readOnlyTransactionProcessorSource);
         }
 
         public UInt256? BlockGasLimit(BlockHeader parentHeader)
         {
-            this.ActivationCheck(parentHeader);
-            var function = Definition.GetFunction(nameof(BlockGasLimit));
-            var bytes = Constant.CallRaw(parentHeader, function, Address.Zero);
-            return (bytes?.Length ?? 0) == 0 ? (UInt256?) null : (UInt256) AbiEncoder.Decode(function.GetReturnInfo(), bytes)[0];
+            this.BlockActivationCheck(parentHeader);
+            var function = nameof(BlockGasLimit);
+            var returnData = Constant.CallRaw(parentHeader, function, Address.Zero);
+            return (returnData?.Length ?? 0) == 0 ? (UInt256?) null : (UInt256) returnData[0];
         }
     }
 }

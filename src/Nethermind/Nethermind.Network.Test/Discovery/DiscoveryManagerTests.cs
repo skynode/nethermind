@@ -30,7 +30,6 @@ using Nethermind.Network.Discovery.Messages;
 using Nethermind.Network.Discovery.RoutingTable;
 using Nethermind.Stats;
 using Nethermind.Stats.Model;
-using Nethermind.Store;
 using NSubstitute;
 using NUnit.Framework;
 
@@ -51,6 +50,7 @@ namespace Nethermind.Network.Test.Discovery
         private string _host = "192.168.1.17";
         private Node[] _nodes;
         private PublicKey _publicKey;
+        private IIPResolver _ipResolver;
 
         [SetUp]
         public void Initialize()
@@ -74,7 +74,9 @@ namespace Nethermind.Network.Test.Discovery
             _nodeTable = new NodeTable(calculator, discoveryConfig, _networkConfig, logManager);
             _nodeTable.Initialize(TestItem.PublicKeyA);
 
-            _timestamper = new Timestamper();
+            _timestamper = Timestamper.Default;
+
+            _ipResolver = new IPResolver(_networkConfig, logManager);
 
             var evictionManager = new EvictionManager(_nodeTable, logManager);
             var lifecycleFactory = new NodeLifecycleManagerFactory(_nodeTable, new DiscoveryMessageFactory(_timestamper), evictionManager, new NodeStatsManager(statsConfig, logManager), discoveryConfig, logManager);
@@ -82,7 +84,7 @@ namespace Nethermind.Network.Test.Discovery
             _nodes = new[] {new Node("192.168.1.18", 1), new Node("192.168.1.19", 2)};
 
             IFullDb nodeDb = new SimpleFilePublicKeyDb("Test", "test_db", logManager);
-            _discoveryManager = new DiscoveryManager(lifecycleFactory, _nodeTable, new NetworkStorage(nodeDb, logManager), discoveryConfig, logManager);
+            _discoveryManager = new DiscoveryManager(lifecycleFactory, _nodeTable, new NetworkStorage(nodeDb, logManager), discoveryConfig, logManager, _ipResolver);
             _discoveryManager.MessageSender = _messageSender;
         }
 
@@ -92,7 +94,7 @@ namespace Nethermind.Network.Test.Discovery
             //receiving ping
             var address = new IPEndPoint(IPAddress.Parse(_host), _port);
             _discoveryManager.OnIncomingMessage(new PingMessage {FarAddress = address, FarPublicKey = _publicKey, DestinationAddress = _nodeTable.MasterNode.Address, SourceAddress = address});
-            Thread.Sleep(200);
+            Thread.Sleep(500);
 
             // expecting to send pong
             _messageSender.Received(1).SendMessage(Arg.Is<PongMessage>(m => m.FarAddress.Address.ToString() == _host && m.FarAddress.Port == _port));
@@ -109,7 +111,7 @@ namespace Nethermind.Network.Test.Discovery
 
             //expecting to activate node as valid peer
             var nodes = _nodeTable.GetClosestNodes();
-            Assert.AreEqual(1, nodes.Length);
+            Assert.AreEqual(1, nodes.Count());
             var node = nodes.First();
             Assert.AreEqual(_host, node.Host);
             Assert.AreEqual(_port, node.Port);
@@ -125,7 +127,7 @@ namespace Nethermind.Network.Test.Discovery
 
             //expecting to activate node as valid peer
             var nodes = _nodeTable.GetClosestNodes();
-            Assert.AreEqual(1, nodes.Length);
+            Assert.AreEqual(1, nodes.Count());
             var node = nodes.First();
             Assert.AreEqual(_host, node.Host);
             Assert.AreEqual(_port, node.Port);
@@ -148,7 +150,7 @@ namespace Nethermind.Network.Test.Discovery
                 for (int b = 0; b < 255; b++)
                 {
                     INodeLifecycleManager manager = _discoveryManager.GetNodeLifecycleManager(new Node($"{a}.{b}.1.1", 8000));
-                    manager.SendPing();
+                    manager.SendPingAsync();
                     _discoveryManager.OnIncomingMessage(new PongMessage {FarAddress = new IPEndPoint(IPAddress.Parse($"{a}.{b}.1.1"), _port), FarPublicKey = _publicKey});
                 }
             }
@@ -162,7 +164,7 @@ namespace Nethermind.Network.Test.Discovery
 
             //expecting to activate node as valid peer
             var nodes = _nodeTable.GetClosestNodes();
-            Assert.AreEqual(1, nodes.Length);
+            Assert.AreEqual(1, nodes.Count());
             var node = nodes.First();
             Assert.AreEqual(_host, node.Host);
             Assert.AreEqual(_port, node.Port);

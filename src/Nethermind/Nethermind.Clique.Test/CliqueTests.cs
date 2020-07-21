@@ -15,6 +15,7 @@
 //  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using Nethermind.Blockchain;
+using Nethermind.Consensus;
 using Nethermind.Consensus.Clique;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
@@ -26,7 +27,7 @@ using Nethermind.Db;
 using Nethermind.Dirichlet.Numerics;
 using Nethermind.Logging;
 using Nethermind.Serialization.Rlp;
-using Nethermind.Store;
+using Nethermind.Db.Blooms;
 using Nethermind.Wallet;
 using NUnit.Framework;
 using BlockTree = Nethermind.Blockchain.BlockTree;
@@ -72,9 +73,9 @@ namespace Nethermind.Clique.Test
             MemDb db = new MemDb();
             CliqueConfig config = new CliqueConfig();
             
-            _ecdsa = new EthereumEcdsa(RinkebySpecProvider.Instance, LimboLogs.Instance); 
+            _ecdsa = new EthereumEcdsa(ChainId.Rinkeby, LimboLogs.Instance); 
             _snapshotManager = new SnapshotManager(config, db, _blockTree, _ecdsa, LimboLogs.Instance);
-            _clique = new CliqueSealer(new BasicWallet(key), config, _snapshotManager, key.Address, LimboLogs.Instance);
+            _clique = new CliqueSealer(new Signer(ChainId.Rinkeby, key, LimboLogs.Instance), config, _snapshotManager, LimboLogs.Instance);
             _sealValidator = new CliqueSealValidator(config, _snapshotManager, LimboLogs.Instance);
         }
         
@@ -96,7 +97,7 @@ namespace Nethermind.Clique.Test
         public void Test_no_signer_data_at_epoch_fails(string blockRlp)
         {
             CliqueConfig config = new CliqueConfig {Epoch = 4};
-            _clique = new CliqueSealer(NullWallet.Instance, config, _snapshotManager, Address.Zero, LimboLogs.Instance);
+            _clique = new CliqueSealer(NullSigner.Instance, config, _snapshotManager, LimboLogs.Instance);
             _sealValidator = new CliqueSealValidator(config, _snapshotManager, LimboLogs.Instance);
             Block block = Rlp.Decode<Block>(new Rlp(Bytes.FromHexString(blockRlp)));
             bool validHeader = _sealValidator.ValidateParams(_blockTree.FindHeader(block.ParentHash, BlockTreeLookupOptions.None), block.Header);

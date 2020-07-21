@@ -15,41 +15,29 @@
 //  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
+using System.Threading;
 using System.Threading.Tasks;
-using Nethermind.Abi;
 using Nethermind.Blockchain;
 using Nethermind.Blockchain.Processing;
 using Nethermind.Blockchain.Producers;
-using Nethermind.Blockchain.Rewards;
-using Nethermind.Blockchain.Validators;
-using Nethermind.Consensus;
-using Nethermind.Core;
-using Nethermind.Core.Specs;
+using Nethermind.Consensus.Transactions;
 using Nethermind.Db;
-using Nethermind.Evm;
-using Nethermind.Logging;
 using Nethermind.Runner.Ethereum.Context;
-using Nethermind.Runner.Ethereum.Subsystems;
-using Nethermind.State;
-using Nethermind.Store;
 
 namespace Nethermind.Runner.Ethereum.Steps
 {
     [RunnerStepDependencies(typeof(StartBlockProcessor), typeof(SetupKeyStore), typeof(ReviewBlockTree))]
-    public abstract class StartBlockProducer : IStep, ISubsystemStateAware
+    public abstract class StartBlockProducer : IStep
     {
         private readonly EthereumRunnerContext _context;
         private BlockProducerContext? _blockProducerContext;
         
-
-        public StartBlockProducer(EthereumRunnerContext context)
+        protected StartBlockProducer(EthereumRunnerContext context)
         {
             _context = context;
         }
 
-        public Task Execute()
+        public Task Execute(CancellationToken _)
         {
             IInitConfig initConfig = _context.Config<IInitConfig>();
             if (initConfig.IsMining)
@@ -58,8 +46,6 @@ namespace Nethermind.Runner.Ethereum.Steps
                 if (_context.BlockProducer == null) throw new StepDependencyException(nameof(_context.BlockProducer));
 
                 _context.BlockProducer.Start();
-
-                SubsystemStateChanged?.Invoke(this, new SubsystemStateEventArgs(EthereumSubsystemState.Running));
             }
 
             return Task.CompletedTask;
@@ -80,7 +66,7 @@ namespace Nethermind.Runner.Ethereum.Steps
                 ReadOnlyTxProcessingEnv readOnlyTxProcessingEnv = new ReadOnlyTxProcessingEnv(readOnlyDbProvider, readOnlyBlockTree, _context.SpecProvider, _context.LogManager);
                 var readOnlyTransactionProcessorSource = new ReadOnlyTransactionProcessorSource(readOnlyTxProcessingEnv);
                 BlockProcessor blockProcessor = CreateBlockProcessor(readOnlyTxProcessingEnv, readOnlyTransactionProcessorSource, readOnlyDbProvider);
-                OneTimeChainProcessor chainProcessor = new OneTimeChainProcessor(readOnlyDbProvider, new BlockchainProcessor(readOnlyBlockTree, blockProcessor, _context.RecoveryStep, _context.LogManager, false));
+                OneTimeChainProcessor chainProcessor = new OneTimeChainProcessor(readOnlyDbProvider, new BlockchainProcessor(readOnlyBlockTree, blockProcessor, _context.RecoveryStep, _context.LogManager, BlockchainProcessor.Options.NoReceipts));
 
                 return new BlockProducerContext
                 {
@@ -122,9 +108,5 @@ namespace Nethermind.Runner.Ethereum.Steps
                 _context.ReceiptStorage,
                 _context.LogManager);
         }
-
-        public event EventHandler<SubsystemStateEventArgs>? SubsystemStateChanged;
-
-        public EthereumSubsystem MonitoredSubsystem => EthereumSubsystem.Mining;
     }
 }

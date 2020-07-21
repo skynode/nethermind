@@ -43,6 +43,9 @@ namespace Nethermind.Runner
 
         [ConfigItem(Description = "Path to the chain definition file (Parity chainspec or Geth genesis file).", DefaultValue = "chainspec/foundation.json")]
         string ChainSpecPath { get; set; }
+
+        [ConfigItem(Description = "Path to the chain definition file created by Hive for test purpouse", DefaultValue="chainspec/test.json")]
+        string HiveChainSpecPath { get; set; }
         
         [ConfigItem(Description = "Directory for Nethermind plugins like NDM.", DefaultValue = "plugins")] 
         string PluginsDirectory { get; set; }
@@ -73,6 +76,9 @@ namespace Nethermind.Runner
         
         [ConfigItem(Description = "Url for remote node that will be used as DB source when 'DiagnosticMode' is set to'RpcDb'", DefaultValue = "")]
         string RpcDbUrl { get; set; }
+        
+        [ConfigItem(Description = "A hint for the max memory that will allow us to configure the DB and Netty memory allocations.", DefaultValue = "null")]
+        long? MemoryHint { get; set; }
     }
     
     public enum DiagnosticMode
@@ -83,6 +89,10 @@ namespace Nethermind.Runner
         [ConfigItem(Description = "Diagnostics mode which uses a remote DB")]
         RpcDb,
         [ConfigItem(Description = "Diagnostics mode which uses a read-only DB")]
-        ReadOnlyDb
+        ReadOnlyDb,
+        [ConfigItem(Description = "Diagnostics mode which logs the Parity style traces")]
+        ParityTrace,
+        [ConfigItem(Description = "Diagnostics mode which logs the Geth style traces")]
+        GethTrace
     }
 }

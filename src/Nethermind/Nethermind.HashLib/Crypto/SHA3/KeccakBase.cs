@@ -71,7 +71,7 @@ namespace Nethermind.HashLib.Crypto.SHA3
 
         private int _blockSize;
 
-        protected override void TransformBlock(Span<byte> a_data, int a_index)
+        protected override void TransformBlock(ReadOnlySpan<byte> a_data, int a_index)
         {
             // TODO: review discussions on whether it is always safe (should be)
             ReadOnlySpan<ulong> data = MemoryMarshal.Cast<byte, ulong>(a_data.Slice(a_index, _blockSize));
@@ -2735,6 +2735,15 @@ namespace Nethermind.HashLib.Crypto.SHA3
             }
 
             return result;
+        }
+        
+        protected override void GetResultUInts(Span<uint> output)
+        {
+            for (int i = 0; i < output.Length / 2; i = i + 1)
+            {
+                output[i * 2] = (uint)m_state[i];
+                output[i * 2 + 1] = (uint)(m_state[i] >> 32);
+            }
         }
 
         public override void Initialize()

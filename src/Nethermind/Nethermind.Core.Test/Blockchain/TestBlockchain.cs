@@ -37,7 +37,7 @@ using Nethermind.Serialization.Json;
 using Nethermind.Specs;
 using Nethermind.State;
 using Nethermind.State.Repositories;
-using Nethermind.Store.Bloom;
+using Nethermind.Db.Blooms;
 using Nethermind.TxPool;
 using Nethermind.TxPool.Storages;
 using BlockTree = Nethermind.Blockchain.BlockTree;
@@ -62,7 +62,7 @@ namespace Nethermind.Core.Test.Blockchain
         public TestBlockProducer BlockProducer { get; private set; }
         public MemDbProvider DbProvider { get; set; }
         public ISpecProvider SpecProvider { get; set; }
-
+        
         protected TestBlockchain(SealEngineType sealEngineType)
         {
             _sealEngineType = sealEngineType;
@@ -82,7 +82,7 @@ namespace Nethermind.Core.Test.Blockchain
             Timestamper = new ManualTimestamper(new DateTime(2020, 2, 15, 12, 50, 30, DateTimeKind.Utc));
             JsonSerializer = new EthereumJsonSerializer();
             SpecProvider = specProvider ?? MainnetSpecProvider.Instance;
-            EthereumEcdsa = new EthereumEcdsa(SpecProvider, LimboLogs.Instance);
+            EthereumEcdsa = new EthereumEcdsa(ChainId.Mainnet, LimboLogs.Instance);
             ITxStorage txStorage = new InMemoryTxStorage();
             DbProvider = new MemDbProvider();
             State = new StateProvider(StateDb, CodeDb, LimboLogs.Instance);
@@ -113,12 +113,12 @@ namespace Nethermind.Core.Test.Blockchain
             TxProcessor = new TransactionProcessor(SpecProvider, State, Storage, virtualMachine, LimboLogs.Instance);
             BlockProcessor = CreateBlockProcessor();
 
-            BlockchainProcessor chainProcessor = new BlockchainProcessor(BlockTree, BlockProcessor, new TxSignaturesRecoveryStep(EthereumEcdsa, TxPool, LimboLogs.Instance), LimboLogs.Instance, true);
+            BlockchainProcessor chainProcessor = new BlockchainProcessor(BlockTree, BlockProcessor, new TxSignaturesRecoveryStep(EthereumEcdsa, TxPool, LimboLogs.Instance), LimboLogs.Instance, BlockchainProcessor.Options.Default);
             chainProcessor.Start();
 
             StateReader = new StateReader(StateDb, CodeDb, LimboLogs.Instance);
             TxPoolTxSource txPoolTxSource = new TxPoolTxSource(TxPool, StateReader, LimboLogs.Instance);
-            ISealer sealer = new FakeSealer(TimeSpan.Zero);
+            ISealer sealer = new NethDevSealEngine(TestItem.AddressD);
             BlockProducer = new TestBlockProducer(txPoolTxSource, chainProcessor, State, sealer, BlockTree, chainProcessor, Timestamper, LimboLogs.Instance);
             BlockProducer.Start();
 
@@ -163,17 +163,17 @@ namespace Nethermind.Core.Test.Blockchain
         {
             foreach (Transaction transaction in transactions)
             {
-                TxPool.AddTransaction(transaction, BlockTree.Head.Number + 1, TxHandlingOptions.None);    
+                TxPool.AddTransaction(transaction, TxHandlingOptions.None);    
             }
             
-            Timestamper.AddOneSecond();
+            Timestamper.Add(TimeSpan.FromSeconds(1));
             BlockProducer.BuildNewBlock();
             await _resetEvent.WaitOneAsync(CancellationToken.None);
         }
         
         public void AddTransaction(Transaction testObject)
         {
-            TxPool.AddTransaction(testObject, BlockTree.Head.Number + 1, TxHandlingOptions.None);
+            TxPool.AddTransaction(testObject, TxHandlingOptions.None);
         }
 
         public void Dispose()
@@ -181,6 +181,26 @@ namespace Nethermind.Core.Test.Blockchain
             BlockProducer?.StopAsync();
             CodeDb?.Dispose();
             StateDb?.Dispose();
+        }
+        
+        /// <summary>
+        /// Creates a simple transfer transaction with value defined by <paramref name="ether"/>
+        /// from a rich account to <paramref name="address"/>
+        /// </summary>
+        /// <param name="address">Address to add funds to</param>
+        /// <param name="ether">Value of ether to add to the account</param>
+        /// <returns></returns>
+        public async Task AddFunds(Address address, UInt256 ether)
+        {
+            var nonce = StateReader.GetNonce(BlockTree.Head.StateRoot, TestItem.AddressA);
+            Transaction tx = Builders.Build.A.Transaction
+                .SignedAndResolved(TestItem.PrivateKeyA)
+                .To(address)
+                .WithNonce(nonce)
+                .WithValue(ether)
+                .TestObject;
+            
+            await AddBlock(tx);
         }
     }
 }

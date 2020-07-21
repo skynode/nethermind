@@ -31,25 +31,34 @@ namespace Nethermind.Core
         public Address LoggersAddress { get; }
         public Keccak[] Topics { get; }
         public byte[] Data { get; }
-        
-        public static LogEntry[] EmptyLogs = new LogEntry[0];
     }
     
     public ref struct LogEntryStructRef
     {
-        public LogEntryStructRef(AddressStructRef address, Span<byte> data, Span<byte> topics)
+        public LogEntryStructRef(AddressStructRef address, Span<byte> data, Span<byte> topicsRlp)
         {
             LoggersAddress = address;
             Data = data;
-            Topics = topics;
+            TopicsRlp = topicsRlp;
+            Topics = null;
         }
 
         public AddressStructRef LoggersAddress;
 
+        public LogEntryStructRef(LogEntry logEntry)
+        {
+            LoggersAddress = logEntry.LoggersAddress.ToStructRef();
+            Data = logEntry.Data;
+            Topics = logEntry.Topics;
+            TopicsRlp = Span<byte>.Empty;
+        }
+
+        public Keccak[] Topics { get; }
+
         /// <summary>
         /// Rlp encoded array of Keccak
         /// </summary>
-        public Span<byte> Topics { get; }
+        public Span<byte> TopicsRlp { get; }
 
         public Span<byte> Data { get; }
     }

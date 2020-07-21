@@ -78,11 +78,11 @@ namespace Nethermind.Blockchain.Test
             tx.To = new Address(0x0f.ToBigEndianByteArray().PadLeft(20));
             tx.Nonce = _nonce++;
             tx.Value = 1;
-            tx.Data = new byte[0];
+            tx.Data = Array.Empty<byte>();
             tx.Nonce = _count++;
             tx.SenderAddress = SenderAddress;
-            _ecdsa.Sign(_privateKey, tx, 1);
-            Address address = _ecdsa.RecoverAddress(tx, 1);
+            _ecdsa.Sign(_privateKey, tx);
+            Address address = _ecdsa.RecoverAddress(tx);
             if (address != tx.SenderAddress)
             {
                 throw new InvalidDataException($"{nameof(TestTransactionsGenerator)} producing invalid transactions");
@@ -90,7 +90,7 @@ namespace Nethermind.Blockchain.Test
 
             tx.Hash = tx.CalculateHash();
 
-            _txPool.AddTransaction(tx, 1, TxHandlingOptions.PersistentBroadcast);
+            _txPool.AddTransaction(tx, TxHandlingOptions.PersistentBroadcast);
             _logger.Debug($"Generated a test transaction for testing ({_count - 1}).");
         }
 

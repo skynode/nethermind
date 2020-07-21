@@ -26,6 +26,9 @@ namespace Nethermind.JsonRpc
         [ConfigItem(Description = "Host for JSON RPC calls. Ensure the firewall is configured when enabling JSON RPC. If it does not work with 117.0.0.1 try something like 10.0.0.4 or 192.168.0.1", DefaultValue = "\"127.0.0.1\"")]
         string Host { get; set; }
 
+        [ConfigItem(Description = "JSON RPC tracers' timeout value given in miliseconds.", DefaultValue = "20000")] 
+        int TracerTimeout { get; set; }
+
         [ConfigItem(Description = "Base file path for diagnostic JSON RPC recorder.", DefaultValue = "\"logs/rpc.log_1.txt\"")]
         string RpcRecorderBaseFilePath { get; set; }
 
@@ -49,5 +52,8 @@ namespace Nethermind.JsonRpc
         
         [ConfigItem(Description = "Interval between the JSON RPC stats report log", DefaultValue = "300")]
         public int ReportIntervalSeconds { get; set; }
+        
+        [ConfigItem(Description = "Buffer responses before sending them to client. This allows to set Content-Length in response instead of using Transfer-Encoding: chunked. This may degrade performance on big responses.", DefaultValue = "false")]
+        public bool BufferResponses { get; set; }
     }
 }

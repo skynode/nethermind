@@ -15,10 +15,6 @@
 //  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using Jint.Native;
-using Jint.Runtime;
-using Nethermind.Core.Extensions;
-using Nethermind.Evm.Tracing;
-using Nethermind.JsonRpc.Modules.DebugModule;
 
 namespace Nethermind.Cli.Modules
 {
@@ -35,6 +31,12 @@ namespace Nethermind.Cli.Modules
         // public JsValue DeleteChainSlice(long startNumber)
         // {
         //     return NodeManager.PostJint("debug_deleteChainSlice", startNumber).Result;
+        // }
+        
+        // [CliFunction("debug", "resetHead")]
+        // public JsValue ResetHead(string blockHash)
+        // {
+        //     return NodeManager.PostJint("debug_resetHead", CliParseHash(blockHash)).Result;
         // }
 
         [CliFunction("debug", "traceBlock")]
@@ -101,6 +103,12 @@ namespace Nethermind.Cli.Modules
         public string GetBlockRlp(long number)
         {
             return NodeManager.Post<string>("debug_getBlockRlp", number).Result;
+        }
+        
+        [CliFunction("debug", "migrateReceipts")]
+        public bool MigrateReceipts(long number)
+        {
+            return NodeManager.Post<bool>("debug_migrateReceipts", number).Result;
         }
 
         public DebugCliModule(ICliEngine cliEngine, INodeManager nodeManager) : base(cliEngine, nodeManager)

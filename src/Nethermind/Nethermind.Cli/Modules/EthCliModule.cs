@@ -87,9 +87,9 @@ namespace Nethermind.Cli.Modules
         }
 
         [CliFunction("eth", "estimateGas")]
-        public string EstimateGas(object json)
+        public string EstimateGas(object json, string blockParameter = null)
         {
-            return NodeManager.Post<string>("eth_estimateGas", json).Result;
+            return NodeManager.Post<string>("eth_estimateGas", json, blockParameter ?? "latest").Result;
         }
 
         [CliFunction("eth", "sendWei")]
@@ -186,6 +186,18 @@ namespace Nethermind.Cli.Modules
         public JsValue GetLogs(object filter)
         {
             return NodeManager.PostJint("eth_getLogs", filter).Result;
+        }
+        
+        [CliFunction("eth", "getFilterChanges")]
+        public JsValue GetFilterChanges(long filterId)
+        {
+            return NodeManager.PostJint("eth_getFilterChanges", filterId).Result;
+        }
+        
+        [CliFunction("eth", "newPendingTransactionFilter")]
+        public long NewPendingTransactionFilter()
+        {
+            return NodeManager.Post<long>("eth_newPendingTransactionFilter").Result;
         }
 
         public EthCliModule(ICliEngine cliEngine, INodeManager nodeManager) : base(cliEngine, nodeManager)

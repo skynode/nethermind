@@ -14,7 +14,6 @@
 //  You should have received a copy of the GNU Lesser General Public License
 //  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
-using System.Collections.Generic;
 using Nethermind.Core;
 
 namespace Nethermind.Blockchain.Receipts
@@ -22,7 +21,7 @@ namespace Nethermind.Blockchain.Receipts
     public interface IReceiptStorage : IReceiptFinder
     {
         void Insert(Block block, params TxReceipt[] txReceipts);
-        long? LowestInsertedReceiptBlock { get; set; }
+        long? LowestInsertedReceiptBlockNumber { get; set; }
         long MigratedBlockNumber { get; set; }
     }
 }

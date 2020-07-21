@@ -25,10 +25,12 @@ namespace Nethermind.JsonRpc
         private int? _webSocketsPort;
         public bool Enabled { get; set; }
         public string Host { get; set; }
+        public int TracerTimeout { get; set; } = 20000;
+        public bool TracerTimeoutEnabled { get; set; }
         public string RpcRecorderBaseFilePath { get; set; } = "logs/rpc.{counter}.txt"; 
         public bool RpcRecorderEnabled { get; set; }
         public int Port { get; set; }
-
+ 
         public int WebSocketsPort
         {
             get => _webSocketsPort ?? Port;
@@ -39,5 +41,6 @@ namespace Nethermind.JsonRpc
         public int FindLogBlockDepthLimit { get; set; } = 1000;
         public long? GasCap { get; set; } = 100000000;
         public int ReportIntervalSeconds { get; set; } = 300;
+        public bool BufferResponses { get; set; }
     }
 }

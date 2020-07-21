@@ -1,4 +1,4 @@
-﻿//  Copyright (c) 2018 Demerzel Solutions Limited
+//  Copyright (c) 2018 Demerzel Solutions Limited
 //  This file is part of the Nethermind library.
 // 
 //  The Nethermind library is free software: you can redistribute it and/or modify
@@ -15,6 +15,7 @@
 //  along with the Nethermind. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Nethermind.Core.Extensions;
@@ -39,9 +40,9 @@ namespace Nethermind.Network.Discovery.Lifecycle
         private PingMessage _lastSentPing;
         private bool _isNeighborsExpected;
 
-        private bool _receivedPing;
+        // private bool _receivedPing;
         private bool _sentPing;
-        private bool _sentPong;
+        // private bool _sentPong;
         private bool _receivedPong;
 
         public NodeLifecycleManager(Node node, IDiscoveryManager discoveryManager, INodeTable nodeTable, IDiscoveryMessageFactory discoveryMessageFactory, IEvictionManager evictionManager, INodeStats nodeStats, IDiscoveryConfig discoveryConfig, ILogger logger)
@@ -60,13 +61,13 @@ namespace Nethermind.Network.Discovery.Lifecycle
         public Node ManagedNode { get; }
         public NodeLifecycleState State { get; private set; }
         public INodeStats NodeStats { get; }
-        public bool IsBonded => (_sentPing && _receivedPong) || (_receivedPing && _sentPong);
+        public bool IsBonded => _sentPing && _receivedPong;
 
         public event EventHandler<NodeLifecycleState> OnStateChanged;
 
         public void ProcessPingMessage(PingMessage discoveryMessage)
         {
-            _receivedPing = true;
+            // _receivedPing = true;
             SendPong(discoveryMessage);
 
             NodeStats.AddNodeStatsEvent(NodeStatsEventType.DiscoveryPingIn);
@@ -88,13 +89,21 @@ namespace Nethermind.Network.Discovery.Lifecycle
                 if (IsBonded)
                 {
                     UpdateState(NodeLifecycleState.Active);
+                    if(_logger.IsDebug) _logger.Debug($"Bonded with {ManagedNode.Host}");
+                }
+                else
+                {
+                    if(_logger.IsDebug) _logger.Debug($"Bonding with {ManagedNode} failed.");
                 }
 
                 RefreshNodeContactTime();
             }
             else
             {
+                if(_logger.IsDebug) _logger.Debug($"Unmatched MDC when bonding with {ManagedNode}");
                 // ignore spoofed message
+                _receivedPong = false;
+                return;
             }
         }
 
@@ -137,7 +146,7 @@ namespace Nethermind.Network.Discovery.Lifecycle
             NodeStats.AddNodeStatsEvent(NodeStatsEventType.DiscoveryFindNodeIn);
             RefreshNodeContactTime();
 
-            Node[] nodes = _nodeTable.GetClosestNodes(discoveryMessage.SearchedNodeId);
+            Node[] nodes = _nodeTable.GetClosestNodes(discoveryMessage.SearchedNodeId).ToArray();
             SendNeighbors(nodes);
         }
         
@@ -164,24 +173,21 @@ namespace Nethermind.Network.Discovery.Lifecycle
 
         private DateTime _lastPingSent = DateTime.MinValue;
 
-        public void SendPing()
+        public async Task SendPingAsync()
         {
-            Task.Run(() =>
-            {
-                _lastPingSent = DateTime.UtcNow;
-                Task task = SendPingAsync(_discoveryConfig.PingRetryCount);
-                _sentPing = true;
-                return task;
-            });
+            _lastPingSent = DateTime.UtcNow;
+            _sentPing = true;
+            await CreateAndSendPingAsync(_discoveryConfig.PingRetryCount);
         }
 
         public void SendPong(PingMessage discoveryMessage)
         {
             PongMessage msg = _discoveryMessageFactory.CreateOutgoingMessage<PongMessage>(ManagedNode);
             msg.PingMdc = discoveryMessage.Mdc;
+
             _discoveryManager.SendMessage(msg);
             NodeStats.AddNodeStatsEvent(NodeStatsEventType.DiscoveryPongOut);
-            _sentPong = true;
+            // _sentPong = true;
             if (IsBonded)
             {
                 UpdateState(NodeLifecycleState.Active);
@@ -192,7 +198,8 @@ namespace Nethermind.Network.Discovery.Lifecycle
         {
             if (!IsBonded)
             {
-                if (_logger.IsWarn) _logger.Warn("Sending NEIGHBOURS before bonding");
+                if (_logger.IsWarn) _logger.Warn("Attempt to send NEIGHBOURS before bonding");
+                return;
             }
 
             NeighborsMessage msg = _discoveryMessageFactory.CreateOutgoingMessage<NeighborsMessage>(ManagedNode);
@@ -219,7 +226,9 @@ namespace Nethermind.Network.Discovery.Lifecycle
             if (newState == NodeLifecycleState.New)
             {
                 //if node is just discovered we send ping to confirm it is active
-                SendPing();
+#pragma warning disable 4014
+                SendPingAsync();
+#pragma warning restore 4014
             }
             else if (newState == NodeLifecycleState.Active)
             {
@@ -247,7 +256,9 @@ namespace Nethermind.Network.Discovery.Lifecycle
 
                 if (DateTime.UtcNow - _lastPingSent > TimeSpan.FromSeconds(5))
                 {
-                    SendPing();
+#pragma warning disable 4014
+                    SendPingAsync();
+#pragma warning restore 4014
                 }
                 else
                 {
@@ -267,7 +278,7 @@ namespace Nethermind.Network.Discovery.Lifecycle
             }
         }
 
-        private async Task SendPingAsync(int counter)
+        private async Task CreateAndSendPingAsync(int counter = 1)
         {
             PingMessage msg = _discoveryMessageFactory.CreateOutgoingMessage<PingMessage>(ManagedNode);
             msg.SourceAddress = _nodeTable.MasterNode.Address;
@@ -284,7 +295,7 @@ namespace Nethermind.Network.Discovery.Lifecycle
                 {
                     if (counter > 1)
                     {
-                        await SendPingAsync(counter - 1);
+                        await CreateAndSendPingAsync(counter - 1);
                     }
 
                     UpdateState(NodeLifecycleState.Unreachable);

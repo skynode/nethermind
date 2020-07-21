@@ -20,11 +20,11 @@ using System.Diagnostics;
 namespace Nethermind.Core2.Types
 {
     [DebuggerDisplay("{Number}")]
-    public struct ValidatorIndex : IEquatable<ValidatorIndex>, IComparable<ValidatorIndex>
+    public readonly struct ValidatorIndex : IEquatable<ValidatorIndex>, IComparable<ValidatorIndex>
     {
-        public static readonly ValidatorIndex None = new ValidatorIndex(ulong.MaxValue - 1);
+        public static ValidatorIndex? None => default;
         
-        public static readonly ValidatorIndex Zero = new ValidatorIndex(0);
+        public static ValidatorIndex Zero => new ValidatorIndex(0);
 
         public ValidatorIndex(ulong number)
         {

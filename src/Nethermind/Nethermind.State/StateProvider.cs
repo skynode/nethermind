@@ -50,13 +50,17 @@ namespace Nethermind.State
         private Change[] _changes = new Change[StartCapacity];
         private int _currentPosition = -1;
 
-        public StateProvider(ISnapshotableDb stateDb, IDb codeDb, ILogManager logManager)
+        public StateProvider(StateTree stateTree, IDb codeDb, ILogManager logManager)
         {
             _logManager = logManager ?? throw new ArgumentNullException(nameof(logManager));
             _logger = logManager.GetClassLogger() ?? throw new ArgumentNullException(nameof(logManager));
-            if (stateDb == null) throw new ArgumentNullException(nameof(stateDb));
             _codeDb = codeDb ?? throw new ArgumentNullException(nameof(codeDb));
-            _tree = new StateTree(stateDb);
+            _tree = stateTree ?? throw new ArgumentNullException(nameof(stateTree));
+        }
+
+        public StateProvider(ISnapshotableDb stateDb, IDb codeDb, ILogManager logManager)
+            : this(new StateTree(stateDb), codeDb, logManager)
+        {
         }
 
         public void Accept(ITreeVisitor visitor, Keccak stateRoot)
@@ -163,7 +167,10 @@ namespace Nethermind.State
             {
                 if (_logger.IsTrace) _logger.Trace($"  Touch {address} (code hash)");
                 Account touched = GetThroughCache(address);
-                PushTouch(address, touched, releaseSpec, touched.Balance.IsZero);
+                if (touched.IsEmpty)
+                {
+                    PushTouch(address, touched, releaseSpec, touched.Balance.IsZero);
+                }
             }
         }
 
@@ -190,7 +197,10 @@ namespace Nethermind.State
                 {
                     Account touched = GetThroughCacheCheckExists();
                     if (_logger.IsTrace) _logger.Trace($"  Touch {address} (balance)");
-                    PushTouch(address, touched, releaseSpec, isZero);
+                    if (touched.IsEmpty)
+                    {
+                        PushTouch(address, touched, releaseSpec, isZero);
+                    }
                 }
 
                 return;
@@ -280,7 +290,7 @@ namespace Nethermind.State
 
         public byte[] GetCode(Keccak codeHash)
         {
-            return codeHash == Keccak.OfAnEmptyString ? new byte[0] : _codeDb[codeHash.Bytes];
+            return codeHash == Keccak.OfAnEmptyString ? Array.Empty<byte>() : _codeDb[codeHash.Bytes];
         }
 
         public byte[] GetCode(Address address)
@@ -288,7 +298,7 @@ namespace Nethermind.State
             Account account = GetThroughCache(address);
             if (account == null)
             {
-                return new byte[0];
+                return Array.Empty<byte>();
             }
 
             return GetCode(account.CodeHash);
@@ -569,12 +579,12 @@ namespace Nethermind.State
                     byte[] beforeCode = beforeCodeHash == null
                         ? null
                         : beforeCodeHash == Keccak.OfAnEmptyString
-                            ? Bytes.Empty
+                            ? Array.Empty<byte>()
                             : _codeDb.Get(beforeCodeHash);
                     byte[] afterCode = afterCodeHash == null
                         ? null
                         : afterCodeHash == Keccak.OfAnEmptyString
-                            ? Bytes.Empty
+                            ? Array.Empty<byte>()
                             : _codeDb.Get(afterCodeHash);
 
                     if (!((beforeCode?.Length ?? 0) == 0 && (afterCode?.Length ?? 0) == 0))
@@ -671,6 +681,12 @@ namespace Nethermind.State
         private void Push(ChangeType changeType, Address address, Account touchedAccount)
         {
             SetupCache(address);
+            if (changeType == ChangeType.Touch
+                && _changes[_intraBlockCache[address].Peek()].ChangeType == ChangeType.Touch)
+            {
+                return;
+            }
+
             IncrementChangePosition();
             _intraBlockCache[address].Push(_currentPosition);
             _changes[_currentPosition] = new Change(changeType, address, touchedAccount);

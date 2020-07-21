@@ -45,7 +45,7 @@ using Nethermind.Serialization.Json;
 using Nethermind.Specs;
 using Nethermind.State;
 using Nethermind.State.Repositories;
-using Nethermind.Store.Bloom;
+using Nethermind.Db.Blooms;
 using Nethermind.TxPool;
 using Nethermind.TxPool.Storages;
 using Metrics = Nethermind.Trie.Metrics;
@@ -167,6 +167,11 @@ namespace Nethermind.PerfTest
                 return _blockTree.FindHeaders(hash, numberOfBlocks, skip, reverse);
             }
 
+            public BlockHeader FindLowestCommonAncestor(BlockHeader firstDescendant, BlockHeader secondDescendant, long maxSearchDepth)
+            {
+                return _blockTree.FindLowestCommonAncestor(firstDescendant, secondDescendant, maxSearchDepth);
+            }
+
             public void DeleteInvalidBlock(Block invalidBlock)
             {
                 _blockTree.DeleteInvalidBlock(invalidBlock);
@@ -262,7 +267,7 @@ namespace Nethermind.PerfTest
             var stateProvider = new StateProvider(stateDb, codeDb, _logManager);
             var storageProvider = new StorageProvider(stateDb, stateProvider, _logManager);
 
-            var ethereumSigner = new EthereumEcdsa(specProvider, _logManager);
+            var ethereumSigner = new EthereumEcdsa(specProvider.ChainId, _logManager);
 
             var transactionPool = new TxPool.TxPool(
                 NullTxStorage.Instance,
@@ -310,7 +315,7 @@ namespace Nethermind.PerfTest
 
             /* blockchain processing */
             var blockProcessor = new BlockProcessor(specProvider, blockValidator, rewardCalculator, processor, stateDb, codeDb, stateProvider, storageProvider, transactionPool, receiptStorage, _logManager);
-            var blockchainProcessor = new BlockchainProcessor(blockTree, blockProcessor, recoveryStep, _logManager, true);
+            var blockchainProcessor = new BlockchainProcessor(blockTree, blockProcessor, recoveryStep, _logManager, BlockchainProcessor.Options.Default);
 
             foreach ((Address address, ChainSpecAllocation allocation) in chainSpec.Allocations)
             {

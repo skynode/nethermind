@@ -31,7 +31,7 @@ using Nethermind.Dirichlet.Numerics;
 using Nethermind.Logging;
 using Nethermind.Runner.Ethereum.Context;
 using Nethermind.State.Repositories;
-using Nethermind.Store.Bloom;
+using Nethermind.Db.Blooms;
 using Nethermind.Synchronization;
 using Nethermind.Synchronization.ParallelSync;
 using Timer = System.Timers.Timer;
@@ -40,7 +40,7 @@ namespace Nethermind.Runner.Ethereum.Steps.Migrations
 {
     public class BloomMigration : IDatabaseMigration
     {
-        private static readonly BlockHeader EmptyHeader = new BlockHeader(Keccak.Zero, Keccak.Zero, Address.Zero, UInt256.Zero, 0L, 0L, UInt256.Zero, Bytes.Empty);
+        private static readonly BlockHeader EmptyHeader = new BlockHeader(Keccak.Zero, Keccak.Zero, Address.Zero, UInt256.Zero, 0L, 0L, UInt256.Zero, Array.Empty<byte>());
         
         private readonly EthereumRunnerContext _context;
         private readonly ILogger _logger;

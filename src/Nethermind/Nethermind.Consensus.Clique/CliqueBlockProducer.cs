@@ -25,6 +25,7 @@ using System.Timers;
 using Nethermind.Blockchain;
 using Nethermind.Blockchain.Find;
 using Nethermind.Blockchain.Processing;
+using Nethermind.Consensus.Transactions;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
 using Nethermind.Crypto;
@@ -33,7 +34,7 @@ using Nethermind.Evm.Tracing;
 using Nethermind.Logging;
 using Nethermind.State;
 using Nethermind.State.Proofs;
-using Nethermind.Store;
+using Nethermind.Db.Blooms;
 
 namespace Nethermind.Consensus.Clique
 {
@@ -51,7 +52,6 @@ namespace Nethermind.Consensus.Clique
         private readonly ISealer _sealer;
         private readonly ISnapshotManager _snapshotManager;
         private readonly ICliqueConfig _config;
-        private readonly Address _address;
         private readonly ConcurrentDictionary<Address, bool> _proposals = new ConcurrentDictionary<Address, bool>();
 
         private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
@@ -66,7 +66,6 @@ namespace Nethermind.Consensus.Clique
             ICryptoRandom cryptoRandom,
             ISnapshotManager snapshotManager,
             ISealer cliqueSealer,
-            Address address,
             ICliqueConfig config,
             ILogManager logManager)
         {
@@ -80,7 +79,6 @@ namespace Nethermind.Consensus.Clique
             _sealer = cliqueSealer ?? throw new ArgumentNullException(nameof(cliqueSealer));
             _snapshotManager = snapshotManager ?? throw new ArgumentNullException(nameof(snapshotManager));
             _config = config ?? throw new ArgumentNullException(nameof(config));
-            _address = address ?? throw new ArgumentNullException(nameof(address));
             _wiggle = new WiggleRandomizer(_cryptoRandom, _snapshotManager);
 
             _timer.AutoReset = false;
@@ -113,6 +111,11 @@ namespace Nethermind.Consensus.Clique
             }
 
             if (_logger.IsWarn) _logger.Warn($"Removed Clique vote for {signer}");
+        }
+
+        public void ProduceOnTopOf(Keccak hash)
+        {
+            _signalsQueue.Add(_blockTree.FindBlock(hash, BlockTreeLookupOptions.None));
         }
 
         private void TimerOnElapsed(object sender, ElapsedEventArgs e)
@@ -315,7 +318,7 @@ namespace Nethermind.Consensus.Clique
                 parentBlock.Number + 1,
                 parentBlock.GasLimit,
                 timestamp > parentBlock.Timestamp ? timestamp : parentBlock.Timestamp + 1,
-                new byte[0]);
+                Array.Empty<byte>());
 
             // If the block isn't a checkpoint, cast a random vote (good enough for now)
             long number = header.Number;
@@ -345,7 +348,7 @@ namespace Nethermind.Consensus.Clique
             }
 
             // Set the correct difficulty
-            header.Difficulty = CalculateDifficulty(snapshot, _address);
+            header.Difficulty = CalculateDifficulty(snapshot, _sealer.Address);
             header.TotalDifficulty = parentBlock.TotalDifficulty + header.Difficulty;
             if (_logger.IsDebug) _logger.Debug($"Setting total difficulty to {parentBlock.TotalDifficulty} + {header.Difficulty}.");
 
@@ -380,9 +383,9 @@ namespace Nethermind.Consensus.Clique
             _stateProvider.StateRoot = parentHeader.StateRoot;
 
             var selectedTxs = _txSource.GetTransactions(parentBlock.Header, header.GasLimit);
-            Block block = new Block(header, selectedTxs, new BlockHeader[0]);
+            Block block = new Block(header, selectedTxs, Array.Empty<BlockHeader>());
             header.TxRoot = new TxTrie(block.Transactions).RootHash;
-            block.Header.Author = _address;
+            block.Header.Author = _sealer.Address;
             return block;
         }
 

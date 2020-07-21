@@ -87,17 +87,17 @@ namespace Nethermind.JsonRpc.Modules.Eth
         [JsonRpcMethod(IsImplemented = false, Description = "Signs a transaction", IsReadOnly = true)]
         ResultWrapper<byte[]> eth_sign(Address addressData, byte[] message);
         
-        [JsonRpcMethod(IsImplemented = true, Description = "Send a transaction to the tx pool and broadcasting", IsReadOnly = false)]
+        [JsonRpcMethod(IsImplemented = true, Description = "Send a transaction to the tx pool and broadcasting", IsReadOnly = true)]
         Task<ResultWrapper<Keccak>> eth_sendTransaction(TransactionForRpc transactionForRpc);
         
-        [JsonRpcMethod(IsImplemented = true, Description = "Send a raw transaction to the tx pool and broadcasting", IsReadOnly = false)]
+        [JsonRpcMethod(IsImplemented = true, Description = "Send a raw transaction to the tx pool and broadcasting", IsReadOnly = true)]
         Task<ResultWrapper<Keccak>> eth_sendRawTransaction(byte[] transaction);
         
         [JsonRpcMethod(IsImplemented = true, Description = "Executes a tx call (does not create a transaction)", IsReadOnly = false)]
         ResultWrapper<string> eth_call(TransactionForRpc transactionCall, BlockParameter blockParameter = null);
         
         [JsonRpcMethod(IsImplemented = true, Description = "Executes a tx call and returns gas used (does not create a transaction)", IsReadOnly = false)]
-        ResultWrapper<UInt256?> eth_estimateGas(TransactionForRpc transactionCall);
+        ResultWrapper<UInt256?> eth_estimateGas(TransactionForRpc transactionCall, BlockParameter blockParameter = null);
         
         [JsonRpcMethod(IsImplemented = true, Description = "Retrieves a block by hash", IsReadOnly = true)]
         ResultWrapper<BlockForRpc> eth_getBlockByHash(Keccak blockHash, bool returnFullTransactionObjects = false);

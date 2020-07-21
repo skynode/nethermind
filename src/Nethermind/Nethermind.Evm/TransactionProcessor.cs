@@ -47,7 +47,7 @@ namespace Nethermind.Evm
             _virtualMachine = virtualMachine ?? throw new ArgumentNullException(nameof(virtualMachine));
             _stateProvider = stateProvider ?? throw new ArgumentNullException(nameof(stateProvider));
             _storageProvider = storageProvider ?? throw new ArgumentNullException(nameof(storageProvider));
-            _ecdsa = new EthereumEcdsa(specProvider, logManager);
+            _ecdsa = new EthereumEcdsa(specProvider.ChainId, logManager);
         }
 
         public void CallAndRestore(Transaction transaction, BlockHeader block, ITxTracer txTracer)
@@ -67,15 +67,15 @@ namespace Nethermind.Evm
 
             _stateProvider.RecalculateStateRoot();
             Keccak stateRoot = _specProvider.GetSpec(block.Number).IsEip658Enabled ? null : _stateProvider.StateRoot;
-            if (txTracer.IsTracingReceipt) txTracer.MarkAsFailed(recipient, tx.GasLimit, Bytes.Empty, reason ?? "invalid", stateRoot);
+            if (txTracer.IsTracingReceipt) txTracer.MarkAsFailed(recipient, tx.GasLimit, Array.Empty<byte>(), reason ?? "invalid", stateRoot);
         }
 
         private EthereumEcdsa _ecdsa;
 
         private void Execute(Transaction transaction, BlockHeader block, ITxTracer txTracer, bool isCall)
         {
-            var notSystemTransaction = !transaction.IsSystem();
-            var wasSenderAccountCreatedInsideACall = false;
+            bool notSystemTransaction = !transaction.IsSystem();
+            bool wasSenderAccountCreatedInsideACall = false;
             
             IReleaseSpec spec = _specProvider.GetSpec(block.Number);
             if (!notSystemTransaction)
@@ -88,7 +88,7 @@ namespace Nethermind.Evm
             UInt256 gasPrice = transaction.GasPrice;
             long gasLimit = transaction.GasLimit;
             byte[] machineCode = transaction.Init;
-            byte[] data = transaction.Data ?? Bytes.Empty;
+            byte[] data = transaction.Data ?? Array.Empty<byte>();
 
             Address sender = transaction.SenderAddress;
             if (_logger.IsTrace) _logger.Trace($"Executing tx {transaction.Hash}");
@@ -126,7 +126,7 @@ namespace Nethermind.Evm
                 // hacky fix for the potential recovery issue
                 if (transaction.Signature != null)
                 {
-                    transaction.SenderAddress = _ecdsa.RecoverAddress(transaction, block.Number);
+                    transaction.SenderAddress = _ecdsa.RecoverAddress(transaction);
                 }
 
                 if (sender != transaction.SenderAddress)
@@ -190,7 +190,7 @@ namespace Nethermind.Evm
 
                     if (_stateProvider.AccountExists(recipient))
                     {
-                        if ((_virtualMachine.GetCachedCodeInfo(recipient)?.MachineCode?.Length ?? 0) != 0 || _stateProvider.GetNonce(recipient) != 0)
+                        if (_virtualMachine.GetCachedCodeInfo(recipient, spec).MachineCode.Length != 0 || _stateProvider.GetNonce(recipient) != 0)
                         {
                             if (_logger.IsTrace)
                             {
@@ -203,9 +203,7 @@ namespace Nethermind.Evm
                         _stateProvider.UpdateStorageRoot(recipient, Keccak.EmptyTreeHash);
                     }
                 }
-
-                bool isPrecompile = recipient.IsPrecompiled(spec);
-
+                
                 ExecutionEnvironment env = new ExecutionEnvironment();
                 env.Value = value;
                 env.TransferValue = value;
@@ -214,12 +212,12 @@ namespace Nethermind.Evm
                 env.ExecutingAccount = recipient;
                 env.CurrentBlock = block;
                 env.GasPrice = gasPrice;
-                env.InputData = data ?? new byte[0];
-                env.CodeInfo = isPrecompile ? new CodeInfo(recipient) : machineCode == null ? _virtualMachine.GetCachedCodeInfo(recipient) : new CodeInfo(machineCode);
+                env.InputData = data ?? Array.Empty<byte>();
+                env.CodeInfo = machineCode == null ? _virtualMachine.GetCachedCodeInfo(recipient, spec) : new CodeInfo(machineCode);
                 env.Originator = sender;
 
                 ExecutionType executionType = transaction.IsContractCreation ? ExecutionType.Create : ExecutionType.Call;
-                using (EvmState state = new EvmState(unspentGas, env, executionType, isPrecompile, true, false))
+                using (EvmState state = new EvmState(unspentGas, env, executionType, true, false))
                 {
                     substate = _virtualMachine.Run(state, txTracer);
                     unspentGas = state.GasAvailable;
@@ -254,6 +252,7 @@ namespace Nethermind.Evm
                     foreach (Address toBeDestroyed in substate.DestroyList)
                     {
                         if (_logger.IsTrace) _logger.Trace($"Destroying account {toBeDestroyed}");
+                        _storageProvider.ClearStorage(toBeDestroyed);
                         _stateProvider.DeleteAccount(toBeDestroyed);
                         if (txTracer.IsTracingRefunds) txTracer.ReportRefund(RefundOf.Destroy);
                     }
@@ -328,11 +327,11 @@ namespace Nethermind.Evm
 
                 if (statusCode == StatusCode.Failure)
                 {
-                    txTracer.MarkAsFailed(recipient, spentGas, (substate?.ShouldRevert ?? false) ? substate.Output : Bytes.Empty, substate?.Error, stateRoot);
+                    txTracer.MarkAsFailed(recipient, spentGas, (substate?.ShouldRevert ?? false) ? substate.Output : Array.Empty<byte>(), substate?.Error, stateRoot);
                 }
                 else
                 {
-                    txTracer.MarkAsSuccess(recipient, spentGas, substate.Output, substate.Logs.Any() ? substate.Logs.ToArray() : LogEntry.EmptyLogs, stateRoot);
+                    txTracer.MarkAsSuccess(recipient, spentGas, substate.Output, substate.Logs.Any() ? substate.Logs.ToArray() : Array.Empty<LogEntry>(), stateRoot);
                 }
             }
         }

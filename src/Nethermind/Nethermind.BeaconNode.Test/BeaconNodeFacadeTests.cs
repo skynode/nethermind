@@ -113,7 +113,7 @@ namespace Nethermind.BeaconNode.Test
                 validatorDuties.Add(validatorDuty);
                 Console.WriteLine("Index [{0}], Epoch {1}, Validator {2}, : attestation slot {3}, shard {4}, proposal slot {5}",
                     validatorDutyIndex, targetEpoch, validatorDuty.ValidatorPublicKey, validatorDuty.AttestationSlot,
-                    (ulong) validatorDuty.AttestationShard, validatorDuty.BlockProposalSlot);
+                    validatorDuty.AttestationIndex, validatorDuty.BlockProposalSlot);
                 validatorDutyIndex++;
             }
 
@@ -123,12 +123,13 @@ namespace Nethermind.BeaconNode.Test
             {
                 Console.WriteLine("Index [{0}], Epoch {1}, Validator {2}, : attestation slot {3}, shard {4}, proposal slot {5}",
                     validatorDutyIndex, targetEpoch, validatorDuty.ValidatorPublicKey, validatorDuty.AttestationSlot,
-                    (ulong) validatorDuty.AttestationShard, validatorDuty.BlockProposalSlot);
+                    validatorDuty.AttestationIndex, validatorDuty.BlockProposalSlot);
             }
 
             // Assert
             Dictionary<Slot, IGrouping<Slot, ValidatorDuty>> groupsByProposalSlot = validatorDuties
-                .GroupBy(x => x.BlockProposalSlot)
+                .Where(x => x.BlockProposalSlot.HasValue)
+                .GroupBy(x => x.BlockProposalSlot!.Value)
                 .ToDictionary(x => x.Key, x => x);
             groupsByProposalSlot[new Slot(0)].Count().ShouldBe(1);
             groupsByProposalSlot[new Slot(1)].Count().ShouldBe(1);
@@ -138,7 +139,7 @@ namespace Nethermind.BeaconNode.Test
             groupsByProposalSlot[new Slot(5)].Count().ShouldBe(1);
             groupsByProposalSlot[new Slot(6)].Count().ShouldBe(1);
             //groupsByProposalSlot[new Slot(7)].Count().ShouldBe(1);
-            groupsByProposalSlot[Slot.None].Count().ShouldBe(numberOfValidators - 7);
+            validatorDuties.Count(x => !x.BlockProposalSlot.HasValue).ShouldBe(numberOfValidators - 7);
         }
         
         [TestMethod]
@@ -176,7 +177,7 @@ namespace Nethermind.BeaconNode.Test
                 validatorDuties.Add(validatorDuty);
                 Console.WriteLine("Index [{0}], Epoch {1}, Validator {2}, : attestation slot {3}, shard {4}, proposal slot {5}",
                     validatorDutyIndex, targetEpoch, validatorDuty.ValidatorPublicKey, validatorDuty.AttestationSlot,
-                    (ulong) validatorDuty.AttestationShard, validatorDuty.BlockProposalSlot);
+                    validatorDuty.AttestationIndex, validatorDuty.BlockProposalSlot);
                 validatorDutyIndex++;
             }
 
@@ -186,12 +187,13 @@ namespace Nethermind.BeaconNode.Test
             {
                 Console.WriteLine("Index [{0}], Epoch {1}, Validator {2}, : attestation slot {3}, shard {4}, proposal slot {5}",
                     validatorDutyIndex, targetEpoch, validatorDuty.ValidatorPublicKey, validatorDuty.AttestationSlot,
-                    (ulong) validatorDuty.AttestationShard, validatorDuty.BlockProposalSlot);
+                    validatorDuty.AttestationIndex, validatorDuty.BlockProposalSlot);
             }
             
             // Assert
             Dictionary<Slot, IGrouping<Slot, ValidatorDuty>> groupsByProposalSlot = validatorDuties
-                .GroupBy(x => x.BlockProposalSlot)
+                .Where(x => x.BlockProposalSlot.HasValue)
+                .GroupBy(x => x.BlockProposalSlot!.Value)
                 .ToDictionary(x => x.Key, x => x);
             groupsByProposalSlot[new Slot(8)].Count().ShouldBe(1);
             groupsByProposalSlot[new Slot(9)].Count().ShouldBe(1);
@@ -201,7 +203,7 @@ namespace Nethermind.BeaconNode.Test
             groupsByProposalSlot[new Slot(13)].Count().ShouldBe(1);
             groupsByProposalSlot[new Slot(14)].Count().ShouldBe(1);
             //groupsByProposalSlot[new Slot(15)].Count().ShouldBe(1);
-            groupsByProposalSlot[Slot.None].Count().ShouldBe(numberOfValidators - 7);
+            validatorDuties.Count(x => !x.BlockProposalSlot.HasValue).ShouldBe(numberOfValidators - 7);
         }
         
         [TestMethod]
@@ -245,7 +247,7 @@ namespace Nethermind.BeaconNode.Test
                 validatorDuties.Add(validatorDuty);
                 Console.WriteLine("Index [{0}], Epoch {1}, Validator {2}, : attestation slot {3}, shard {4}, proposal slot {5}",
                     validatorDutyIndex, targetEpoch, validatorDuty.ValidatorPublicKey, validatorDuty.AttestationSlot,
-                    (ulong) validatorDuty.AttestationShard, validatorDuty.BlockProposalSlot);
+                    validatorDuty.AttestationIndex, validatorDuty.BlockProposalSlot);
                 validatorDutyIndex++;
             }
 
@@ -255,12 +257,13 @@ namespace Nethermind.BeaconNode.Test
             {
                 Console.WriteLine("Index [{0}], Epoch {1}, Validator {2}, : attestation slot {3}, shard {4}, proposal slot {5}",
                     validatorDutyIndex, targetEpoch, validatorDuty.ValidatorPublicKey, validatorDuty.AttestationSlot,
-                    (ulong) validatorDuty.AttestationShard, validatorDuty.BlockProposalSlot);
+                    validatorDuty.AttestationIndex, validatorDuty.BlockProposalSlot);
             }
             
             // Assert
             Dictionary<Slot, IGrouping<Slot, ValidatorDuty>> groupsByProposalSlot = validatorDuties
-                .GroupBy(x => x.BlockProposalSlot)
+                .Where(x => x.BlockProposalSlot.HasValue)
+                .GroupBy(x => x.BlockProposalSlot!.Value)
                 .ToDictionary(x => x.Key, x => x);
             groupsByProposalSlot[new Slot(0)].Count().ShouldBe(1);
             groupsByProposalSlot[new Slot(1)].Count().ShouldBe(1);

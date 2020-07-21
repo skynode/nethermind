@@ -21,9 +21,18 @@ namespace Nethermind.Blockchain
 {
     public interface IBlockFinalizationManager : IDisposable
     {
+        /// <summary>
+        /// Last level that was finalize while processing blocks. This level will not be reorganised.
+        /// </summary>
         long LastFinalizedBlockLevel { get; }
         event EventHandler<FinalizeEventArgs> BlocksFinalized;
-        long GetLastLevelFinalizedBy(Keccak headHash);
-        long? GetFinalizedLevel(long blockLevel);
+        
+        /// <summary>
+        /// Get last level finalized by certain block hash.
+        /// </summary>
+        /// <param name="blockHash">Hash of block</param>
+        /// <returns>Last level that was finalized by block hash.</returns>
+        /// <remarks>This is used when we have nonconsecutive block processing, like just switching from Fast to Full sync or when producing blocks. It is used when trying to find a non-finalized InitChange event.</remarks>
+        long GetLastLevelFinalizedBy(Keccak blockHash);
     }
 }

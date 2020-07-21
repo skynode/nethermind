@@ -17,6 +17,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
 using Nethermind.Core.Extensions;
@@ -29,6 +30,7 @@ namespace Nethermind.Evm.Tracing.ParityStyle
     {
         private readonly Transaction _tx;
         private readonly ParityTraceTypes _parityTraceTypes;
+        private readonly CancellationToken _cancellationToken; 
         private ParityLikeTxTrace _trace;
         
         private Stack<ParityTraceAction> _actionStack = new Stack<ParityTraceAction>();
@@ -43,9 +45,10 @@ namespace Nethermind.Evm.Tracing.ParityStyle
         private bool _treatGasParityStyle; // strange cost calculation from parity
         private bool _gasAlreadySetForCurrentOp; // workaround for jump destination errors
 
-        public ParityLikeTxTracer(Block block, Transaction tx, ParityTraceTypes parityTraceTypes)
+        public ParityLikeTxTracer(Block block, Transaction tx, ParityTraceTypes parityTraceTypes, CancellationToken cancellationToken = default(CancellationToken))
         {
             _parityTraceTypes = parityTraceTypes;
+            _cancellationToken = cancellationToken;
             
             _tx = tx;
             _trace = new ParityLikeTxTrace();
@@ -146,6 +149,10 @@ namespace Nethermind.Evm.Tracing.ParityStyle
                     return "Stack underflow";
                 case EvmExceptionType.OutOfGas:
                     return "Out of gas";
+                case EvmExceptionType.InvalidSubroutineEntry:
+                    return "Invalid subroutine entry";
+                case EvmExceptionType.InvalidSubroutineReturn:
+                    return "Invalid subroutine return";
                 case EvmExceptionType.InvalidJumpDestination:
                     return "Bad jump destination";
                 case EvmExceptionType.AccessViolation:
@@ -171,6 +178,8 @@ namespace Nethermind.Evm.Tracing.ParityStyle
         
         private void PushAction(ParityTraceAction action)
         {
+            _cancellationToken.ThrowIfCancellationRequested();
+
             if (_currentAction != null)
             {
                 action.TraceAddress = new int[_currentAction.TraceAddress.Length + 1];
@@ -204,15 +213,14 @@ namespace Nethermind.Evm.Tracing.ParityStyle
 
                 _vmTraceStack.Push(currentVmTrace);
                 _currentVmTrace = currentVmTrace;
-                if (_trace.VmTrace == null)
-                {
-                    _trace.VmTrace = _currentVmTrace.VmTrace;
-                }
+                _trace.VmTrace ??= _currentVmTrace.VmTrace;
             }
         }
 
         private void PopAction()
         {
+            _cancellationToken.ThrowIfCancellationRequested();
+
             if (IsTracingInstructions)
             {
                 _currentVmTrace.VmTrace.Operations = _currentVmTrace.Ops.ToArray();
@@ -271,7 +279,8 @@ namespace Nethermind.Evm.Tracing.ParityStyle
 
         public void StartOperation(int depth, long gas, Instruction opcode, int pc)
         {
-//            Console.WriteLine($"{opcode} | {gas} | {pc}");
+            _cancellationToken.ThrowIfCancellationRequested();
+
             ParityVmOperationTrace operationTrace = new ParityVmOperationTrace();
             _gasAlreadySetForCurrentOp = false;
             operationTrace.Pc = pc;
@@ -313,6 +322,7 @@ namespace Nethermind.Evm.Tracing.ParityStyle
 
         public void ReportStackPush(Span<byte> stackItem)
         {
+            _cancellationToken.ThrowIfCancellationRequested();
             _currentPushList.Add(stackItem.ToArray());
         }
 
@@ -444,7 +454,7 @@ namespace Nethermind.Evm.Tracing.ParityStyle
 
         public void ReportActionEnd(long gas, byte[] output)
         {
-            _currentAction.Result.Output = output ?? Bytes.Empty;
+            _currentAction.Result.Output = output ?? Array.Empty<byte>();
             _currentAction.Result.GasUsed = _currentAction.Gas - gas;
             PopAction();
         }

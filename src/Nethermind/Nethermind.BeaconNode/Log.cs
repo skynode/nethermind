@@ -55,8 +55,8 @@ namespace Nethermind.BeaconNode
                 new EventId(1000, nameof(BeaconNodeWorkerExecuteStarted)),
                 "Beacon Node {ProductTokenVersion} worker started; data directory '{DataDirectory}' (environment {Environment}) [{ThreadId}]");
         
-        public static readonly Action<ILogger, Bytes32, ulong, int, Exception?> InitializeBeaconState =
-            LoggerMessage.Define<Bytes32, ulong, int>(LogLevel.Information,
+        public static readonly Action<ILogger, Bytes32, ulong, uint, Exception?> InitializeBeaconState =
+            LoggerMessage.Define<Bytes32, ulong, uint>(LogLevel.Information,
                 new EventId(1300, nameof(InitializeBeaconState)),
                 "Initialise beacon state from ETH1 block {Eth1BlockHash}, time {Eth1Timestamp}, with {DepositCount} deposits.");
 
@@ -174,6 +174,30 @@ namespace Nethermind.BeaconNode
             LoggerMessage.Define(LogLevel.Warning,
                 new EventId(4408, nameof(ApiErrorPublishBlock)),
                 "Exception result from API publish Block (post).");
+        public static readonly Action<ILogger, Epoch, BlsPublicKey, Exception?> ValidatorDoesNotHaveAttestationSlot =
+            LoggerMessage.Define<Epoch, BlsPublicKey>(LogLevel.Warning,
+                new EventId(4409, nameof(ValidatorDoesNotHaveAttestationSlot)),
+                "No attestation slot during epoch {Epoch} for validator {ValidatorPublicKey}.");
+        public static readonly Action<ILogger, Epoch, ValidatorIndex, BlsPublicKey, Exception?> ValidatorNotActiveAtEpoch =
+            LoggerMessage.Define<Epoch, ValidatorIndex, BlsPublicKey>(LogLevel.Warning,
+                new EventId(4410, nameof(ValidatorNotActiveAtEpoch)),
+                "No duties as validator not active during epoch {Epoch} for validator {ValidatorIndex}: {ValidatorPublicKey}.");
+        public static readonly Action<ILogger, Epoch, BlsPublicKey, Exception?> ValidatorNotFoundAtEpoch =
+            LoggerMessage.Define<Epoch, BlsPublicKey>(LogLevel.Warning,
+                new EventId(4411, nameof(ValidatorNotFoundAtEpoch)),
+                "No duties as validator public key not found at epoch {Epoch} for validator {ValidatorPublicKey}.");
+        public static readonly Action<ILogger, Exception?> ApiErrorNewAttestation =
+            LoggerMessage.Define(LogLevel.Warning,
+                new EventId(4412, nameof(ApiErrorNewAttestation)),
+                "Exception result from API Attestation (get).");
+        public static readonly Action<ILogger, Attestation, Exception?> AttestationNotAcceptedLocally =
+            LoggerMessage.Define<Attestation>(LogLevel.Warning,
+                new EventId(4413, nameof(AttestationNotAcceptedLocally)),
+                "Attestation {Attestation} not accepted by local chain (but will still try to publish to peers).");
+        public static readonly Action<ILogger, Exception?> ApiErrorPublishAttestation =
+            LoggerMessage.Define(LogLevel.Warning,
+                new EventId(4414, nameof(ApiErrorPublishAttestation)),
+                "Exception result from API publish Attestation (post).");
 
         public static readonly Action<ILogger, long, Exception?> QuickStartClockCreated =
             LoggerMessage.Define<long>(LogLevel.Warning,

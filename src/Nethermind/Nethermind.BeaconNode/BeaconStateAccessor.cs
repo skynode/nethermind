@@ -30,7 +30,7 @@ namespace Nethermind.BeaconNode
 {
     public class BeaconStateAccessor
     {
-        private readonly BeaconChainUtility _beaconChainUtility;
+        private readonly IBeaconChainUtility _beaconChainUtility;
         private readonly ChainConstants _chainConstants;
         private readonly ICryptographyService _cryptographyService;
         private readonly IOptionsMonitor<MiscellaneousParameters> _miscellaneousParameterOptions;
@@ -45,7 +45,7 @@ namespace Nethermind.BeaconNode
             IOptionsMonitor<StateListLengths> stateListLengthOptions,
             IOptionsMonitor<SignatureDomains> signatureDomainOptions,
             ICryptographyService cryptographyService,
-            BeaconChainUtility beaconChainUtility)
+            IBeaconChainUtility beaconChainUtility)
         {
             _chainConstants = chainConstants;
             _cryptographyService = cryptographyService;
@@ -193,12 +193,9 @@ namespace Nethermind.BeaconNode
         /// <summary>
         /// Return the signature domain (fork version concatenated with domain type) of a message.
         /// </summary>
-        public Domain GetDomain(BeaconState state, DomainType domainType, Epoch epoch)
+        public Domain GetDomain(BeaconState state, DomainType domainType, Epoch? optionalEpoch)
         {
-            if (epoch == Epoch.None)
-            {
-                epoch = GetCurrentEpoch(state);
-            }
+            Epoch epoch = optionalEpoch ?? GetCurrentEpoch(state);
 
             ForkVersion forkVersion;
             if (epoch < state.Fork.Epoch)
