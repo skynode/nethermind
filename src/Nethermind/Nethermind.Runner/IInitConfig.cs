@@ -90,9 +90,9 @@ namespace Nethermind.Runner
         RpcDb,
         [ConfigItem(Description = "Diagnostics mode which uses a read-only DB")]
         ReadOnlyDb,
-        [ConfigItem(Description = "Diagnostics mode which logs the Parity style traces")]
-        ParityTrace,
-        [ConfigItem(Description = "Diagnostics mode which logs the Geth style traces")]
-        GethTrace
+        [ConfigItem(Description = "Just scan rewards for blocks + genesis")]
+        VerifyRewards,
+        [ConfigItem(Description = "Just scan and sum supply on all accounts")]
+        VerifySupply
     }
 }

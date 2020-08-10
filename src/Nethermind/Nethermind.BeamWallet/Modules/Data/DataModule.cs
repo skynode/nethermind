@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -42,18 +43,21 @@ namespace Nethermind.BeamWallet.Modules.Data
         private CallTransactionModel _tokenTransaction;
         private Label _tokenBalanceLabel;
         private readonly IEnumerable<Token> _tokens = InitTokens();
+        private readonly Process _process;
+        private bool _externalRunnerIsRunning;
 
         public event EventHandler<TransferClickedEventArgs> TransferClicked;
         
-        public DataModule(IEthJsonRpcClientProxy ethJsonRpcClientProxy, string address)
+        public DataModule(IEthJsonRpcClientProxy ethJsonRpcClientProxy, string address, Process process, bool externalRunnerIsRunning)
         {
+            _externalRunnerIsRunning = externalRunnerIsRunning;
             _ethJsonRpcClientProxy = ethJsonRpcClientProxy;
             _address = new Address(address);
-            TimeSpan interval = TimeSpan.FromSeconds(5);
-            _timer = new Timer(Update, null, TimeSpan.Zero, interval);
+            _process = process;
+            _timer = new Timer(Update, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
         }
 
-        public Task<Window> InitAsync()
+        public async Task<Window> InitAsync()
         {
             _window = new Window("Data")
             {
@@ -65,7 +69,7 @@ namespace Nethermind.BeamWallet.Modules.Data
             Application.Top.Add(_window);
             RenderBalanceAsync();
 
-            return Task.FromResult(_window);
+            return _window;
         }
 
         private void Update(object state)
@@ -82,17 +86,24 @@ namespace Nethermind.BeamWallet.Modules.Data
             }
 
             var balance = await GetBalanceAsync();
-            if (!balance.HasValue)    
+            if (!balance.HasValue || balance.Value == 0)    
             {
                 return;
             }
 
             _balance = balance.Value;
             _window.Remove(_balanceValueLabel);
-            _balanceValueLabel = new Label(70, 1, $"{_balance} ETH (refreshing every 5s)");
+            _balanceValueLabel = new Label(70, 1, $"{_balance} ETH (refreshing every 5s).");
             
             _window.Remove(_syncingInfoLabel);
             _window.Add(_balanceValueLabel);
+            AddButtons();
+        }
+
+        private async Task<long?> GetLatestBlockNumber()
+        {
+            var result = await _ethJsonRpcClientProxy.eth_blockNumber();
+            return result.Result;
         }
 
         private async Task<decimal?> GetBalanceAsync()
@@ -143,12 +154,12 @@ namespace Nethermind.BeamWallet.Modules.Data
           
             return UInt256.Parse(result.Result.ToHexString(), NumberStyles.HexNumber);
         }
-        
+
         private async Task RenderBalanceAsync()
         {
             var addressLabel = new Label(1, 1, $"Address: {_address}");
             var balanceLabel = new Label(60, 1, "Balance:");
-            _syncingInfoLabel = new Label(70, 1, "Syncing...");
+            _syncingInfoLabel = new Label(70, 1, "Syncing... Please wait for the updated balance.");
             _window.Add(addressLabel, balanceLabel, _syncingInfoLabel);
 
             decimal? balance;
@@ -157,28 +168,42 @@ namespace Nethermind.BeamWallet.Modules.Data
                 balance = await GetBalanceAsync();
                 await Task.Delay(1000);
             } while (!balance.HasValue);
-                
+
             _balance = balance.Value;
-            _balanceValueLabel = new Label(70, 1, $"{_balance} ETH (refreshing every 5s)");   
-            
+            if (await GetLatestBlockNumber() == 0)
+            {
+                _balanceValueLabel = new Label(70, 1, "Syncing... Please wait for the updated balance.");
+                return;
+            }
+
+            _balanceValueLabel = new Label(70, 1, $"{_balance} ETH (refreshing every 5s).");
+
             _window.Remove(_syncingInfoLabel);
             _window.Add(_balanceValueLabel);
-            
-            var quitButton = new Button(1, 11, "Quit");
-            var transferButton = new Button(12, 11, "Transfer");
-            
-            quitButton.Clicked = () =>
-            {
-                Application.Top.Running = false;
-                Application.RequestStop();
-            };
 
+            AddButtons();
+        }
+
+        private void AddButtons()
+        {
+            var transferButton = new Button(1, 11, "Transfer");
             transferButton.Clicked = () =>
             {
                 TransferClicked?.Invoke(this, new TransferClickedEventArgs(_address, _balance));
             };
-            
-            _window.Add(quitButton, transferButton);
+
+            var quitButton = new Button(15, 11, "Quit");
+            quitButton.Clicked = () =>
+            {
+                if (!_externalRunnerIsRunning)
+                {
+                    CloseAppWithRunner();
+                }
+
+                Application.Top.Running = false;
+                Application.RequestStop();
+            };
+            _window.Add(transferButton, quitButton);
         }
 
         private async Task DisplayTokensBalance()
@@ -227,6 +252,25 @@ namespace Nethermind.BeamWallet.Modules.Data
             {
                 Name = name;
                 Address = new Address(address);
+            }
+        }
+        
+        private void CloseAppWithRunner()
+        {
+            var confirmed = MessageBox.Query(80, 8, "Confirmation",
+                $"{Environment.NewLine}" +
+                "Nethermind.Runner is running in the background. Do you want to stop it?", "Yes", "No");
+
+            if (confirmed == 0)
+            {
+                try
+                {
+                    _process.Kill();
+                }
+                catch
+                {
+                    // ignored
+                }
             }
         }
     }

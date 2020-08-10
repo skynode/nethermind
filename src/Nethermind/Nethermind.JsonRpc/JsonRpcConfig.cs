@@ -26,7 +26,6 @@ namespace Nethermind.JsonRpc
         public bool Enabled { get; set; }
         public string Host { get; set; }
         public int TracerTimeout { get; set; } = 20000;
-        public bool TracerTimeoutEnabled { get; set; }
         public string RpcRecorderBaseFilePath { get; set; } = "logs/rpc.{counter}.txt"; 
         public bool RpcRecorderEnabled { get; set; }
         public int Port { get; set; }
@@ -42,5 +41,6 @@ namespace Nethermind.JsonRpc
         public long? GasCap { get; set; } = 100000000;
         public int ReportIntervalSeconds { get; set; } = 300;
         public bool BufferResponses { get; set; }
+        public string CallsFilterFilePath { get; set; } = "Data/jsonrpc.filter";
     }
 }
